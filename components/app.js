@@ -5,6 +5,7 @@ import Buffer from "./buffer.js";
 import BufferList from "./buffer-list.js";
 import BufferHeader from "./buffer-header.js";
 import MemberList from "./member-list.js";
+import ConfirmOpenBuffer from "./confirm-open-buffer.js";
 import ConnectForm from "./connect-form.js";
 import JoinForm from "./join-form.js";
 import Help from "./help.js";
@@ -234,6 +235,7 @@ export default class App extends Component {
 
 		this.handleConnectSubmit = this.handleConnectSubmit.bind(this);
 		this.handleJoinSubmit = this.handleJoinSubmit.bind(this);
+		this.handleConfirmOpenBufferSubmit = this.handleConfirmOpenBufferSubmit.bind(this);
 		this.handleBufferListClick = this.handleBufferListClick.bind(this);
 		this.handleBufferListClose = this.handleBufferListClose.bind(this);
 		this.toggleBufferList = this.toggleBufferList.bind(this);
@@ -1520,7 +1522,7 @@ export default class App extends Component {
 		if (buf) {
 			this.switchBuffer(buf.id);
 		} else {
-			this.openDialog("join", { server: serverID, channel: url.entity });
+			this.openDialog("confirm-open-buffer", { server: serverID, name: url.entity });
 		}
 		return true;
 	}
@@ -1790,6 +1792,11 @@ export default class App extends Component {
 
 	handleJoinSubmit(data) {
 		this.open(data.channel, this.state.dialogData.server);
+		this.dismissDialog();
+	}
+
+	handleConfirmOpenBufferSubmit() {
+		this.open(this.state.dialogData.name, this.state.dialogData.server);
 		this.dismissDialog();
 	}
 
@@ -2284,6 +2291,17 @@ export default class App extends Component {
 			dialog = html`
 				<${Dialog} title="Join channel" onDismiss=${this.dismissDialog}>
 					<${JoinForm} channel=${dialogData.channel} onSubmit=${this.handleJoinSubmit}/>
+				</>
+			`;
+			break;
+		case "confirm-open-buffer":
+			dialog = html`
+				<${Dialog} title="Open buffer">
+					<${ConfirmOpenBuffer}
+						name=${dialogData.name}
+						client=${this.clients.get(dialogData.server)}
+						onSubmit=${this.handleConfirmOpenBufferSubmit}
+					/>
 				</>
 			`;
 			break;
