@@ -2295,11 +2295,19 @@ export default class App extends Component {
 			`;
 			break;
 		case "confirm-open-buffer":
+			let client = this.clients.get(dialogData.server);
+			let server = this.state.servers.get(dialogData.server);
+			let bouncerNetwork = null;
+			if (server.bouncerNetID) {
+				bouncerNetwork = this.state.bouncerNetworks.get(server.bouncerNetID);
+			}
 			dialog = html`
 				<${Dialog} title="Open buffer">
 					<${ConfirmOpenBuffer}
 						name=${dialogData.name}
-						client=${this.clients.get(dialogData.server)}
+						client=${client}
+						server=${server}
+						bouncerNetwork=${bouncerNetwork}
 						onSubmit=${this.handleConfirmOpenBufferSubmit}
 					/>
 				</>
