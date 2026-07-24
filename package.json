@@ -22,7 +22,8 @@
   "scripts": {
     "start": "node ./dev-server.js",
     "build": "parcel build",
-    "lint": "eslint"
+    "lint": "eslint",
+    "clean": "rm -rf dist"
   },
   "private": true,
   "targets": {
