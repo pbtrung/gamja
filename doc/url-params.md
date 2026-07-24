@@ -3,8 +3,9 @@
 gamja settings can be overridden using URL query parameters:
 
 - `server`: path or URL to the WebSocket server
-- `nick`: nickname (if the character `*` appears in the string, it will be
-  replaced with a randomly generated value)
+- `nick`: nickname to use by default when connecting to the server. If the
+  character `*` appears in the string, it will be replaced with a randomly
+  generated value.
 - `channels`: comma-separated list of channels to join (`#` needs to be escaped)
 - `open`: [IRC URL] to open. Supports both channels (e.g. `ircs://irc.libera.chat/#soju`)
   and users (e.g. `ircs://irc.libera.chat/emersion`). If the server is not a
