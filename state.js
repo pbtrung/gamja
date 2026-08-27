@@ -56,8 +56,8 @@ export function getBufferURL(buf, bouncerNetwork = null) {
 	throw new Error("Unknown buffer type: " + buf.type);
 }
 
-export function getMessageURL(buf, msg) {
-	let bufURL = getBufferURL(buf);
+export function getMessageURL(buf, msg, bouncerNetwork = null) {
+	let bufURL = getBufferURL(buf, bouncerNetwork);
 	if (msg.tags.msgid) {
 		return bufURL + "?msgid=" + encodeURIComponent(msg.tags.msgid);
 	} else {

@@ -101,6 +101,7 @@ class LogLine extends Component {
 		let msg = this.props.message;
 		let buf = this.props.buffer;
 		let server = this.props.server;
+		let bouncerNetwork = this.props.bouncerNetwork;
 
 		let onNickClick = this.props.onNickClick;
 		let onChannelClick = this.props.onChannelClick;
@@ -387,7 +388,7 @@ class LogLine extends Component {
 
 		return html`
 			<div class="logline ${lineClass}" data-key=${msg.key} role="listitem">
-				<${Timestamp} date=${new Date(msg.tags.time)} url=${getMessageURL(buf, msg)}/>
+				<${Timestamp} date=${new Date(msg.tags.time)} url=${getMessageURL(buf, msg, bouncerNetwork)}/>
 				${" "}
 				${content}
 			</div>
@@ -426,6 +427,7 @@ class FoldGroup extends Component {
 		let msgs = this.props.messages;
 		let buf = this.props.buffer;
 		let server = this.props.server;
+		let bouncerNetwork = this.props.bouncerNetwork;
 
 		let onNickClick = this.props.onNickClick;
 		function createNick(nick) {
@@ -498,14 +500,14 @@ class FoldGroup extends Component {
 		let firstDate = new Date(msgs[0].tags.time);
 		let lastDate = new Date(lastMsg.tags.time);
 		let timestamp = html`
-			<${Timestamp} date=${firstDate} url=${getMessageURL(buf, msgs[0])}/>
+			<${Timestamp} date=${firstDate} url=${getMessageURL(buf, msgs[0], bouncerNetwork)}/>
 		`;
 		if (lastDate - firstDate > 60 * 100) {
 			timestamp = [
 				timestamp,
 				" — ",
 				html`
-					<${Timestamp} date=${lastDate} url=${getMessageURL(buf, lastMsg)}/>
+					<${Timestamp} date=${lastDate} url=${getMessageURL(buf, lastMsg, bouncerNetwork)}/>
 				`,
 			];
 		}
@@ -690,6 +692,7 @@ export default class Buffer extends Component {
 		}
 
 		let server = this.props.server;
+		let bouncerNetwork = this.props.bouncerNetwork;
 		let settings = this.props.settings;
 		let serverName = server.name;
 
@@ -721,6 +724,7 @@ export default class Buffer extends Component {
 					message=${msg}
 					buffer=${buf}
 					server=${server}
+					bouncerNetwork=${bouncerNetwork}
 					redacted=${buf.redacted.has(msg.tags.msgid)}
 					onChannelClick=${onChannelClick}
 					onNickClick=${onNickClick}
@@ -790,6 +794,7 @@ export default class Buffer extends Component {
 					messages=${msgs}
 					buffer=${buf}
 					server=${server}
+					bouncerNetwork=${bouncerNetwork}
 					onNickClick=${onNickClick}
 				/>
 			`;
