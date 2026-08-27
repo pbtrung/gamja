@@ -840,9 +840,7 @@ export default class App extends Component {
 			}
 		}
 
-		// Open a new buffer if the message doesn't come from me or is a
-		// self-message
-		if ((!client.isMyNick(msg.prefix.name) || client.isMyNick(bufName)) && (msg.command !== "PART" && msg.command !== "QUIT" && msg.command !== irc.RPL_MONONLINE && msg.command !== irc.RPL_MONOFFLINE)) {
+		if (msg.command !== "PART" && msg.command !== "QUIT" && msg.command !== irc.RPL_MONONLINE && msg.command !== irc.RPL_MONOFFLINE) {
 			this.createBuffer(serverID, bufName);
 		}
 
