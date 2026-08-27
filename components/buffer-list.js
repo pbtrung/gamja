@@ -49,7 +49,7 @@ function BufferItem(props) {
 	return html`
 		<li class="${classes.join(" ")}" role="tab" aria-selected="${props.active}">
 			<a
-				href=${getBufferURL(props.buffer)}
+				href=${getBufferURL(props.buffer, props.bouncerNetwork)}
 				title=${title}
 				onClick=${handleClick}
 				onMouseDown=${handleMouseDown}

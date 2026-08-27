@@ -20,7 +20,7 @@ class SwitcherItem extends Component {
 		return html`
 			<li>
 				<a
-					href=${getBufferURL(this.props.buffer)}
+					href=${getBufferURL(this.props.buffer, this.props.bouncerNetwork)}
 					class=${class_}
 					onClick=${this.handleClick}
 				>

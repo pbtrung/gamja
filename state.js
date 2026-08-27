@@ -43,14 +43,15 @@ export const BufferEventsDisplayMode = {
 
 export const SettingsContext = createContext("settings");
 
-export function getBufferURL(buf) {
+export function getBufferURL(buf, bouncerNetwork = null) {
+	let host = bouncerNetwork?.host;
 	switch (buf.type) {
 	case BufferType.SERVER:
-		return irc.formatURL();
+		return irc.formatURL({ host });
 	case BufferType.CHANNEL:
-		return irc.formatURL({ entity: buf.name });
+		return irc.formatURL({ host, entity: buf.name });
 	case BufferType.NICK:
-		return irc.formatURL({ entity: buf.name, enttype: "user" });
+		return irc.formatURL({ host, entity: buf.name, enttype: "user" });
 	}
 	throw new Error("Unknown buffer type: " + buf.type);
 }
