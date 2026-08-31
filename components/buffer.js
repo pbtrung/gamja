@@ -26,7 +26,7 @@ function Nick(props) {
 		title = stripANSI(props.user.realname);
 	}
 
-	let url = irc.formatURL({ host: props.bouncerNetwork?.host, entity: props.nick });
+	let url = irc.formatURL({ host: props.bouncerNetwork?.host, entity: props.nick, enttype: "user" });
 	let colorIndex = djb2(props.nick) % 16 + 1;
 	return html`
 		<a
