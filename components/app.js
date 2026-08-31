@@ -2252,6 +2252,7 @@ export default class App extends Component {
 						<${MemberList}
 							members=${activeBuffer.members}
 							users=${activeServer.users}
+							bouncerNetwork=${activeBouncerNetwork}
 							onNickClick=${this.handleNickClick}
 						/>
 					</section>

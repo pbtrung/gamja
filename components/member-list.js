@@ -50,10 +50,16 @@ class MemberItem extends Component {
 			}
 		}
 
+		let url = irc.formatURL({
+			host: this.props.bouncerNetwork?.host,
+			entity: this.props.nick,
+			enttype: "user",
+		});
+
 		return html`
 			<li>
 				<a
-					href=${irc.formatURL({ entity: this.props.nick, enttype: "user" })}
+					href=${url}
 					class=${classes.join(" ")}
 					title=${title}
 					onClick=${this.handleClick}
@@ -99,6 +105,7 @@ export default class MemberList extends Component {
 						nick=${nick}
 						membership=${membership}
 						user=${this.props.users.get(nick)}
+						bouncerNetwork=${this.props.bouncerNetwork}
 						onClick=${() => this.props.onNickClick(nick)}
 					/>
 				`)}
