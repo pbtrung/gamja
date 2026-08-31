@@ -26,10 +26,11 @@ function Nick(props) {
 		title = stripANSI(props.user.realname);
 	}
 
+	let url = irc.formatURL({ host: props.bouncerNetwork?.host, entity: props.nick });
 	let colorIndex = djb2(props.nick) % 16 + 1;
 	return html`
 		<a
-			href=${irc.formatURL({ entity: props.nick })}
+			href=${url}
 			title=${title}
 			class="nick nick-${colorIndex}"
 			onClick=${handleClick}
@@ -112,13 +113,15 @@ class LogLine extends Component {
 				<${Nick}
 					nick=${nick}
 					user=${server.users.get(nick)}
+					bouncerNetwork=${bouncerNetwork}
 					onClick=${() => onNickClick(nick)}
 				/>
 			`;
 		}
 		function createChannel(channel) {
+			let url = irc.formatURL({ host: bouncerNetwork?.host, entity: channel });
 			return html`
-				<a href=${irc.formatURL({ entity: channel })} onClick=${onChannelClick}>
+				<a href=${url} onClick=${onChannelClick}>
 					${channel}
 				</a>
 			`;
@@ -435,6 +438,7 @@ class FoldGroup extends Component {
 				<${Nick}
 					nick=${nick}
 					user=${server.users.get(nick)}
+					bouncerNetwork=${bouncerNetwork}
 					onClick=${() => onNickClick(nick)}
 				/>
 			`;
