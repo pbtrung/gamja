@@ -60,8 +60,10 @@ export function getMessageURL(buf, msg, bouncerNetwork = null) {
 	let bufURL = getBufferURL(buf, bouncerNetwork);
 	if (msg.tags.msgid) {
 		return bufURL + "?msgid=" + encodeURIComponent(msg.tags.msgid);
-	} else {
+	} else if (msg.tags.time) {
 		return bufURL + "?timestamp=" + encodeURIComponent(msg.tags.time);
+	} else {
+		return null;
 	}
 }
 
