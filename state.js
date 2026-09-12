@@ -675,7 +675,8 @@ export const State = {
 				let members = new irc.CaseMapMap(buf.members);
 
 				irc.forEachChannelModeUpdate(msg, client.isupport, (mode, add, arg) => {
-					if (!prefixByMode.has(mode)) {
+					let letter = prefixByMode.get(mode);
+					if (letter === undefined) {
 						return;
 					}
 					let nick = arg;
@@ -683,7 +684,6 @@ export const State = {
 					if (membership === undefined) {
 						return;
 					}
-					let letter = prefixByMode.get(mode);
 					members.set(nick, updateMembership(membership, letter, add, client));
 				});
 
