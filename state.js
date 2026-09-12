@@ -680,6 +680,9 @@ export const State = {
 						return;
 					}
 					let nick = arg;
+					if (!nick) {
+						throw new Error(`Missing membership MODE "${mode}" argument`);
+					}
 					let membership = members.get(nick);
 					if (membership === undefined) {
 						return;
