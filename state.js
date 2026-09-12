@@ -500,9 +500,7 @@ export const State = {
 			target = msg.params[1];
 			if (msg.list.length === 0 && !client.isChannel(target) && target.indexOf("*") < 0) {
 				// Not a channel nor a mask, likely a nick
-				return updateUser(target, (user) => {
-					return { offline: true };
-				});
+				return updateUser(target, { offline: true });
 			} else {
 				return updateServer((server) => {
 					let users = new irc.CaseMapMap(server.users);
