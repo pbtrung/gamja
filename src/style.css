@@ -356,6 +356,17 @@ li.unread-highlight .unread-indicator {
 	font-variant-numeric: tabular-nums;
 }
 
+/* Digits sit above the middle of the line box, so trim it to the digit
+ * height where supported to center them exactly */
+@supports (text-box: trim-both cap alphabetic) {
+	#member-list-header .badge {
+		display: inline-block;
+		height: auto;
+		text-box: trim-both cap alphabetic;
+		padding: calc((1.25rem - 1cap) / 2) 0.45rem;
+	}
+}
+
 /* Keep the member count badge next to the close button */
 #member-list-header .panel-close {
 	margin-left: 0.75rem;
