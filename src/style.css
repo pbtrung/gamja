@@ -122,27 +122,6 @@ noscript {
 	color: var(--bs-emphasis-color);
 }
 
-.expander {
-	display: none;
-	flex-shrink: 0;
-	align-items: flex-start;
-	justify-content: center;
-	width: 2.75rem;
-	padding: 1rem 0 0;
-	margin: 0;
-	border: none;
-	background: transparent;
-	color: var(--bs-secondary-color);
-	font-size: 1.25rem;
-	cursor: pointer;
-	transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
-}
-
-.expander:hover {
-	background-color: var(--gamja-item-hover-bg);
-	color: var(--bs-emphasis-color);
-}
-
 .buffer-items, .member-items {
 	list-style-type: none;
 	margin: 0;
@@ -316,7 +295,7 @@ li.unread-highlight .unread-indicator {
 	color: var(--bs-secondary-color);
 }
 
-.buffer-list-toggle {
+.header-toggle {
 	position: relative;
 	display: none;
 	flex-shrink: 0;
@@ -331,7 +310,7 @@ li.unread-highlight .unread-indicator {
 
 /* Keep the icon aligned like the buffer type icon, but extend the tap
  * target beyond it */
-.buffer-list-toggle::before {
+.header-toggle::before {
 	content: "";
 	position: absolute;
 	inset: -0.625rem;
@@ -339,11 +318,11 @@ li.unread-highlight .unread-indicator {
 	transition: background-color 0.15s ease-in-out;
 }
 
-.buffer-list-toggle:hover {
+.header-toggle:hover {
 	color: var(--bs-emphasis-color);
 }
 
-.buffer-list-toggle:hover::before {
+.header-toggle:hover::before {
 	background-color: var(--gamja-item-hover-bg);
 }
 
@@ -358,9 +337,18 @@ li.unread-highlight .unread-indicator {
 	background-color: var(--gamja-highlight-color);
 }
 
-.buffer-list-close {
+.member-list-toggle {
+	margin-left: auto;
+}
+
+.panel-close {
 	display: none;
 	margin-left: auto;
+}
+
+/* Keep the member count badge next to the close button */
+#member-list-header .panel-close {
+	margin-left: 0.75rem;
 }
 
 #buffer-header .description {
@@ -839,12 +827,8 @@ kbd {
 }
 
 @media (max-width: 640px) {
-	.expander {
-		display: flex;
-	}
-
-	/* The buffer list is opened from the buffer header instead */
-	#buffer-list:not(.expand) {
+	/* Side panes are opened from the buffer header instead */
+	#buffer-list:not(.expand), #member-list:not(.expand) {
 		display: none;
 	}
 
@@ -852,12 +836,8 @@ kbd {
 		display: none;
 	}
 
-	.buffer-list-toggle, .buffer-list-close {
+	.header-toggle, .panel-close {
 		display: flex;
-	}
-
-	.member-list-panel {
-		width: 0;
 	}
 
 	#buffer-list.expand, #member-list.expand {
@@ -866,8 +846,8 @@ kbd {
 		box-shadow: var(--bs-box-shadow-lg);
 	}
 
-	#buffer-list.expand {
-		border-right: none;
+	#buffer-list.expand, #member-list.expand {
+		border: none;
 	}
 
 	#buffer-list.expand .buffer-list-panel,

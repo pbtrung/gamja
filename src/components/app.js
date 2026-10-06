@@ -2244,6 +2244,7 @@ export default class App extends Component {
 						onManageNetwork=${() => this.handleManageNetworkClick(activeBuffer.server)}
 						onOpenSettings=${this.handleOpenSettingsClick}
 						onOpenBufferList=${this.toggleBufferList}
+						onOpenMemberList=${this.toggleMemberList}
 						unreadElsewhere=${unreadElsewhere}
 					/>
 				</section>
@@ -2259,26 +2260,27 @@ export default class App extends Component {
 					role="complementary"
 					aria-label="Members list"
 				>
-					<button
-						class="expander"
-						title="Toggle member list"
-						aria-label="Toggle member list"
-						aria-expanded=${this.state.openPanels.memberList ? "true" : "false"}
-						onClick=${this.toggleMemberList}
-					>
-						<${Icon} icon=${Users}/>
-					</button>
 					<section class="member-list-panel">
 						<header id="member-list-header">
 							<${Icon} icon=${Users}/>
 							<span>Members</span>
 							<span class="badge rounded-pill text-bg-secondary ms-auto">${activeBuffer.members.size}</span>
+							<button
+								type="button"
+								class="btn-close panel-close"
+								title="Close member list"
+								aria-label="Close member list"
+								onClick=${() => this.closeMemberList()}
+							></button>
 						</header>
 						<${MemberList}
 							members=${activeBuffer.members}
 							users=${activeServer.users}
 							bouncerNetwork=${activeBouncerNetwork}
-							onNickClick=${this.handleNickClick}
+							onNickClick=${(nick) => {
+								this.handleNickClick(nick);
+								this.closeMemberList();
+							}}
 						/>
 					</section>
 				</section>
@@ -2447,7 +2449,7 @@ export default class App extends Component {
 						<span>gamja</span>
 						<button
 							type="button"
-							class="btn-close buffer-list-close"
+							class="btn-close panel-close"
 							title="Close buffer list"
 							aria-label="Close buffer list"
 							onClick=${() => this.closeBufferList()}

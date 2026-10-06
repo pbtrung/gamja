@@ -4,7 +4,7 @@ import { strip as stripANSI } from "../lib/ansi.js";
 import { BufferType, ServerStatus, getServerName } from "../state.js";
 import * as irc from "../lib/irc.js";
 import Icon from "./icon.js";
-import { CirclePlus, LogOut, MessagesSquare, PanelLeft, Plus, RotateCw, Server, Settings, SlidersHorizontal, User, X } from "../icons.js";
+import { CirclePlus, LogOut, MessagesSquare, PanelLeft, Plus, RotateCw, Server, Settings, SlidersHorizontal, User, Users, X } from "../icons.js";
 
 const UserStatus = {
 	HERE: "here",
@@ -193,6 +193,21 @@ export default function BufferHeader(props) {
 		descriptionTitle = description;
 	}
 
+	let memberListToggle = null;
+	if (props.buffer.type === BufferType.CHANNEL) {
+		memberListToggle = html`
+			<button
+				type="button"
+				class="header-toggle member-list-toggle"
+				title="Open member list"
+				aria-label="Open member list"
+				onClick=${props.onOpenMemberList}
+			>
+				<${Icon} icon=${Users}/>
+			</button>
+		`;
+	}
+
 	let typeIcon = MessagesSquare;
 	switch (props.buffer.type) {
 	case BufferType.SERVER:
@@ -208,7 +223,7 @@ export default function BufferHeader(props) {
 			<${Icon} icon=${typeIcon} class="title-icon"/>
 			<button
 				type="button"
-				class="buffer-list-toggle"
+				class="header-toggle buffer-list-toggle"
 				title="Open buffer list"
 				aria-label="Open buffer list"
 				onClick=${props.onOpenBufferList}
@@ -217,6 +232,7 @@ export default function BufferHeader(props) {
 				${props.unreadElsewhere ? html`<span class="unread-indicator unread-${props.unreadElsewhere}"></span>` : null}
 			</button>
 			<span class="text-truncate" title=${name}>${name}</span>
+			${memberListToggle}
 		</div>
 		${description ? html`<div class="description" title=${descriptionTitle}>${description}</div>` : null}
 		<div class="actions">${actions}</div>
