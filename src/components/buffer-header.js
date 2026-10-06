@@ -198,7 +198,7 @@ export default function BufferHeader(props) {
 		memberListToggle = html`
 			<button
 				type="button"
-				class="header-toggle member-list-toggle"
+				class=${"header-toggle member-list-toggle" + (props.memberListHidden ? " always" : "")}
 				title="Open member list"
 				aria-label="Open member list"
 				onClick=${props.onOpenMemberList}

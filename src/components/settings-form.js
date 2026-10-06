@@ -10,6 +10,7 @@ export default class SettingsForm extends Component {
 
 		this.state.secondsInTimestamps = props.settings.secondsInTimestamps;
 		this.state.bufferEvents = props.settings.bufferEvents;
+		this.state.showMemberList = props.settings.showMemberList;
 
 		this.handleInput = this.handleInput.bind(this);
 		this.handleSubmit = this.handleSubmit.bind(this);
@@ -66,6 +67,16 @@ export default class SettingsForm extends Component {
 						checked=${this.state.secondsInTimestamps}
 					/>
 					<label class="form-check-label" for="settings-seconds">Show seconds in time indicator</label>
+				</div>
+				<div class="form-check mb-3">
+					<input
+						type="checkbox"
+						class="form-check-input"
+						id="settings-member-list"
+						name="showMemberList"
+						checked=${this.state.showMemberList}
+					/>
+					<label class="form-check-label" for="settings-member-list">Show member list</label>
 				</div>
 
 				<fieldset class="mb-3">

@@ -348,6 +348,15 @@ li.unread-highlight .unread-indicator {
 	margin-left: auto;
 }
 
+/* When the member list is hidden via settings, it can still be opened from the header */
+.member-list-toggle.always {
+	display: flex;
+}
+
+#member-list.hidden {
+	display: none;
+}
+
 .panel-close {
 	display: none;
 	margin-left: auto;

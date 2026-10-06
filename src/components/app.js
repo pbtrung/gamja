@@ -2245,6 +2245,7 @@ export default class App extends Component {
 						onOpenSettings=${this.handleOpenSettingsClick}
 						onOpenBufferList=${this.toggleBufferList}
 						onOpenMemberList=${this.toggleMemberList}
+						memberListHidden=${!this.state.settings.showMemberList}
 						unreadElsewhere=${unreadElsewhere}
 					/>
 				</section>
@@ -2253,10 +2254,16 @@ export default class App extends Component {
 
 		let memberList = null;
 		if (activeBuffer && activeBuffer.type === BufferType.CHANNEL) {
+			let memberListClass = "";
+			if (this.state.openPanels.memberList) {
+				memberListClass = "expand";
+			} else if (!this.state.settings.showMemberList) {
+				memberListClass = "hidden";
+			}
 			memberList = html`
 				<section
 					id="member-list"
-					class=${this.state.openPanels.memberList ? "expand" : ""}
+					class=${memberListClass}
 					role="complementary"
 					aria-label="Members list"
 				>
