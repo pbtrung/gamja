@@ -690,9 +690,11 @@ a.nick:hover, a.nick:active {
 	position: absolute;
 	inset: 0;
 	display: flex;
-	align-items: center;
+	/* Anchor to the top rather than centering, so that expanding the
+	 * advanced options grows the card downwards instead of moving it */
+	align-items: flex-start;
 	justify-content: center;
-	padding: 1rem;
+	padding: max(1rem, 8vh) 1rem 1rem;
 	overflow-y: auto;
 	background:
 		radial-gradient(circle at 20% 0%, rgba(var(--bs-primary-rgb), 0.12), transparent 50%),
@@ -703,7 +705,7 @@ a.nick:hover, a.nick:active {
 .connect-card {
 	width: 100%;
 	max-width: 24rem;
-	margin: auto;
+	margin: 0 auto;
 }
 
 .connect-logo {
