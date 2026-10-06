@@ -1,6 +1,7 @@
 import { html, Component } from "../lib/index.js";
 import { strip as stripANSI } from "../lib/ansi.js";
 import Membership from "./membership.js";
+import { getNickColorIndex } from "./buffer.js";
 import * as irc from "../lib/irc.js";
 
 class MemberItem extends Component {
@@ -64,8 +65,10 @@ class MemberItem extends Component {
 					title=${title}
 					onClick=${this.handleClick}
 				>
-					<${Membership} value=${this.props.membership}/>
-					${this.props.nick}
+					<span class="member-avatar nick-${getNickColorIndex(this.props.nick)}" aria-hidden="true">${this.props.nick.charAt(0)}</span>
+					<span class="member-nick">
+						<${Membership} value=${this.props.membership}/>${this.props.nick}
+					</span>
 				</a>
 			</li>
 		`;
@@ -98,7 +101,7 @@ export default class MemberList extends Component {
 
 	render() {
 		return html`
-			<ul>
+			<ul class="member-items">
 				${Array.from(this.props.members).sort(sortMembers).map(([nick, membership]) => html`
 					<${MemberItem}
 						key=${nick}

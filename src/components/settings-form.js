@@ -1,4 +1,6 @@
 import { html, Component } from "../lib/index.js";
+import Icon from "./icon.js";
+import { LogOut } from "../icons.js";
 
 export default class SettingsForm extends Component {
 	state = {};
@@ -40,72 +42,79 @@ export default class SettingsForm extends Component {
 		let protocolHandler = null;
 		if (this.props.showProtocolHandler) {
 			protocolHandler = html`
-				<div class="protocol-handler">
-					<div class="left">
+				<div class="protocol-handler card card-body bg-body-tertiary border-0 mb-3">
+					<div class="small">
 						Set gamja as your default IRC client for this browser.
 						IRC links will be automatically opened here.
 					</div>
-					<div class="right">
-						<button type="button" onClick=${() => this.registerProtocol()}>
-							Enable
-						</button>
-					</div>
+					<button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0" onClick=${() => this.registerProtocol()}>
+						Enable
+					</button>
 				</div>
-				<br/><br/>
 			`;
 		}
 
 		return html`
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
-				<label>
+				<h3 class="settings-heading">Display</h3>
+				<div class="form-check mb-3">
 					<input
 						type="checkbox"
+						class="form-check-input"
+						id="settings-seconds"
 						name="secondsInTimestamps"
 						checked=${this.state.secondsInTimestamps}
 					/>
-					Show seconds in time indicator
-				</label>
-				<br/><br/>
+					<label class="form-check-label" for="settings-seconds">Show seconds in time indicator</label>
+				</div>
 
-				<label>
-					<input
-						type="radio"
-						name="bufferEvents"
-						value="fold"
-						checked=${this.state.bufferEvents === "fold"}
-					/>
-					Show and fold chat events
-				</label>
-				<br/>
-				<label>
-					<input
-						type="radio"
-						name="bufferEvents"
-						value="expand"
-						checked=${this.state.bufferEvents === "expand"}
-					/>
-					Show and expand chat events
-				</label>
-				<br/>
-				<label>
-					<input
-						type="radio"
-						name="bufferEvents"
-						value="hide"
-						checked=${this.state.bufferEvents === "hide"}
-					/>
-					Hide chat events
-				</label>
-				<br/><br/>
+				<fieldset class="mb-3">
+					<legend class="settings-heading">Chat events</legend>
+					<div class="form-check">
+						<input
+							type="radio"
+							class="form-check-input"
+							id="settings-events-fold"
+							name="bufferEvents"
+							value="fold"
+							checked=${this.state.bufferEvents === "fold"}
+						/>
+						<label class="form-check-label" for="settings-events-fold">Show and fold chat events</label>
+					</div>
+					<div class="form-check">
+						<input
+							type="radio"
+							class="form-check-input"
+							id="settings-events-expand"
+							name="bufferEvents"
+							value="expand"
+							checked=${this.state.bufferEvents === "expand"}
+						/>
+						<label class="form-check-label" for="settings-events-expand">Show and expand chat events</label>
+					</div>
+					<div class="form-check">
+						<input
+							type="radio"
+							class="form-check-input"
+							id="settings-events-hide"
+							name="bufferEvents"
+							value="hide"
+							checked=${this.state.bufferEvents === "hide"}
+						/>
+						<label class="form-check-label" for="settings-events-hide">Hide chat events</label>
+					</div>
+				</fieldset>
 
 				${protocolHandler}
 
-				<button type="button" class="danger" onClick=${() => this.props.onDisconnect()}>
-					Disconnect
-				</button>
-				<button>
-					Close
-				</button>
+				<div class="dialog-actions">
+					<button type="button" class="btn btn-outline-danger me-auto" onClick=${() => this.props.onDisconnect()}>
+						<${Icon} icon=${LogOut}/> Disconnect
+					</button>
+					<button class="btn btn-primary">
+						Close
+					</button>
+				</div>
 			</form>
 		`;
 	}

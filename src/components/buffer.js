@@ -15,6 +15,10 @@ function djb2(s) {
 	return hash;
 }
 
+export function getNickColorIndex(nick) {
+	return djb2(nick) % 16 + 1;
+}
+
 function Nick(props) {
 	function handleClick(event) {
 		event.preventDefault();
@@ -27,7 +31,7 @@ function Nick(props) {
 	}
 
 	let url = irc.formatURL({ host: props.bouncerNetwork?.host, entity: props.nick, enttype: "user" });
-	let colorIndex = djb2(props.nick) % 16 + 1;
+	let colorIndex = getNickColorIndex(props.nick);
 	return html`
 		<a
 			href=${url}

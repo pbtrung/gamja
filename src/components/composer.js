@@ -1,26 +1,6 @@
 import { html, Component, createRef } from "../lib/index.js";
-
-const uploadIcon = html`
-	<svg width="1em" height="1em" viewBox="0 0 24 24"
-		fill="none" xmlns="http://www.w3.org/2000/svg">
-		<path d="M12 5L12 19M5 12L19 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-	</svg>
-`;
-
-const spinnerIcon = html`
-	<svg class="spinner-icon" width="1em" height="1em"
-		viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-		<path d="M12 6a6 6 0 0 1 0 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-	</svg>
-`;
-
-const xIcon = html`
-	<svg class="x-icon" width="1em" height="1em" viewBox="0 0 24 24"
-		fill="none" xmlns="http://www.w3.org/2000/svg">
-		<path d="M7 7L17 17M17 7L7 17" stroke="currentColor" stroke-width="1.5"
-			stroke-linecap="round" stroke-linejoin="round"/>
-	</svg>
-`;
+import Icon from "./icon.js";
+import { Paperclip, SendHorizontal, X } from "../icons.js";
 
 function encodeContentDisposition(filename) {
 	// Encode filename according to RFC 5987 if necessary. Note,
@@ -428,34 +408,38 @@ export default class Composer extends Component {
 			placeholder = "Type a command (see /help)";
 		}
 
-		let uploadButton = null;
+		let uploadButtons = null;
+		let fileInput = null;
 		if (this.canUploadFiles()) {
-			uploadButton = html`
-				<div id="composer-buttons">
-					${this.state.uploading && html`
-						<button
-							type="button"
-							id="composer-spinner"
-							title="Cancel upload"
-							onClick=${this.handleCancelClick}
-						>
-							${spinnerIcon}${xIcon}
-						</button>
-					`}
+			uploadButtons = html`
+				${this.state.uploading && html`
 					<button
 						type="button"
-						id="composer-upload"
-						title="Upload file"
-						onClick=${this.handleUploadClick}
+						id="composer-spinner"
+						title="Cancel upload"
+						aria-label="Cancel upload"
+						onClick=${this.handleCancelClick}
 					>
-						${uploadIcon}
+						<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+						<${Icon} icon=${X} class="x-icon"/>
 					</button>
-				</div>
+				`}
+				<button
+					type="button"
+					id="composer-upload"
+					title="Upload file"
+					aria-label="Upload file"
+					onClick=${this.handleUploadClick}
+				>
+					<${Icon} icon=${Paperclip}/>
+				</button>
+			`;
+			fileInput = html`
 				<input
 					type="file"
 					ref=${this.fileInput}
 					multiple
-					style="display: none"
+					hidden
 					onChange=${this.handleFileInputChange}
 				/>
 			`;
@@ -473,19 +457,29 @@ export default class Composer extends Component {
 				onDragOver=${this.handleDragOver}
 				onDrop=${this.handleDrop}
 			>
-				<input
-					type="text"
-					name="text"
-					ref=${this.textInput}
-					value=${this.state.text}
-					autocomplete="off"
-					placeholder=${placeholder}
-					enterkeyhint="send"
-					onKeyDown=${this.handleInputKeyDown}
-					onPaste=${this.handleInputPaste}
-					maxlength=${this.props.maxLen}
-				/>
-				${uploadButton}
+				<div class="composer-box">
+					<input
+						type="text"
+						name="text"
+						class="composer-input"
+						ref=${this.textInput}
+						value=${this.state.text}
+						autocomplete="off"
+						placeholder=${placeholder}
+						aria-label=${placeholder}
+						enterkeyhint="send"
+						onKeyDown=${this.handleInputKeyDown}
+						onPaste=${this.handleInputPaste}
+						maxlength=${this.props.maxLen}
+					/>
+					<div id="composer-buttons">
+						${uploadButtons}
+						<button type="submit" id="composer-send" title="Send" aria-label="Send">
+							<${Icon} icon=${SendHorizontal}/>
+						</button>
+					</div>
+				</div>
+				${fileInput}
 			</form>
 		`;
 	}

@@ -3,6 +3,8 @@ import linkify from "../lib/linkify.js";
 import { strip as stripANSI } from "../lib/ansi.js";
 import { BufferType, ServerStatus, getServerName } from "../state.js";
 import * as irc from "../lib/irc.js";
+import Icon from "./icon.js";
+import { CirclePlus, Hash, LogOut, Plus, RotateCw, Server, Settings, SlidersHorizontal, User, X } from "../icons.js";
 
 const UserStatus = {
 	HERE: "here",
@@ -17,7 +19,22 @@ function NickStatus(props) {
 		[UserStatus.OFFLINE]: "User is offline",
 	};
 	let text = textMap[props.status];
-	return html`<span class="status status-${props.status}" title=${text}>●</span>`;
+	return html`<span class="status status-${props.status}" title=${text} role="img" aria-label=${text}></span>`;
+}
+
+function ActionButton({ icon, label, danger, onClick }) {
+	let variant = danger ? "btn-outline-danger" : "btn-outline-secondary";
+	return html`
+		<button
+			type="button"
+			class="btn btn-sm ${variant}"
+			title=${label}
+			onClick=${onClick}
+		>
+			<${Icon} icon=${icon}/>
+			<span class="action-label">${label}</span>
+		</button>
+	`;
 }
 
 export default function BufferHeader(props) {
@@ -65,24 +82,9 @@ export default function BufferHeader(props) {
 			break;
 		}
 
-		let joinButton = html`
-			<button
-				key="join"
-				onClick=${props.onJoin}
-			>Join channel</button>
-		`;
-		let reconnectButton = html`
-			<button
-				key="reconect"
-				onClick=${props.onReconnect}
-			>Reconnect</button>
-		`;
-		let settingsButton = html`
-			<button
-				key="settings"
-				onClick="${props.onOpenSettings}"
-			>Settings</button>
-		`;
+		let joinButton = html`<${ActionButton} key="join" icon=${Plus} label="Join channel" onClick=${props.onJoin}/>`;
+		let reconnectButton = html`<${ActionButton} key="reconect" icon=${RotateCw} label="Reconnect" onClick=${props.onReconnect}/>`;
+		let settingsButton = html`<${ActionButton} key="settings" icon=${Settings} label="Settings" onClick=${props.onOpenSettings}/>`;
 
 		if (props.server.isBouncer) {
 			if (props.server.bouncerNetID) {
@@ -90,21 +92,11 @@ export default function BufferHeader(props) {
 					actions.push(joinButton);
 				}
 				if (props.server.status === ServerStatus.REGISTERED) {
-					actions.push(html`
-						<button
-							key="manage"
-							onClick=${props.onManageNetwork}
-						>Manage network</button>
-					`);
+					actions.push(html`<${ActionButton} key="manage" icon=${SlidersHorizontal} label="Manage network" onClick=${props.onManageNetwork}/>`);
 				}
 			} else {
 				if (fullyConnected) {
-					actions.push(html`
-						<button
-							key="add"
-							onClick=${props.onAddNetwork}
-						>Add network</button>
-					`);
+					actions.push(html`<${ActionButton} key="add" icon=${CirclePlus} label="Add network" onClick=${props.onAddNetwork}/>`);
 				} else if (props.server.status === ServerStatus.DISCONNECTED) {
 					actions.push(reconnectButton);
 				}
@@ -124,29 +116,12 @@ export default function BufferHeader(props) {
 			description = linkify(stripANSI(props.buffer.topic), props.onChannelClick);
 		}
 		if (props.buffer.joined) {
-			actions.push(html`
-				<button
-					key="part"
-					class="danger"
-					onClick=${props.onClose}
-				>Leave</button>
-			`);
+			actions.push(html`<${ActionButton} key="part" icon=${LogOut} label="Leave" danger onClick=${props.onClose}/>`);
 		} else {
 			if (fullyConnected) {
-				actions.push(html`
-					<button
-						key="join"
-						onClick=${props.onJoin}
-					>Join</button>
-				`);
+				actions.push(html`<${ActionButton} key="join" icon=${Plus} label="Join" onClick=${props.onJoin}/>`);
 			}
-			actions.push(html`
-				<button
-					key="part"
-					class="danger"
-					onClick=${props.onClose}
-				>Close</button>
-			`);
+			actions.push(html`<${ActionButton} key="part" icon=${X} label="Close" danger onClick=${props.onClose}/>`);
 		}
 		break;
 	case BufferType.NICK:
@@ -203,13 +178,7 @@ export default function BufferHeader(props) {
 			description = html`<${NickStatus} status=${status}/> ${realname} ${details}`;
 		}
 
-		actions = html`
-			<button
-				key="close"
-				class="danger"
-				onClick=${props.onClose}
-			>Close</button>
-		`;
+		actions = html`<${ActionButton} key="close" icon=${X} label="Close" danger onClick=${props.onClose}/>`;
 		break;
 	}
 
@@ -218,8 +187,21 @@ export default function BufferHeader(props) {
 		name = getServerName(props.server, props.bouncerNetwork);
 	}
 
+	let typeIcon = Hash;
+	switch (props.buffer.type) {
+	case BufferType.SERVER:
+		typeIcon = Server;
+		break;
+	case BufferType.NICK:
+		typeIcon = User;
+		break;
+	}
+
 	return html`
-		<div class="title">${name}</div>
+		<div class="title">
+			<${Icon} icon=${typeIcon} class="title-icon"/>
+			<span class="text-truncate">${name}</span>
+		</div>
 		${description ? html`<div class="description">${description}</div>` : null}
 		<div class="actions">${actions}</div>
 	`;

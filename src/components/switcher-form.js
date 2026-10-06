@@ -1,6 +1,8 @@
 import { html, Component } from "../lib/index.js";
 import { BufferType, getBufferURL, getServerName } from "../state.js";
 import * as irc from "../lib/irc.js";
+import Icon from "./icon.js";
+import { Hash, Search, User } from "../icons.js";
 
 class SwitcherItem extends Component {
 	constructor(props) {
@@ -15,21 +17,26 @@ class SwitcherItem extends Component {
 	}
 
 	render() {
-		let class_ = this.props.selected ? "selected" : "";
+		let class_ = "list-group-item list-group-item-action d-flex align-items-center gap-2";
+		if (this.props.selected) {
+			class_ += " active";
+		}
+
+		let icon = this.props.buffer.type === BufferType.CHANNEL ? Hash : User;
 
 		return html`
-			<li>
-				<a
-					href=${getBufferURL(this.props.buffer, this.props.bouncerNetwork)}
-					class=${class_}
-					onClick=${this.handleClick}
-				>
-					<span class="server">
-						${getServerName(this.props.server, this.props.bouncerNetwork)}
-					</span>
-					${this.props.buffer.name}
-				</a>
-			</li>
+			<a
+				href=${getBufferURL(this.props.buffer, this.props.bouncerNetwork)}
+				class=${class_}
+				aria-current=${this.props.selected ? "true" : null}
+				onClick=${this.handleClick}
+			>
+				<${Icon} icon=${icon} class="flex-shrink-0 opacity-75"/>
+				<span class="text-truncate">${this.props.buffer.name}</span>
+				<span class="server ms-auto small text-truncate">
+					${getServerName(this.props.server, this.props.bouncerNetwork)}
+				</span>
+			</a>
 		`;
 	}
 }
@@ -154,17 +161,22 @@ export default class SwitcherForm extends Component {
 				onSubmit=${this.handleSubmit}
 				onKeyDown=${this.handleKeyDown}
 			>
-				<input
-					type="search"
-					name="query"
-					value=${this.state.query}
-					placeholder="Filter"
-					autocomplete="off"
-					autofocus
-				/>
-				<ul class="switcher-list">
+				<div class="input-group mb-3">
+					<span class="input-group-text"><${Icon} icon=${Search}/></span>
+					<input
+						type="search"
+						class="form-control"
+						name="query"
+						value=${this.state.query}
+						placeholder="Filter"
+						aria-label="Filter"
+						autocomplete="off"
+						autofocus
+					/>
+				</div>
+				<div class="list-group switcher-list">
 					${items}
-				</ul>
+				</div>
 			</form>
 		`;
 	}

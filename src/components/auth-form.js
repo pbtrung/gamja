@@ -32,19 +32,19 @@ export default class NetworkForm extends Component {
 	render() {
 		return html`
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
-				<label>
-					Username:<br/>
-					<input type="username" name="username" value=${this.state.username} required/>
-				</label>
-				<br/><br/>
+				<div class="mb-3">
+					<label class="form-label" for="auth-username">Username</label>
+					<input type="username" class="form-control" id="auth-username" name="username" value=${this.state.username} required/>
+				</div>
 
-				<label>
-					Password:<br/>
-					<input type="password" name="password" value=${this.state.password} required autofocus/>
-				</label>
-				<br/><br/>
+				<div class="mb-3">
+					<label class="form-label" for="auth-password">Password</label>
+					<input type="password" class="form-control" id="auth-password" name="password" value=${this.state.password} required autofocus/>
+				</div>
 
-				<button>Login</button>
+				<div class="dialog-actions">
+					<button class="btn btn-primary">Login</button>
+				</div>
 			</form>
 		`;
 	}

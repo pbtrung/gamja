@@ -28,26 +28,28 @@ export default class RegisterForm extends Component {
 	render() {
 		return html`
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
-				<label>
-					E-mail:<br/>
+				<div class="mb-3">
+					<label class="form-label" for="register-email">E-mail</label>
 					<input
 						type="email"
+						class="form-control"
+						id="register-email"
 						name="email"
 						value=${this.state.email}
 						required=${this.props.emailRequired}
 						placeholder=${this.props.emailRequired ? null : "(optional)"}
 						autofocus
 					/>
-				</label>
-				<br/><br/>
+				</div>
 
-				<label>
-					Password:<br/>
-					<input type="password" name="password" value=${this.state.password} required/>
-				</label>
-				<br/><br/>
+				<div class="mb-3">
+					<label class="form-label" for="register-password">Password</label>
+					<input type="password" class="form-control" id="register-password" name="password" value=${this.state.password} required/>
+				</div>
 
-				<button>Register</button>
+				<div class="dialog-actions">
+					<button class="btn btn-primary">Register</button>
+				</div>
 			</form>
 		`;
 	}

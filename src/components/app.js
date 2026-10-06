@@ -18,6 +18,8 @@ import SwitcherForm from "./switcher-form.js";
 import Composer from "./composer.js";
 import ScrollManager from "./scroll-manager.js";
 import Dialog from "./dialog.js";
+import Icon from "./icon.js";
+import { CircleAlert, MessageSquareText, PanelLeft, Users } from "../icons.js";
 import { html, Component, createRef } from "../lib/index.js";
 import { strip as stripANSI } from "../lib/ansi.js";
 import { SERVER_BUFFER, BufferType, ReceiptType, ServerStatus, Unread, BufferEventsDisplayMode, State, getServerName, receiptFromMessage, isReceiptBefore, isMessageBeforeReceipt, SettingsContext } from "../state.js";
@@ -2163,11 +2165,20 @@ export default class App extends Component {
 
 	render() {
 		if (this.state.loading) {
-			let error = null;
+			let content = html`
+				<div class="spinner-border text-primary" role="status">
+					<span class="visually-hidden">Loading…</span>
+				</div>
+			`;
 			if (this.state.error) {
-				error = html`<form><p class="error-text">${this.state.error}</p></form>`;
+				content = html`
+					<div class="alert alert-danger d-flex gap-2 connect-card" role="alert">
+						<${Icon} icon=${CircleAlert} class="flex-shrink-0 mt-1"/>
+						<div>${this.state.error}</div>
+					</div>
+				`;
 			}
-			return html`<section id="connect">${error}</section>`;
+			return html`<section id="connect">${content}</section>`;
 		}
 
 		let activeBuffer = null, activeServer = null, activeBouncerNetwork = null;
@@ -2239,15 +2250,19 @@ export default class App extends Component {
 				>
 					<button
 						class="expander"
+						title="Toggle member list"
+						aria-label="Toggle member list"
+						aria-expanded=${this.state.openPanels.memberList ? "true" : "false"}
 						onClick=${this.toggleMemberList}
 					>
-						<span></span>
-						<span></span>
+						<${Icon} icon=${Users}/>
 					</button>
-					<section>
-						<section id="member-list-header">
-							${activeBuffer.members.size} users
-						</section>
+					<section class="member-list-panel">
+						<header id="member-list-header">
+							<${Icon} icon=${Users}/>
+							<span>Members</span>
+							<span class="badge rounded-pill text-bg-secondary ms-auto">${activeBuffer.members.size}</span>
+						</header>
 						<${MemberList}
 							members=${activeBuffer.members}
 							users=${activeServer.users}
@@ -2382,10 +2397,16 @@ export default class App extends Component {
 		let error = null;
 		if (this.state.error) {
 			error = html`
-				<div id="error-msg" role="alert">
-					${this.state.error}
-					${" "}
-					<button onClick=${this.handleDismissError}>×</button>
+				<div id="error-msg" class="alert alert-danger shadow" role="alert">
+					<${Icon} icon=${CircleAlert} class="flex-shrink-0 mt-1"/>
+					<div class="flex-grow-1 text-break">${this.state.error}</div>
+					<button
+						type="button"
+						class="btn-close"
+						title="Dismiss"
+						aria-label="Dismiss"
+						onClick=${this.handleDismissError}
+					></button>
 				</div>
 			`;
 		}
@@ -2409,20 +2430,28 @@ export default class App extends Component {
 				id="buffer-list"
 				class=${this.state.openPanels.bufferList ? "expand" : ""}
 			>
-				<${BufferList}
-					buffers=${this.state.buffers}
-					servers=${this.state.servers}
-					bouncerNetworks=${this.state.bouncerNetworks}
-					activeBuffer=${this.state.activeBuffer}
-					onBufferClick=${this.handleBufferListClick}
-					onBufferClose=${this.handleBufferListClose}
-				/>
+				<div class="buffer-list-panel">
+					<header class="sidebar-brand">
+						<${Icon} icon=${MessageSquareText}/>
+						<span>gamja</span>
+					</header>
+					<${BufferList}
+						buffers=${this.state.buffers}
+						servers=${this.state.servers}
+						bouncerNetworks=${this.state.bouncerNetworks}
+						activeBuffer=${this.state.activeBuffer}
+						onBufferClick=${this.handleBufferListClick}
+						onBufferClose=${this.handleBufferListClose}
+					/>
+				</div>
 				<button
 					class="expander"
+					title="Toggle buffer list"
+					aria-label="Toggle buffer list"
+					aria-expanded=${this.state.openPanels.bufferList ? "true" : "false"}
 					onClick=${this.toggleBufferList}
 				>
-					<span></span>
-					<span></span>
+					<${Icon} icon=${PanelLeft}/>
 				</button>
 			</section>
 			${bufferHeader}

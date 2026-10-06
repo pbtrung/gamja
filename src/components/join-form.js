@@ -1,4 +1,6 @@
 import { html, Component } from "../lib/index.js";
+import Icon from "./icon.js";
+import { Hash } from "../icons.js";
 
 export default class JoinForm extends Component {
 	state = {
@@ -35,14 +37,15 @@ export default class JoinForm extends Component {
 	render() {
 		return html`
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
-				<label>
-					Channel:<br/>
-					<input type="text" name="channel" value=${this.state.channel} autofocus required/>
-				</label>
-				<br/>
+				<label class="form-label" for="join-channel">Channel</label>
+				<div class="input-group">
+					<span class="input-group-text"><${Icon} icon=${Hash}/></span>
+					<input type="text" class="form-control" id="join-channel" name="channel" value=${this.state.channel} autofocus required/>
+				</div>
 
-				<br/>
-				<button>Join</button>
+				<div class="dialog-actions">
+					<button class="btn btn-primary">Join</button>
+				</div>
 			</form>
 		`;
 	}

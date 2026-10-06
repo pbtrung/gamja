@@ -21,7 +21,7 @@ export default class Dialog extends Component {
 	}
 
 	handleBackdropClick(event) {
-		if (event.target.className === "dialog") {
+		if (event.target === event.currentTarget) {
 			this.dismiss();
 		}
 	}
@@ -47,13 +47,31 @@ export default class Dialog extends Component {
 
 	render() {
 		return html`
-			<div class="dialog" onClick=${this.handleBackdropClick} role="dialog" aria-modal="true">
-				<div class="dialog-body" ref=${this.body}>
-					<div class="dialog-header">
-						<h2>${this.props.title}</h2>
-						<button class="dialog-close" onClick=${this.handleCloseClick} title="Close">×</button>
+			<div class="modal-backdrop show"></div>
+			<div
+				class="modal d-block"
+				tabindex="-1"
+				onClick=${this.handleBackdropClick}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="dialog-title"
+			>
+				<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+					<div class="modal-content shadow-lg" ref=${this.body}>
+						<div class="modal-header">
+							<h2 class="modal-title fs-5" id="dialog-title">${this.props.title}</h2>
+							<button
+								type="button"
+								class="btn-close"
+								onClick=${this.handleCloseClick}
+								title="Close"
+								aria-label="Close"
+							></button>
+						</div>
+						<div class="modal-body">
+							${this.props.children}
+						</div>
 					</div>
-					${this.props.children}
 				</div>
 			</div>
 		`;

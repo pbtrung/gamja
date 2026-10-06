@@ -62,6 +62,8 @@ export default defineConfig([
 		rules: {
 			"css/use-baseline": "off",
 			"css/font-family-fallbacks": "off",
+			// Bootstrap's custom properties are defined in its own stylesheet
+			"css/no-invalid-properties": ["error", { allowUnknownVariables: true }],
 		},
 	},
 ]);

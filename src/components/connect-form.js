@@ -1,5 +1,7 @@
 import { html, Component, createRef } from "../lib/index.js";
 import linkify from "../lib/linkify.js";
+import Icon from "./icon.js";
+import { ChevronRight, CircleAlert, LogIn, MessageSquareText } from "../icons.js";
 
 export default class ConnectForm extends Component {
 	state = {
@@ -86,46 +88,47 @@ export default class ConnectForm extends Component {
 		let serverURL = null;
 		if (!this.props.params || !this.props.params.url) {
 			serverURL = html`
-				<label>
-					Server URL:<br/>
+				<div class="mb-3">
+					<label class="form-label" for="connect-url">Server URL</label>
 					<input
 						type="text"
+						class="form-control"
+						id="connect-url"
 						name="url"
 						value=${this.state.url}
 						disabled=${disabled}
 						inputmode="url"
 					/>
-				</label>
-				<br/><br/>
+				</div>
 			`;
 		}
 
 		let status = null;
-		if (this.props.connecting) {
+		if (!this.props.connecting && this.props.error) {
 			status = html`
-				<p>Connecting...</p>
-			`;
-		} else if (this.props.error) {
-			status = html`
-				<p class="error-text">${linkify(this.props.error)}</p>
+				<div class="alert alert-danger d-flex gap-2 mt-3 mb-0" role="alert">
+					<${Icon} icon=${CircleAlert} class="flex-shrink-0 mt-1"/>
+					<div class="text-break">${linkify(this.props.error)}</div>
+				</div>
 			`;
 		}
 
 		let auth = null;
 		if (this.props.auth !== "disabled" && this.props.auth !== "external" && this.props.auth !== "oauth2") {
 			auth = html`
-				<label>
-					Password:<br/>
+				<div class="mb-3">
+					<label class="form-label" for="connect-password">Password</label>
 					<input
 						type="password"
+						class="form-control"
+						id="connect-password"
 						name="password"
 						value=${this.state.password}
 						disabled=${disabled}
 						required=${this.props.auth === "mandatory"}
 						placeholder=${this.props.auth !== "mandatory" ? "(optional)" : ""}
 					/>
-				</label>
-				<br/><br/>
+				</div>
 			`;
 		}
 
@@ -134,99 +137,126 @@ export default class ConnectForm extends Component {
 		if (channels.length > 0) {
 			let s = channels.length > 1 ? "s" : "";
 			autojoin = html`
-				<label>
+				<div class="form-check mb-2">
 					<input
 						type="checkbox"
+						class="form-check-input"
+						id="connect-autojoin"
 						name="autojoin"
 						checked=${this.state.autojoin}
 					/>
-					Auto-join channel${s} <strong>${channels.join(", ")}</strong>
-				</label>
-				<br/><br/>
+					<label class="form-check-label" for="connect-autojoin">
+						Auto-join channel${s} <strong>${channels.join(", ")}</strong>
+					</label>
+				</div>
+			`;
+		}
+
+		let submitLabel = html`<${Icon} icon=${LogIn}/> Connect`;
+		if (this.props.connecting) {
+			submitLabel = html`
+				<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+				<span role="status">Connecting…</span>
 			`;
 		}
 
 		return html`
-			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
-				<h2>Connect to IRC</h2>
+			<form class="card connect-card shadow-sm" onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
+				<div class="card-body p-4">
+					<div class="text-center mb-4">
+						<div class="connect-logo mb-3">
+							<${Icon} icon=${MessageSquareText} size="2rem"/>
+						</div>
+						<h1 class="h4 mb-1">Connect to IRC</h1>
+						<p class="text-body-secondary small mb-0">Pick a nickname to get started</p>
+					</div>
 
-				<label>
-					Nickname:<br/>
-					<input
-						type="username"
-						name="nick"
-						value=${this.state.nick}
-						disabled=${disabled}
-						ref=${this.nickInput}
-						required
-						autofocus
-					/>
-				</label>
-				<br/><br/>
-
-				${auth}
-
-				${autojoin}
-
-				<label>
-					<input
-						type="checkbox"
-						name="rememberMe"
-						checked=${this.state.rememberMe}
-						disabled=${disabled}
-					/>
-					Remember me
-				</label>
-				<br/><br/>
-
-				<details>
-					<summary role="button">Advanced options</summary>
-
-					<br/>
-
-					${serverURL}
-
-					<label>
-						Username:<br/>
+					<div class="mb-3">
+						<label class="form-label" for="connect-nick">Nickname</label>
 						<input
 							type="username"
-							name="username"
-							value=${this.state.username}
+							class="form-control"
+							id="connect-nick"
+							name="nick"
+							value=${this.state.nick}
 							disabled=${disabled}
-							placeholder="Same as nickname"
+							ref=${this.nickInput}
+							required
+							autofocus
 						/>
-					</label>
-					<br/><br/>
+					</div>
 
-					<label>
-						Real name:<br/>
+					${auth}
+
+					${autojoin}
+
+					<div class="form-check mb-3">
 						<input
-							type="text"
-							name="realname"
-							value=${this.state.realname}
+							type="checkbox"
+							class="form-check-input"
+							id="connect-remember"
+							name="rememberMe"
+							checked=${this.state.rememberMe}
 							disabled=${disabled}
-							placeholder="Same as nickname"
 						/>
-					</label>
-					<br/><br/>
+						<label class="form-check-label" for="connect-remember">Remember me</label>
+					</div>
 
-					<label>
-						Server password:<br/>
-						<input
-							type="password"
-							name="pass"
-							value=${this.state.pass}
-							disabled=${disabled}
-							placeholder="None"
-						/>
-					</label>
-					<br/><br/>
-				</details>
+					<details class="advanced-options mb-3">
+						<summary role="button">
+							<${Icon} icon=${ChevronRight} class="chevron"/> Advanced options
+						</summary>
 
-				<br/>
-				<button disabled=${disabled}>Connect</button>
+						<div class="pt-3">
+							${serverURL}
 
-				${status}
+							<div class="mb-3">
+								<label class="form-label" for="connect-username">Username</label>
+								<input
+									type="username"
+									class="form-control"
+									id="connect-username"
+									name="username"
+									value=${this.state.username}
+									disabled=${disabled}
+									placeholder="Same as nickname"
+								/>
+							</div>
+
+							<div class="mb-3">
+								<label class="form-label" for="connect-realname">Real name</label>
+								<input
+									type="text"
+									class="form-control"
+									id="connect-realname"
+									name="realname"
+									value=${this.state.realname}
+									disabled=${disabled}
+									placeholder="Same as nickname"
+								/>
+							</div>
+
+							<div>
+								<label class="form-label" for="connect-pass">Server password</label>
+								<input
+									type="password"
+									class="form-control"
+									id="connect-pass"
+									name="pass"
+									value=${this.state.pass}
+									disabled=${disabled}
+									placeholder="None"
+								/>
+							</div>
+						</div>
+					</details>
+
+					<button class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2" disabled=${disabled}>
+						${submitLabel}
+					</button>
+
+					${status}
+				</div>
 			</form>
 		`;
 	}

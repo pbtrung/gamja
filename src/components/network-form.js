@@ -1,4 +1,6 @@
 import { html, Component } from "../lib/index.js";
+import Icon from "./icon.js";
+import { ChevronRight, Trash } from "../icons.js";
 
 const defaultParams = {
 	name: "",
@@ -63,8 +65,8 @@ export default class NetworkForm extends Component {
 		let removeNetwork = null;
 		if (!this.props.isNew) {
 			removeNetwork = html`
-				<button type="button" class="danger" onClick=${() => this.props.onRemove()}>
-					Remove network
+				<button type="button" class="btn btn-outline-danger me-auto" onClick=${() => this.props.onRemove()}>
+					<${Icon} icon=${Trash}/> Remove network
 				</button>
 			`;
 		}
@@ -72,76 +74,69 @@ export default class NetworkForm extends Component {
 		let autojoin = null;
 		if (this.props.autojoin) {
 			autojoin = html`
-				<label>
+				<div class="form-check mb-3">
 					<input
 						type="checkbox"
+						class="form-check-input"
+						id="network-autojoin"
 						name="autojoin"
 						checked=${this.state.autojoin}
 					/>
-					Auto-join channel <strong>${this.props.autojoin}</strong>
-				</label>
-				<br/><br/>
+					<label class="form-check-label" for="network-autojoin">
+						Auto-join channel <strong>${this.props.autojoin}</strong>
+					</label>
+				</div>
 			`;
 		}
 
 		return html`
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
-				<label>
-					Hostname:<br/>
-					<input type="text" name="host" value=${this.state.host} autofocus required/>
-				</label>
-				<br/><br/>
+				<div class="mb-3">
+					<label class="form-label" for="network-host">Hostname</label>
+					<input type="text" class="form-control" id="network-host" name="host" value=${this.state.host} autofocus required/>
+				</div>
 
 				${autojoin}
 
-				<details>
-					<summary role="button">Advanced options</summary>
+				<details class="advanced-options">
+					<summary role="button">
+						<${Icon} icon=${ChevronRight} class="chevron"/> Advanced options
+					</summary>
 
-					<br/>
-
-					<label>
-						Port:<br/>
-						<input type="number" name="port" value=${this.state.port}/>
-					</label>
-					<br/><br/>
-
-					<label>
-						Network name:<br/>
-						<input type="text" name="name" value=${this.state.name}/>
-					</label>
-					<br/><br/>
-
-					<label>
-						Nickname:<br/>
-						<input type="username" name="nickname" value=${this.state.nickname}/>
-					</label>
-					<br/><br/>
-
-					<label>
-						Username:<br/>
-						<input type="username" name="username" value=${this.state.username}/>
-					</label>
-					<br/><br/>
-
-					<label>
-						Real name:<br/>
-						<input type="text" name="realname" value=${this.state.realname}/>
-					</label>
-					<br/><br/>
-
-					<label>
-						Server password:<br/>
-						<input type="password" name="pass" value=${this.state.pass} placeholder="None"/>
-					</label>
-					<br/>
+					<div class="pt-3">
+						<div class="mb-3">
+							<label class="form-label" for="network-port">Port</label>
+							<input type="number" class="form-control" id="network-port" name="port" value=${this.state.port}/>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="network-name">Network name</label>
+							<input type="text" class="form-control" id="network-name" name="name" value=${this.state.name}/>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="network-nickname">Nickname</label>
+							<input type="username" class="form-control" id="network-nickname" name="nickname" value=${this.state.nickname}/>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="network-username">Username</label>
+							<input type="username" class="form-control" id="network-username" name="username" value=${this.state.username}/>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="network-realname">Real name</label>
+							<input type="text" class="form-control" id="network-realname" name="realname" value=${this.state.realname}/>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="network-pass">Server password</label>
+							<input type="password" class="form-control" id="network-pass" name="pass" value=${this.state.pass} placeholder="None"/>
+						</div>
+					</div>
 				</details>
 
-				<br/>
-				${removeNetwork}
-				${" "}
-				<button>
-					${this.props.isNew ? "Add network" : "Save network"}
-				</button>
+				<div class="dialog-actions">
+					${removeNetwork}
+					<button class="btn btn-primary">
+						${this.props.isNew ? "Add network" : "Save network"}
+					</button>
+				</div>
 			</form>
 		`;
 	}

@@ -21,10 +21,12 @@ export default class ConfirmOpenBuffer extends Component {
 		}
 		return html`
 			<form onSubmit=${this.handleSubmit}>
-				<p>
+				<p class="mb-0">
 					Do you want to open a new buffer for ${kind} <strong>${this.props.name}</strong>${onNetwork}?
 				</p>
-				<button>Open</button>
+				<div class="dialog-actions">
+					<button class="btn btn-primary">Open</button>
+				</div>
 			</form>
 		`;
 	}

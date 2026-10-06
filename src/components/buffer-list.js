@@ -1,6 +1,8 @@
 import * as irc from "../lib/irc.js";
 import { strip as stripANSI } from "../lib/ansi.js";
 import { html } from "../lib/index.js";
+import Icon from "./icon.js";
+import { Hash, Server, User } from "../icons.js";
 import { BufferType, Unread, ServerStatus, getBufferURL, getServerName } from "../state.js";
 
 function BufferItem(props) {
@@ -46,6 +48,21 @@ function BufferItem(props) {
 		break;
 	}
 
+	let icon = Hash;
+	switch (props.buffer.type) {
+	case BufferType.SERVER:
+		icon = Server;
+		break;
+	case BufferType.NICK:
+		icon = User;
+		break;
+	}
+
+	let unread = null;
+	if (props.buffer.unread !== Unread.NONE) {
+		unread = html`<span class="unread-indicator" aria-label="Unread messages"></span>`;
+	}
+
 	return html`
 		<li class="${classes.join(" ")}" role="tab" aria-selected="${props.active}">
 			<a
@@ -53,7 +70,11 @@ function BufferItem(props) {
 				title=${title}
 				onClick=${handleClick}
 				onMouseDown=${handleMouseDown}
-			>${name}</a>
+			>
+				<${Icon} icon=${icon} class="buffer-icon"/>
+				<span class="buffer-name">${name}</span>
+				${unread}
+			</a>
 		</li>
 	`;
 }
@@ -81,7 +102,7 @@ export default function BufferList(props) {
 	});
 
 	return html`
-		<ul role="tablist" aria-label="Buffer list">
+		<ul class="buffer-items" role="tablist" aria-label="Buffer list">
 			${items}
 		</ul>
 	`;
