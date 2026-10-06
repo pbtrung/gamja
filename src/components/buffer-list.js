@@ -2,7 +2,7 @@ import * as irc from "../lib/irc.js";
 import { strip as stripANSI } from "../lib/ansi.js";
 import { html } from "../lib/index.js";
 import Icon from "./icon.js";
-import { Hash, Server, User } from "../icons.js";
+import { MessagesSquare, Server, User } from "../icons.js";
 import { BufferType, Unread, ServerStatus, getBufferURL, getServerName } from "../state.js";
 
 function BufferItem(props) {
@@ -48,7 +48,7 @@ function BufferItem(props) {
 		break;
 	}
 
-	let icon = Hash;
+	let icon = MessagesSquare;
 	switch (props.buffer.type) {
 	case BufferType.SERVER:
 		icon = Server;

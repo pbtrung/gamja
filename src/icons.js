@@ -10,6 +10,7 @@ export { default as Keyboard } from "../node_modules/lucide/dist/esm/icons/keybo
 export { default as LogIn } from "../node_modules/lucide/dist/esm/icons/log-in.mjs";
 export { default as LogOut } from "../node_modules/lucide/dist/esm/icons/log-out.mjs";
 export { default as MessageSquareText } from "../node_modules/lucide/dist/esm/icons/message-square-text.mjs";
+export { default as MessagesSquare } from "../node_modules/lucide/dist/esm/icons/messages-square.mjs";
 export { default as PanelLeft } from "../node_modules/lucide/dist/esm/icons/panel-left.mjs";
 export { default as Paperclip } from "../node_modules/lucide/dist/esm/icons/paperclip.mjs";
 export { default as Plus } from "../node_modules/lucide/dist/esm/icons/plus.mjs";

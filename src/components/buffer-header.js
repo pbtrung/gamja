@@ -4,7 +4,7 @@ import { strip as stripANSI } from "../lib/ansi.js";
 import { BufferType, ServerStatus, getServerName } from "../state.js";
 import * as irc from "../lib/irc.js";
 import Icon from "./icon.js";
-import { CirclePlus, Hash, LogOut, PanelLeft, Plus, RotateCw, Server, Settings, SlidersHorizontal, User, X } from "../icons.js";
+import { CirclePlus, LogOut, MessagesSquare, PanelLeft, Plus, RotateCw, Server, Settings, SlidersHorizontal, User, X } from "../icons.js";
 
 const UserStatus = {
 	HERE: "here",
@@ -187,7 +187,7 @@ export default function BufferHeader(props) {
 		name = getServerName(props.server, props.bouncerNetwork);
 	}
 
-	let typeIcon = Hash;
+	let typeIcon = MessagesSquare;
 	switch (props.buffer.type) {
 	case BufferType.SERVER:
 		typeIcon = Server;

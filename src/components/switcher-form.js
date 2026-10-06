@@ -2,7 +2,7 @@ import { html, Component } from "../lib/index.js";
 import { BufferType, getBufferURL, getServerName } from "../state.js";
 import * as irc from "../lib/irc.js";
 import Icon from "./icon.js";
-import { Hash, Search, User } from "../icons.js";
+import { MessagesSquare, Search, User } from "../icons.js";
 
 class SwitcherItem extends Component {
 	constructor(props) {
@@ -22,7 +22,7 @@ class SwitcherItem extends Component {
 			class_ += " active";
 		}
 
-		let icon = this.props.buffer.type === BufferType.CHANNEL ? Hash : User;
+		let icon = this.props.buffer.type === BufferType.CHANNEL ? MessagesSquare : User;
 
 		return html`
 			<a
