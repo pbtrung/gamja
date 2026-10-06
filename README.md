@@ -2,8 +2,6 @@
 
 A simple IRC web client.
 
-<img src="https://fs.emersion.fr/protected/img/gamja/main.png" alt="Screenshot" width="800">
-
 ## Usage
 
 Requires an IRC WebSocket server.
@@ -35,11 +33,6 @@ Optionally, [Parcel] can be used to build a minified version of gamja.
 
 gamja can be configured via a [configuration file] and via [URL parameters].
 
-## Contributing
-
-Send patches on [Codeberg], report bugs on the [issue tracker]. Discuss
-in [#soju on Libera Chat].
-
 ## License
 
 AGPLv3, see LICENSE.
@@ -47,10 +40,7 @@ AGPLv3, see LICENSE.
 Copyright (C) 2020 The gamja Contributors
 
 [gamja]: https://codeberg.org/emersion/gamja
-[Codeberg]: https://codeberg.org/emersion/gamja
-[issue tracker]: https://codeberg.org/emersion/gamja/issues
 [Parcel]: https://parceljs.org
 [configure an HTTP server]: doc/setup.md
 [configuration file]: doc/config-file.md
 [URL parameters]: doc/url-params.md
-[#soju on Libera Chat]: ircs://irc.libera.chat/#soju
