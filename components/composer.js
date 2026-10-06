@@ -39,6 +39,7 @@ export default class Composer extends Component {
 		uploading: false,
 		dragging: false,
 	};
+	form = createRef();
 	textInput = createRef();
 	fileInput = createRef();
 	lastAutocomplete = null;
@@ -272,7 +273,7 @@ export default class Composer extends Component {
 
 	handleDragLeave(event) {
 		// ignore spurious dragleave events triggered by moving over child elements
-		if (this.base.contains(event.relatedTarget)) {
+		if (this.form.current.contains(event.relatedTarget)) {
 			return;
 		}
 		this.setState({ dragging: false });
@@ -464,6 +465,7 @@ export default class Composer extends Component {
 			<form
 				id="composer"
 				class=${className}
+				ref=${this.form}
 				onInput=${this.handleInput}
 				onSubmit=${this.handleSubmit}
 				onDragEnter=${this.handleDragEnter}

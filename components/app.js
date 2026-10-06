@@ -215,7 +215,6 @@ export default class App extends Component {
 	endOfHistory = new Map();
 	receipts = new Map();
 	buffer = createRef();
-	composer = createRef();
 	switchToChannel = null;
 	/**
 	 * Parsed irc:// URL to automatically open. The user will be prompted for
@@ -2449,7 +2448,6 @@ export default class App extends Component {
 			</>
 			${memberList}
 			<${Composer}
-				ref=${this.composer}
 				client=${activeClient}
 				readOnly=${composerReadOnly}
 				onSubmit=${this.handleComposerSubmit}
