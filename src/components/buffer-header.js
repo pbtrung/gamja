@@ -22,17 +22,19 @@ function NickStatus(props) {
 	return html`<span class="status status-${props.status}" title=${text} role="img" aria-label=${text}></span>`;
 }
 
-function ActionButton({ icon, label, danger, onClick }) {
+function ActionButton({ icon, label, danger, iconOnly, class: className, onClick, children }) {
 	let variant = danger ? "btn-outline-danger" : "btn-outline-secondary";
 	return html`
 		<button
 			type="button"
-			class="btn btn-sm ${variant}"
+			class="btn btn-sm ${variant} ${className || ""}"
 			title=${label}
+			aria-label=${iconOnly ? label : null}
 			onClick=${onClick}
 		>
 			<${Icon} icon=${icon}/>
-			<span class="action-label">${label}</span>
+			${iconOnly ? null : html`<span class="action-label">${label}</span>`}
+			${children}
 		</button>
 	`;
 }
@@ -180,7 +182,7 @@ export default function BufferHeader(props) {
 			description = html`<${NickStatus} status=${status}/> ${realname} ${details}`;
 		}
 
-		actions = html`<${ActionButton} key="close" icon=${X} label="Close" danger onClick=${props.onClose}/>`;
+		actions.push(html`<${ActionButton} key="close" icon=${X} label="Close" danger onClick=${props.onClose}/>`);
 		break;
 	}
 
@@ -193,20 +195,33 @@ export default function BufferHeader(props) {
 		descriptionTitle = description;
 	}
 
-	let memberListToggle = null;
+	// Panel toggles are only shown on small screens (or when the member
+	// list is hidden via settings), see style.css
+	let toggles = [html`
+		<${ActionButton}
+			key="buffer-list"
+			icon=${PanelLeft}
+			label="Open buffer list"
+			iconOnly
+			class="buffer-list-toggle"
+			onClick=${props.onOpenBufferList}
+		>
+			${props.unreadElsewhere ? html`<span class="unread-indicator unread-${props.unreadElsewhere}"></span>` : null}
+		</>
+	`];
 	if (props.buffer.type === BufferType.CHANNEL) {
-		memberListToggle = html`
-			<button
-				type="button"
-				class=${"header-toggle member-list-toggle" + (props.memberListHidden ? " always" : "")}
-				title="Open member list"
-				aria-label="Open member list"
+		toggles.push(html`
+			<${ActionButton}
+				key="member-list"
+				icon=${Users}
+				label="Open member list"
+				iconOnly
+				class=${"member-list-toggle" + (props.memberListHidden ? " always" : "")}
 				onClick=${props.onOpenMemberList}
-			>
-				<${Icon} icon=${Users}/>
-			</button>
-		`;
+			/>
+		`);
 	}
+	actions = [...toggles, ...actions];
 
 	let typeIcon = MessagesSquare;
 	switch (props.buffer.type) {
@@ -221,20 +236,9 @@ export default function BufferHeader(props) {
 	return html`
 		<div class="title">
 			<${Icon} icon=${typeIcon} class="title-icon"/>
-			<button
-				type="button"
-				class="header-toggle buffer-list-toggle"
-				title="Open buffer list"
-				aria-label="Open buffer list"
-				onClick=${props.onOpenBufferList}
-			>
-				<${Icon} icon=${PanelLeft}/>
-				${props.unreadElsewhere ? html`<span class="unread-indicator unread-${props.unreadElsewhere}"></span>` : null}
-			</button>
 			<span class="text-truncate" title=${name}>${name}</span>
-			${memberListToggle}
 		</div>
 		${description ? html`<div class="description" title=${descriptionTitle}>${description}</div>` : null}
-		<div class="actions">${actions}</div>
+		<div class="actions btn-group" role="group">${actions}</div>
 	`;
 }
