@@ -43,7 +43,7 @@ export default function BufferHeader(props) {
 		fullyConnected = fullyConnected && props.bouncerNetwork.state === "connected";
 	}
 
-	let description = null, actions = [];
+	let description = null, descriptionTitle = null, actions = [];
 	switch (props.buffer.type) {
 	case BufferType.SERVER:
 		switch (props.server.status) {
@@ -113,7 +113,8 @@ export default function BufferHeader(props) {
 		break;
 	case BufferType.CHANNEL:
 		if (props.buffer.topic) {
-			description = linkify(stripANSI(props.buffer.topic), props.onChannelClick);
+			descriptionTitle = stripANSI(props.buffer.topic);
+			description = linkify(descriptionTitle, props.onChannelClick);
 		}
 		if (props.buffer.joined) {
 			actions.push(html`<${ActionButton} key="part" icon=${LogOut} label="Leave" danger onClick=${props.onClose}/>`);
@@ -175,6 +176,7 @@ export default function BufferHeader(props) {
 				details = ["(", details, ")"];
 			}
 
+			descriptionTitle = realname;
 			description = html`<${NickStatus} status=${status}/> ${realname} ${details}`;
 		}
 
@@ -185,6 +187,10 @@ export default function BufferHeader(props) {
 	let name = props.buffer.name;
 	if (props.buffer.type === BufferType.SERVER) {
 		name = getServerName(props.server, props.bouncerNetwork);
+	}
+
+	if (typeof description === "string") {
+		descriptionTitle = description;
 	}
 
 	let typeIcon = MessagesSquare;
@@ -210,9 +216,9 @@ export default function BufferHeader(props) {
 				<${Icon} icon=${PanelLeft}/>
 				${props.unreadElsewhere ? html`<span class="unread-indicator unread-${props.unreadElsewhere}"></span>` : null}
 			</button>
-			<span class="text-truncate">${name}</span>
+			<span class="text-truncate" title=${name}>${name}</span>
 		</div>
-		${description ? html`<div class="description">${description}</div>` : null}
+		${description ? html`<div class="description" title=${descriptionTitle}>${description}</div>` : null}
 		<div class="actions">${actions}</div>
 	`;
 }
