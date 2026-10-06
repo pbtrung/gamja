@@ -317,30 +317,38 @@ li.unread-highlight .unread-indicator {
 .buffer-list-toggle {
 	position: relative;
 	display: none;
-	align-items: center;
-	justify-content: center;
 	flex-shrink: 0;
-	width: 2.25rem;
-	height: 2.25rem;
-	margin-left: -0.5rem;
 	padding: 0;
+	margin: 0;
 	border: none;
-	border-radius: var(--bs-border-radius);
 	background: transparent;
 	color: var(--bs-secondary-color);
-	font-size: 1.25rem;
-	transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+	font-size: inherit;
+	line-height: 1;
+}
+
+/* Keep the icon aligned like the buffer type icon, but extend the tap
+ * target beyond it */
+.buffer-list-toggle::before {
+	content: "";
+	position: absolute;
+	inset: -0.625rem;
+	border-radius: var(--bs-border-radius);
+	transition: background-color 0.15s ease-in-out;
 }
 
 .buffer-list-toggle:hover {
-	background-color: var(--gamja-item-hover-bg);
 	color: var(--bs-emphasis-color);
+}
+
+.buffer-list-toggle:hover::before {
+	background-color: var(--gamja-item-hover-bg);
 }
 
 .buffer-list-toggle .unread-indicator {
 	position: absolute;
-	top: 0.3125rem;
-	right: 0.3125rem;
+	top: -0.1875rem;
+	right: -0.25rem;
 	box-shadow: 0 0 0 2px var(--bs-body-bg);
 }
 
@@ -863,10 +871,6 @@ kbd {
 	#member-list.expand .member-list-panel {
 		flex: 1;
 		width: auto;
-	}
-
-	#buffer-header {
-		padding: 0.5rem 0.75rem;
 	}
 
 	#buffer .logline {
