@@ -58,25 +58,27 @@ export default class SettingsForm extends Component {
 		return html`
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
 				<h3 class="settings-heading">Display</h3>
-				<div class="form-check mb-3">
-					<input
-						type="checkbox"
-						class="form-check-input"
-						id="settings-seconds"
-						name="secondsInTimestamps"
-						checked=${this.state.secondsInTimestamps}
-					/>
-					<label class="form-check-label" for="settings-seconds">Show seconds in time indicator</label>
-				</div>
-				<div class="form-check mb-3">
-					<input
-						type="checkbox"
-						class="form-check-input"
-						id="settings-member-list"
-						name="showMemberList"
-						checked=${this.state.showMemberList}
-					/>
-					<label class="form-check-label" for="settings-member-list">Show member list</label>
+				<div class="mb-3">
+					<div class="form-check">
+						<input
+							type="checkbox"
+							class="form-check-input"
+							id="settings-seconds"
+							name="secondsInTimestamps"
+							checked=${this.state.secondsInTimestamps}
+						/>
+						<label class="form-check-label" for="settings-seconds">Show seconds in time indicator</label>
+					</div>
+					<div class="form-check">
+						<input
+							type="checkbox"
+							class="form-check-input"
+							id="settings-member-list"
+							name="showMemberList"
+							checked=${this.state.showMemberList}
+						/>
+						<label class="form-check-label" for="settings-member-list">Show member list</label>
+					</div>
 				</div>
 
 				<fieldset class="mb-3">
