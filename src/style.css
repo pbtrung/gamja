@@ -314,6 +314,45 @@ li.unread-highlight .unread-indicator {
 	color: var(--bs-secondary-color);
 }
 
+.buffer-list-toggle {
+	position: relative;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	margin-left: -0.5rem;
+	padding: 0;
+	border: none;
+	border-radius: var(--bs-border-radius);
+	background: transparent;
+	color: var(--bs-secondary-color);
+	font-size: 1.25rem;
+	transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+.buffer-list-toggle:hover {
+	background-color: var(--gamja-item-hover-bg);
+	color: var(--bs-emphasis-color);
+}
+
+.buffer-list-toggle .unread-indicator {
+	position: absolute;
+	top: 0.3125rem;
+	right: 0.3125rem;
+	box-shadow: 0 0 0 2px var(--bs-body-bg);
+}
+
+.unread-indicator.unread-highlight {
+	background-color: var(--gamja-highlight-color);
+}
+
+.buffer-list-close {
+	display: none;
+	margin-left: auto;
+}
+
 #buffer-header .description {
 	grid-row: 2;
 	grid-column: 1;
@@ -793,7 +832,20 @@ kbd {
 		display: flex;
 	}
 
-	.buffer-list-panel, .member-list-panel {
+	/* The buffer list is opened from the buffer header instead */
+	#buffer-list:not(.expand) {
+		display: none;
+	}
+
+	#buffer-header .title-icon {
+		display: none;
+	}
+
+	.buffer-list-toggle, .buffer-list-close {
+		display: flex;
+	}
+
+	.member-list-panel {
 		width: 0;
 	}
 
@@ -801,6 +853,10 @@ kbd {
 		z-index: 999;
 		grid-column: 1 / 4;
 		box-shadow: var(--bs-box-shadow-lg);
+	}
+
+	#buffer-list.expand {
+		border-right: none;
 	}
 
 	#buffer-list.expand .buffer-list-panel,

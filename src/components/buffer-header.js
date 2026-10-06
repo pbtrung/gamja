@@ -4,7 +4,7 @@ import { strip as stripANSI } from "../lib/ansi.js";
 import { BufferType, ServerStatus, getServerName } from "../state.js";
 import * as irc from "../lib/irc.js";
 import Icon from "./icon.js";
-import { CirclePlus, Hash, LogOut, Plus, RotateCw, Server, Settings, SlidersHorizontal, User, X } from "../icons.js";
+import { CirclePlus, Hash, LogOut, PanelLeft, Plus, RotateCw, Server, Settings, SlidersHorizontal, User, X } from "../icons.js";
 
 const UserStatus = {
 	HERE: "here",
@@ -200,6 +200,16 @@ export default function BufferHeader(props) {
 	return html`
 		<div class="title">
 			<${Icon} icon=${typeIcon} class="title-icon"/>
+			<button
+				type="button"
+				class="buffer-list-toggle"
+				title="Open buffer list"
+				aria-label="Open buffer list"
+				onClick=${props.onOpenBufferList}
+			>
+				<${Icon} icon=${PanelLeft}/>
+				${props.unreadElsewhere ? html`<span class="unread-indicator unread-${props.unreadElsewhere}"></span>` : null}
+			</button>
 			<span class="text-truncate">${name}</span>
 		</div>
 		${description ? html`<div class="description">${description}</div>` : null}

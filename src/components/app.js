@@ -19,7 +19,7 @@ import Composer from "./composer.js";
 import ScrollManager from "./scroll-manager.js";
 import Dialog from "./dialog.js";
 import Icon from "./icon.js";
-import { CircleAlert, MessageSquareText, PanelLeft, Users } from "../icons.js";
+import { CircleAlert, MessageSquareText, Users } from "../icons.js";
 import { html, Component, createRef } from "../lib/index.js";
 import { strip as stripANSI } from "../lib/ansi.js";
 import { SERVER_BUFFER, BufferType, ReceiptType, ServerStatus, Unread, BufferEventsDisplayMode, State, getServerName, receiptFromMessage, isReceiptBefore, isMessageBeforeReceipt, SettingsContext } from "../state.js";
@@ -2215,6 +2215,15 @@ export default class App extends Component {
 
 		let bufferHeader = null;
 		if (activeBuffer) {
+			// The buffer list is hidden on small screens: surface activity
+			// in other buffers on its toggle button
+			let unreadElsewhere = Unread.NONE;
+			for (let buf of this.state.buffers.values()) {
+				if (buf.id !== activeBuffer.id) {
+					unreadElsewhere = Unread.union(unreadElsewhere, buf.unread);
+				}
+			}
+
 			let activeUser = null;
 			if (activeBuffer.type === BufferType.NICK) {
 				activeUser = activeServer.users.get(activeBuffer.name);
@@ -2234,6 +2243,8 @@ export default class App extends Component {
 						onAddNetwork=${this.handleAddNetworkClick}
 						onManageNetwork=${() => this.handleManageNetworkClick(activeBuffer.server)}
 						onOpenSettings=${this.handleOpenSettingsClick}
+						onOpenBufferList=${this.toggleBufferList}
+						unreadElsewhere=${unreadElsewhere}
 					/>
 				</section>
 			`;
@@ -2434,6 +2445,13 @@ export default class App extends Component {
 					<header class="sidebar-brand">
 						<${Icon} icon=${MessageSquareText}/>
 						<span>gamja</span>
+						<button
+							type="button"
+							class="btn-close buffer-list-close"
+							title="Close buffer list"
+							aria-label="Close buffer list"
+							onClick=${() => this.closeBufferList()}
+						></button>
 					</header>
 					<${BufferList}
 						buffers=${this.state.buffers}
@@ -2444,15 +2462,6 @@ export default class App extends Component {
 						onBufferClose=${this.handleBufferListClose}
 					/>
 				</div>
-				<button
-					class="expander"
-					title="Toggle buffer list"
-					aria-label="Toggle buffer list"
-					aria-expanded=${this.state.openPanels.bufferList ? "true" : "false"}
-					onClick=${this.toggleBufferList}
-				>
-					<${Icon} icon=${PanelLeft}/>
-				</button>
 			</section>
 			${bufferHeader}
 			<${ScrollManager}
