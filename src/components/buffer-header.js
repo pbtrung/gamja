@@ -239,6 +239,6 @@ export default function BufferHeader(props) {
 			<span class="text-truncate" title=${name}>${name}</span>
 		</div>
 		${description ? html`<div class="description" title=${descriptionTitle}>${description}</div>` : null}
-		<div class="actions btn-group" role="group">${actions}</div>
+		<div class=${"actions btn-group" + (props.buffer.type === BufferType.CHANNEL ? " actions-channel" : "")} role="group">${actions}</div>
 	`;
 }
