@@ -40,28 +40,6 @@ const highlights = [
 	{ icon: Palette, text: "Light, dark and colorful themes" },
 ];
 
-/** Decorative chat preview painted with the current theme's colors */
-function ChatPreview() {
-	const lines: [number, string, string][] = [
-		[3, "alice", "hey, welcome to gamja!"],
-		[9, "bob", "history is loaded from the bouncer"],
-		[13, "carol", "and it follows your theme ✨"],
-	];
-	return (
-		<div className="connect-preview" aria-hidden="true">
-			{lines.map(([color, nick, text]) => (
-				<div className="connect-preview-line" key={nick}>
-					<span className={`connect-preview-avatar nick-${color}`}>{nick.charAt(0)}</span>
-					<span>
-						<span className={`connect-preview-nick nick-${color}`}>{nick}</span>
-						<span className="connect-preview-text">{text}</span>
-					</span>
-				</div>
-			))}
-		</div>
-	);
-}
-
 export default function ConnectForm({ params, auth, connecting, error, onSubmit }: ConnectFormProps) {
 	const [form, setForm] = useState({
 		url: params.url || "",
@@ -126,7 +104,6 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 					gamja
 				</div>
 				<p className="connect-tagline">A modern IRC client for the web.</p>
-				<ChatPreview />
 				<ul className="connect-highlights">
 					{highlights.map(({ icon: Icon, text }) => (
 						<li key={text}>

@@ -1960,6 +1960,7 @@ textarea.composer-input:focus {
 .connect-brand {
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
 	gap: 1.25rem;
 	padding: 2.25rem 2rem;
 	background:
@@ -1997,54 +1998,11 @@ textarea.composer-input:focus {
 	font-size: 0.9375rem;
 }
 
-.connect-preview {
-	display: flex;
-	flex-direction: column;
-	gap: 0.625rem;
-	padding: 0.875rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	background-color: var(--bg);
-	font-size: 0.8125rem;
-}
-
-.connect-preview-line {
-	display: flex;
-	align-items: flex-start;
-	gap: 0.5rem;
-	line-height: 1.35;
-}
-
-.connect-preview-avatar {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	width: 1.5rem;
-	height: 1.5rem;
-	border-radius: 50%;
-	background-color: var(--nick-color);
-	color: var(--avatar-fg);
-	font-size: 0.75rem;
-	font-weight: 600;
-	text-transform: uppercase;
-}
-
-.connect-preview-nick {
-	display: block;
-	color: var(--nick-color);
-	font-weight: 600;
-}
-
-.connect-preview-text {
-	color: var(--fg);
-}
-
 .connect-highlights {
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
-	margin: auto 0 0;
+	gap: 0.625rem;
+	margin: 0.5rem 0 0;
 	padding: 0;
 	list-style: none;
 	color: var(--fg-muted);
@@ -2182,7 +2140,6 @@ form > .switch-row {
 		margin-top: -0.75rem;
 	}
 
-	.connect-preview,
 	.connect-highlights {
 		display: none;
 	}
