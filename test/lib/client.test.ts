@@ -118,6 +118,17 @@ describe("Client registration", () => {
 		expect(sent).toEqual(["CAP REQ soju.im/bouncer-networks", "BOUNCER BIND 42", "CAP END"]);
 	});
 
+	it("binds to a bouncer network only once SASL succeeded", async () => {
+		const { ws } = connect({ bouncerNetwork: "42", saslPlain: { username: "u", password: "p" } });
+		ws.takeSent();
+		ws.receive(":srv CAP * LS :sasl=PLAIN soju.im/bouncer-networks");
+		const cmds = () => ws.takeSent().map((m) => m.command + " " + m.params.join(" "));
+		expect(cmds()).not.toContain("BOUNCER BIND 42");
+		ws.receive("AUTHENTICATE +", ":srv 903 me :SASL authentication successful");
+		await flush();
+		expect(cmds()).toEqual(["BOUNCER BIND 42", "CAP END"]);
+	});
+
 	it("requests event playback when enabled", () => {
 		const { ws } = connect({ eventPlayback: true });
 		ws.takeSent();

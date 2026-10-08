@@ -859,21 +859,18 @@ export default class Client extends EventTarget {
 				this.requestCaps();
 
 				if (this.status !== ClientStatus.REGISTERED) {
-					if (this.caps.available.has("soju.im/bouncer-networks") && this.params.bouncerNetwork) {
-						this.send({ command: "BOUNCER", params: ["BIND", this.params.bouncerNetwork] });
-					}
-
 					if (!this.wantsSASL()) {
-						this.send({ command: "CAP", params: ["END"] });
+						this.endRegistration();
 						break;
 					}
 
 					// Only end registration once SASL is done: servers abort
-					// authentication still in progress on CAP END
+					// authentication still in progress on CAP END, and soju
+					// requires it before BOUNCER BIND
 					this.authenticateFromParams().then(
 						() => {
 							if (this.ws) {
-								this.send({ command: "CAP", params: ["END"] });
+								this.endRegistration();
 							}
 						},
 						(err) => {
@@ -897,6 +894,14 @@ export default class Client extends EventTarget {
 				console.log("Server nak'ed caps:", args[0]);
 				break;
 		}
+	}
+
+	/** Bind to the bouncer network, if any, and end CAP negotiation. */
+	endRegistration(): void {
+		if (this.caps.available.has("soju.im/bouncer-networks") && this.params.bouncerNetwork) {
+			this.send({ command: "BOUNCER", params: ["BIND", this.params.bouncerNetwork] });
+		}
+		this.send({ command: "CAP", params: ["END"] });
 	}
 
 	send(msg: OutgoingMessage): void {

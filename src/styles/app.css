@@ -1898,6 +1898,13 @@ textarea.composer-input:focus {
 	font-size: 0.8rem;
 }
 
+/* Nobody typing: take no room, so the input box is evenly spaced. The
+   element stays for screen readers to announce typing. */
+.typing-indicator:empty {
+	min-height: 0;
+	margin: 0;
+}
+
 .typing-dots {
 	display: inline-flex;
 	gap: 0.15rem;
