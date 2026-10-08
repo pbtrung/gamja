@@ -754,7 +754,8 @@ input.switch:focus-visible {
 
 /* Tighter spacing than other dialogs: settings have more content */
 .dialog:has(.settings-form) .dialog-header,
-.dialog:has(.network-form) .dialog-header {
+.dialog:has(.network-form) .dialog-header,
+.dialog:has(.search-form) .dialog-header {
 	padding: 0.5rem 0.5rem 0.5rem 0.75rem;
 }
 
