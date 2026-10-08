@@ -13,3 +13,23 @@ test("opens the buffer and member lists from the header on small screens", async
 	await expect(page.locator("#buffer-list")).toBeHidden();
 	await expect(page.locator("#buffer-header h1")).toHaveText("FakeNet");
 });
+
+for (const layout of ["comfortable", "compact"] as const) {
+	test(`hides message times on small screens (${layout})`, async ({ page, connect, bot }) => {
+		await page.addInitScript(
+			(l) => localStorage.setItem("gamja_settings", JSON.stringify({ layout: l })),
+			layout,
+		);
+		const bob = await bot("bob");
+		await bob.join("#t");
+		await connect(page, "tester", { channels: ["#t"] });
+		bob.privmsg("#t", "what time is it?");
+		const line = page.locator("#buffer .logline", { hasText: "what time is it?" });
+		await expect(line).toBeVisible();
+		const times = await line.locator(".timestamp").all();
+		expect(times.length).toBeGreaterThan(0);
+		for (const ts of times) {
+			await expect(ts).toBeHidden();
+		}
+	});
+}

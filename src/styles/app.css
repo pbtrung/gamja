@@ -1666,6 +1666,24 @@ li.unread-highlight .unread-indicator,
 	font-style: normal;
 }
 
+/* Small screens: no room to spare for times, in either layout */
+@media (max-width: 640px) {
+	#buffer .timestamp,
+	#buffer .timestamp-range {
+		display: none;
+	}
+
+	/* Collapse the space that separated the time from the line, keeping the
+	   message text's own whitespace */
+	#buffer .logline {
+		white-space: normal;
+	}
+
+	#buffer .logline-content {
+		white-space: pre-wrap;
+	}
+}
+
 /* Not enough room for a column on small screens: back to inline lines */
 @media (max-width: 640px) {
 	#buffer .logline.nick-column {
@@ -1678,7 +1696,7 @@ li.unread-highlight .unread-indicator,
 		border-right: none;
 	}
 
-	#buffer .logline.nick-column .nick-caret {
+	#buffer .logline.nick-column:not(.notice) .nick-caret {
 		display: inline;
 	}
 }

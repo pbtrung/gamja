@@ -121,3 +121,21 @@ test("compact layout screenshots", async ({ page, connect, bot }) => {
 		await page.screenshot({ path: `${dir}/compact-${name}.png` });
 	}
 });
+
+for (const layout of ["comfortable", "compact"] as const) {
+	test(`mobile screenshots without times (${layout})`, async ({ page, connect, bot }) => {
+		const dir = process.env.SCREENSHOTS!;
+		await page.addInitScript(
+			(l) => localStorage.setItem("gamja_settings", JSON.stringify({ layout: l })),
+			layout,
+		);
+		await page.setViewportSize({ width: 390, height: 700 });
+		const bob = await bot("bob");
+		await bob.join("#mobile");
+		await connect(page, "tester", { channels: ["#mobile"] });
+		bob.privmsg("#mobile", "hi there, no times on small screens");
+		bob.send("PRIVMSG #mobile :\x01ACTION waves\x01");
+		await expect(page.locator("#buffer")).toContainText("waves");
+		await page.screenshot({ path: `${dir}/mobile-${layout}.png` });
+	});
+}

@@ -786,14 +786,14 @@ function FoldGroup({ messages: msgs, ctx }: { messages: Message[]; ctx: Context 
 	);
 	if (lastDate.getTime() - firstDate.getTime() > 60 * 1000) {
 		timestamp = (
-			<>
+			<span className="timestamp-range">
 				{timestamp} —{" "}
 				<Timestamp
 					date={lastDate}
 					url={getMessageURL(ctx.buffer, lastMsg, ctx.bouncerNetwork)}
 					showSeconds={showSeconds}
 				/>
-			</>
+			</span>
 		);
 	}
 
