@@ -9,10 +9,7 @@ export default defineConfig([
 	{
 		files: ["**/*.js"],
 		languageOptions: {
-			globals: {
-				...globals.browser,
-				"process": "readonly",
-			},
+			globals: globals.browser,
 		},
 		plugins: { js, "@stylistic": stylistic },
 		extends: ["js/recommended"],
@@ -52,6 +49,12 @@ export default defineConfig([
 			}],
 			"@stylistic/array-bracket-spacing": ["warn", "never"],
 			"@stylistic/array-bracket-newline": ["warn", "consistent"],
+		},
+	},
+	{
+		files: ["vite.config.js", "tools/**/*.js"],
+		languageOptions: {
+			globals: globals.node,
 		},
 	},
 	{

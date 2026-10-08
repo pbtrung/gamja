@@ -12,31 +12,22 @@
   "devDependencies": {
     "@eslint/css": "^2.0.0",
     "@eslint/js": "^10.0.1",
-    "@parcel/packager-raw-url": "^2.16.4",
-    "@parcel/transformer-webmanifest": "^2.16.4",
     "@stylistic/eslint-plugin": "^5.10.0",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
-    "mime": "^4.1.0",
-    "parcel": "^2.16.4",
-    "split": "^1.0.1",
+    "vite": "^8.3.3",
     "ws": "^8.22.0"
   },
   "scripts": {
-    "start": "node ./dev-server.js",
-    "build": "parcel build",
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint",
     "clean": "rm -rf dist"
   },
   "private": true,
-  "targets": {
-    "default": {
-      "source": "index.html",
-      "context": "browser",
-      "publicUrl": "."
-    }
-  },
   "engines": {
-    "node": ">=14.13.0"
+    "node": ">=20.19.0"
   }
 }

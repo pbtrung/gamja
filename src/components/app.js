@@ -55,9 +55,9 @@ const configPromise = fetch("./config.json")
 const CHATHISTORY_MAX_SIZE = 4000;
 
 function isProduction() {
-	// NODE_ENV is set by the Parcel build system
+	// PROD is set by the Vite build system
 	try {
-		return process.env.NODE_ENV === "production";
+		return import.meta.env.PROD;
 	} catch (_err) {
 		return false;
 	}

@@ -1,8 +1,8 @@
-export * from "../../node_modules/preact/dist/preact.mjs";
+export * from "preact";
 
-import { h } from "../../node_modules/preact/dist/preact.mjs";
-import htm from "../../node_modules/htm/dist/htm.mjs";
+import { h } from "preact";
+import htm from "htm";
 export const html = htm.bind(h);
 
-import * as linkifyjs from "../../node_modules/linkifyjs/dist/linkify.mjs";
+import * as linkifyjs from "linkifyjs";
 export { linkifyjs };

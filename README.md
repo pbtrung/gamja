@@ -6,28 +6,22 @@ A simple IRC web client.
 
 Requires an IRC WebSocket server.
 
-First install dependencies:
+Build gamja with [Vite]:
 
-    npm install --omit=dev
+    npm install
+    npm run build
 
-Then [configure an HTTP server] to serve the gamja files.
+Then [configure an HTTP server] to serve the files in `dist/`.
 
 ### Development server
 
-If you don't have an IRC WebSocket server at hand, gamja's development server
-can be used. For instance, to run gamja on Libera Chat:
+    npm run dev
 
-    npm install --include=dev
-    npm start -- irc.libera.chat
+If you don't have an IRC WebSocket server at hand, the development server can
+proxy `/socket` to an IRC server over TLS. For instance, to run gamja on Libera
+Chat:
 
-See `npm start -- -h` for a list of options.
-
-### Production build
-
-Optionally, [Parcel] can be used to build a minified version of gamja.
-
-    npm install --include=dev
-    npm run build
+    GAMJA_IRC_SERVER=irc.libera.chat npm run dev
 
 ## Configuration
 
@@ -40,7 +34,7 @@ AGPLv3, see LICENSE.
 Copyright (C) 2020 The gamja Contributors
 
 [gamja]: https://codeberg.org/emersion/gamja
-[Parcel]: https://parceljs.org
+[Vite]: https://vite.dev
 [configure an HTTP server]: doc/setup.md
 [configuration file]: doc/config-file.md
 [URL parameters]: doc/url-params.md

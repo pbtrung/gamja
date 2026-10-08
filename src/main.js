@@ -1,3 +1,8 @@
+import "@fontsource-variable/inter/index.css";
+import "@fontsource-variable/inter/wght-italic.css";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./style.css";
+
 import { html, render } from "./lib/index.js";
 import App from "./components/app.js";
 

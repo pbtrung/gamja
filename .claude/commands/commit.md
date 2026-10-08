@@ -8,13 +8,12 @@ description: Commit staged/modified changes with a detailed message and push, no
 
 1. Run `git status` and `git diff` (and `git diff --staged` if anything is already staged) to see all changes.
 2. Lint and build whatever's actually touched, before staging anything:
-   - Any `*.js` or `*.css` changed: `npm run -- lint --max-warnings 0` (same
-     as CI in `.build.yml`). There is no separate formatter — ESLint's
+   - Any `*.js` or `*.css` changed: `npm run -- lint --max-warnings 0` . There is no separate formatter — ESLint's
      `@stylistic` rules enforce the style (tabs, double quotes, etc.), so fix
      warnings too, not just errors. `npx eslint --fix <files>` is fine for
      mechanical style fixes on the files you touched.
    - Any change to `index.html`, `manifest.json`, `package.json`, or imports
-     between modules: also run `npm run build` to make sure Parcel still bundles.
+     between modules: also run `npm run build` to make sure Vite still bundles.
    - If any check reports an error or warning, fix it and re-run before continuing.
    - Don't lint or commit `dist/` or `node_modules/` (ignored by `eslint.config.js`
      and `.gitignore`).
@@ -27,7 +26,7 @@ description: Commit staged/modified changes with a detailed message and push, no
      `components/buffer: add host to irc:// message URLs`,
      `components/{buffer-list,switcher-form}: ...` for several siblings.
      Use the bare file name (`state`, `store`, `commands`, `keybindings`,
-     `style`, `main`, `dev-server`) for root files. For repo-wide changes
+     `style`, `main`) for root files. For repo-wide changes
      (dependencies, build setup) omit the prefix and capitalize instead, e.g.
      `Upgrade dependencies`.
    - Body (optional for trivial changes): explain _what_ changed and _why_, as bullet points if there are multiple distinct changes. Wrap at ~72 columns.
