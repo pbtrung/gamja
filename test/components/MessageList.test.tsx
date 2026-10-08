@@ -112,15 +112,8 @@ function renderList(
 	return { ...utils, handlers, actions };
 }
 
-/** Line texts as read inline: the sender column, if any, then the message */
 const lines = (container: HTMLElement) =>
-	[...container.querySelectorAll(".logline-content")].map((el) => {
-		const prefix = el.parentElement!.querySelector(".logline-prefix");
-		if (!prefix || el.parentElement!.classList.contains("event")) {
-			return el.textContent;
-		}
-		return prefix.textContent + " " + el.textContent;
-	});
+	[...container.querySelectorAll(".logline-content")].map((el) => el.textContent);
 
 describe("MessageList", () => {
 	it("renders chat messages", async () => {
@@ -135,7 +128,7 @@ describe("MessageList", () => {
 			"<bob> hello",
 			"-bob- notice",
 			"* bob waves",
-			"<bob> (@) ops",
+			"(@) <bob> ops",
 			"<srv> hi",
 		]);
 		expect(container.querySelector(".highlight")).toHaveTextContent("hi");
@@ -445,46 +438,25 @@ it("offers to retry failed history fetches", async () => {
 	expect(onRetryHistory).toHaveBeenCalled();
 });
 
-describe("compact layout nick column", () => {
-	it("right-aligns senders in a column in channels", () => {
-		const { container } = renderList(
-			[
-				msg(":bob!u@h PRIVMSG #c :hello"),
-				msg(":bob!u@h NOTICE #c :notice"),
-				msg(":bob!u@h PRIVMSG #c :\x01ACTION waves\x01"),
-				msg(":carol!u@h JOIN #c"),
-				msg(":carol!u@h PART #c"),
-				msg(":carol!u@h TOPIC #c :new topic"),
-			],
-			{ settings: { bufferEvents: "expand" } },
+describe("comfortable layout", () => {
+	it("uses the compact style on small screens", () => {
+		vi.stubGlobal(
+			"matchMedia",
+			(query: string) =>
+				({
+					matches: query === "(max-width: 640px)",
+					addEventListener() {},
+					removeEventListener() {},
+				}) as unknown as MediaQueryList,
 		);
-		const rows = [...container.querySelectorAll(".logline")].map((el) => [
-			el.querySelector(".logline-prefix")?.textContent,
-			el.querySelector(".logline-content")!.textContent,
-		]);
-		expect(rows).toEqual([
-			["<bob>", "hello"],
-			["-bob-", "notice"],
-			["*", "bob waves"],
-			["-->", "carol has joined"],
-			["<--", "carol has left"],
-			["--", "carol changed the topic to: new topic"],
-		]);
-		expect(container.querySelectorAll(".logline.nick-column")).toHaveLength(6);
-	});
-
-	it("keeps inline lines in the server buffer and comfortable layout", () => {
-		const server = renderList([msg(":bob!u@h PRIVMSG me :hi")], { buffer: { type: BufferType.SERVER } });
-		expect(server.container.querySelector(".nick-column")).toBeNull();
-		server.unmount();
-		const comfortable = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
+		const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
 			settings: { layout: "comfortable" },
 		});
-		expect(comfortable.container.querySelector(".nick-column")).toBeNull();
+		expect(container.querySelector(".comfortable")).toBeNull();
+		expect(lines(container)).toEqual(["<bob> hi"]);
+		vi.unstubAllGlobals();
 	});
-});
 
-describe("comfortable layout", () => {
 	it("groups consecutive messages from the same sender", () => {
 		const { container } = renderList(
 			[

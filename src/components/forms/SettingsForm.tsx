@@ -92,7 +92,7 @@ const layouts: { value: MessageLayout; label: string; hint: string }[] = [
 	{
 		value: "compact",
 		label: "Compact",
-		hint: "Classic IRC, one line per message with senders in a column",
+		hint: "Classic IRC, one line per message",
 	},
 ];
 

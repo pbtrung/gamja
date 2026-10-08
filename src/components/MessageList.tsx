@@ -23,6 +23,7 @@ import {
 } from "../format";
 import Membership from "./Membership";
 import Nick from "./Nick";
+import useMediaQuery from "./useMediaQuery";
 import RichText, { type LinkClickHandler } from "./RichText";
 import MessageActions, { Reactions } from "./MessageActions";
 import { strip as stripANSI } from "../lib/ansi";
@@ -99,25 +100,6 @@ function makeNick(ctx: Context) {
 			/>
 		);
 	};
-}
-
-/** Whether compact lines show the sender in a right-aligned column, like WeeChat */
-function hasNickColumn(ctx: Context): boolean {
-	return ctx.settings.layout === "compact" && ctx.buffer.type !== BufferType.SERVER;
-}
-
-/** WeeChat-style marker shown in the nick column for events */
-function eventMarker(command: string): string {
-	switch (command) {
-		case "JOIN":
-			return "-->";
-		case "PART":
-		case "QUIT":
-		case "KICK":
-			return "<--";
-		default:
-			return "--";
-	}
 }
 
 const MODE_DESCRIPTIONS: Record<string, [string, string]> = {
@@ -641,47 +623,6 @@ const LogLine = memo(
 			);
 		}
 
-		if (hasNickColumn(ctx)) {
-			let prefix: ReactNode = eventMarker(msg.command);
-			let body = content;
-			if (chatBody !== null && lineClass.includes("me-tell")) {
-				prefix = "*";
-				body = (
-					<>
-						{createNick(from)} {chatBody}
-					</>
-				);
-			} else if (chatBody !== null) {
-				const [open, close] = msg.command === "NOTICE" ? ["-", "-"] : ["<", ">"];
-				prefix = (
-					<>
-						<span className="nick-caret" aria-hidden="true">
-							{open}
-						</span>
-						{createNick(from)}
-						<span className="nick-caret" aria-hidden="true">
-							{close}
-						</span>
-					</>
-				);
-				body = chatBody;
-			}
-			return (
-				<div
-					className={`logline nick-column ${lineClass} ${chatBody === null ? "event" : ""}`}
-					data-key={msg.key}
-					data-msgid={msgid ?? undefined}
-				>
-					{quote}
-					<Timestamp date={date} url={url} showSeconds={showSeconds} />{" "}
-					<span className="logline-prefix">{prefix}</span>{" "}
-					<span className="logline-content">{body}</span>
-					{reactionsEl}
-					{actionsEl}
-				</div>
-			);
-		}
-
 		return (
 			<div className={`logline ${lineClass}`} data-key={msg.key} data-msgid={msgid ?? undefined}>
 				{quote}
@@ -810,20 +751,6 @@ function FoldGroup({ messages: msgs, ctx }: { messages: Message[]; ctx: Context 
 				<div className="logline-main">
 					<div className="logline-content">{content}</div>
 				</div>
-			</div>
-		);
-	}
-
-	if (hasNickColumn(ctx)) {
-		// Like the comfortable layout, only the first time fits in the column
-		return (
-			<div className="logline nick-column event fold-group" data-key={msgs[0].key}>
-				<Timestamp
-					date={firstDate}
-					url={getMessageURL(ctx.buffer, msgs[0], ctx.bouncerNetwork)}
-					showSeconds={showSeconds}
-				/>{" "}
-				<span className="logline-prefix">--</span> <span className="logline-content">{content}</span>
 			</div>
 		);
 	}
@@ -972,9 +899,22 @@ interface MessageListProps extends MessageListHandlers {
 	settings: Settings;
 }
 
+/** Same breakpoint as the small screen styles */
+const SMALL_SCREEN = "(max-width: 640px)";
+
 function MessageList(props: MessageListProps) {
-	const { buffer: buf, server, settings } = props;
-	const ctx: Context = props;
+	const { buffer: buf, server } = props;
+	// Small screens have no room for avatars and sender headers: use the
+	// compact style there, whatever the setting
+	const smallScreen = useMediaQuery(SMALL_SCREEN);
+	const settings = useMemo<Settings>(
+		() =>
+			smallScreen && props.settings.layout === "comfortable"
+				? { ...props.settings, layout: "compact" }
+				: props.settings,
+		[smallScreen, props.settings],
+	);
+	const ctx: Context = { ...props, settings };
 	const showSeconds = settings.secondsInTimestamps;
 
 	// Index messages by ID to resolve replies

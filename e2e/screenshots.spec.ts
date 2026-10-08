@@ -105,7 +105,7 @@ test("compact layout screenshots", async ({ page, connect, bot }) => {
 	await bob.join("#compact");
 	await connect(page, "tester", { channels: ["#compact"] });
 	await longnick.join("#compact");
-	bob.privmsg("#compact", "hi everyone, nicks line up in a column like WeeChat");
+	bob.privmsg("#compact", "hi everyone, this is the compact layout");
 	longnick.privmsg("#compact", "long nicks are truncated");
 	bob.send("PRIVMSG #compact :\x01ACTION waves\x01");
 	bob.send("NOTICE #compact :a notice");
