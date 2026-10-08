@@ -346,6 +346,12 @@ textarea::placeholder {
 	accent-color: var(--accent);
 }
 
+.check-hint {
+	display: block;
+	color: var(--fg-muted);
+	font-size: 0.8125rem;
+}
+
 fieldset {
 	margin: 0 0 1.25rem;
 	padding: 0;

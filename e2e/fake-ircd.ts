@@ -150,6 +150,7 @@ const AVAILABLE_CAPS = [
 	"draft/account-registration=before-connect",
 	"soju.im/no-implicit-names",
 	"soju.im/search",
+	"soju.im/webpush",
 	"userhost-in-names",
 ];
 
@@ -218,6 +219,7 @@ export class FakeServer {
 	channels = new Map<string, Channel>();
 	history = new Map<string, HistoryEntry[]>(); // cm(target) → entries
 	readMarkers = new Map<string, string>(); // account/nick + target → timestamp
+	webpush = new Map<string, boolean>(); // endpoint → registered
 	networks = new Map<string, Record<string, string>>([
 		["1", { name: NETWORK, host: "irc.fake.test", state: "connected" }],
 	]);
@@ -366,6 +368,10 @@ export class FakeServer {
 			}
 			case "SEARCH":
 				this.search(conn, msg, label);
+				break;
+			case "WEBPUSH":
+				this.webpush.set(msg.params[1], msg.params[0].toUpperCase() === "REGISTER");
+				reply({ command: "WEBPUSH", params: [msg.params[0].toUpperCase(), msg.params[1]] });
 				break;
 			case "PRIVMSG":
 			case "NOTICE":
@@ -682,6 +688,8 @@ export class FakeServer {
 			`NETWORK=${NETWORK}`,
 			"LINELEN=512",
 			"STATUSMSG=@+",
+			// A valid P-256 public key, push messages are never actually sent
+			"VAPID=BA1Hxzyi1RUM1b5wjxsn7nGxAszw2u61m164i3MrAIxHF6YK5h4SDYic-dRuU_RCPCfA5aq9ojSwk5Y2EmClBPs",
 		];
 		if (conn.bouncerNetwork) {
 			isupport.push(`BOUNCER_NETID=${conn.bouncerNetwork}`);

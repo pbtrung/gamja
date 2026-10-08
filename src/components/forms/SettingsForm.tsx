@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { LogOut } from "lucide-react";
 import { BufferEventsDisplayMode, type Settings } from "../../state";
 import { registerProtocolHandler } from "../../format";
@@ -6,6 +6,9 @@ import { registerProtocolHandler } from "../../format";
 interface SettingsFormProps {
 	settings: Settings;
 	showProtocolHandler: boolean;
+	/** Whether push notifications can be enabled */
+	pushAvailable?: boolean;
+	onPushChange?: (enabled: boolean) => Promise<void>;
 	onChange: (settings: Partial<Settings>) => void;
 	onDisconnect: () => void;
 	onClose: () => void;
@@ -14,10 +17,30 @@ interface SettingsFormProps {
 export default function SettingsForm({
 	settings,
 	showProtocolHandler,
+	pushAvailable,
+	onPushChange,
 	onChange,
 	onDisconnect,
 	onClose,
 }: SettingsFormProps) {
+	const [pushBusy, setPushBusy] = useState(false);
+	const [pushError, setPushError] = useState<string | null>(null);
+
+	async function handlePushChange(enabled: boolean) {
+		if (!onPushChange) {
+			return;
+		}
+		setPushBusy(true);
+		setPushError(null);
+		try {
+			await onPushChange(enabled);
+		} catch (err) {
+			setPushError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setPushBusy(false);
+		}
+	}
+
 	function handleSubmit(event: FormEvent) {
 		event.preventDefault();
 		onClose();
@@ -68,6 +91,32 @@ export default function SettingsForm({
 					</label>
 				))}
 			</fieldset>
+
+			{pushAvailable && (
+				<fieldset className="settings-section">
+					<legend className="settings-heading">Notifications</legend>
+					<label className="check">
+						<input
+							type="checkbox"
+							name="pushNotifications"
+							checked={settings.pushNotifications}
+							disabled={pushBusy}
+							onChange={(e) => handlePushChange(e.target.checked)}
+						/>
+						<span>
+							Push notifications
+							<span className="check-hint">
+								Get notified of mentions and messages while gamja is closed
+							</span>
+						</span>
+					</label>
+					{pushError && (
+						<div className="alert alert-danger" role="alert">
+							{pushError}
+						</div>
+					)}
+				</fieldset>
+			)}
 
 			{showProtocolHandler && (
 				<div className="callout protocol-handler">

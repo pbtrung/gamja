@@ -31,5 +31,15 @@ export default defineConfig({
 		outDir: r("./dist"),
 		emptyOutDir: true,
 		sourcemap: false,
+		rollupOptions: {
+			input: {
+				index: r("./src/index.html"),
+				// The service worker must live at the root to control the whole app
+				sw: r("./src/sw.ts"),
+			},
+			output: {
+				entryFileNames: (chunk) => (chunk.name === "sw" ? "sw.js" : "assets/[name]-[hash].js"),
+			},
+		},
 	},
 });

@@ -170,6 +170,8 @@ function Dialogs({ state }: { state: AppState }) {
 					<SettingsForm
 						settings={state.settings}
 						showProtocolHandler={dialog.showProtocolHandler}
+						pushAvailable={app.canEnablePush()}
+						onPushChange={(enabled) => app.setPushNotifications(enabled)}
 						onChange={(settings) => app.handleSettingsChange(settings)}
 						onDisconnect={() => {
 							app.dismissDialog();

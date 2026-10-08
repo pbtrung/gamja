@@ -57,12 +57,15 @@ export interface Settings {
 	secondsInTimestamps: boolean;
 	bufferEvents: BufferEventsDisplayMode;
 	showMemberList: boolean;
+	/** Receive Web Push notifications when gamja is closed */
+	pushNotifications: boolean;
 }
 
 export const defaultSettings: Settings = {
 	secondsInTimestamps: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
 	showMemberList: false,
+	pushNotifications: false,
 };
 
 export interface User {

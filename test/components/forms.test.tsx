@@ -178,6 +178,45 @@ describe("SettingsForm", () => {
 	});
 });
 
+describe("SettingsForm push notifications", () => {
+	it("toggles push and shows errors", async () => {
+		const onPushChange = vi
+			.fn()
+			.mockRejectedValueOnce(new Error("Notification permission denied"))
+			.mockResolvedValue(undefined);
+		render(
+			<SettingsForm
+				settings={defaultSettings}
+				showProtocolHandler={false}
+				pushAvailable
+				onPushChange={onPushChange}
+				onChange={() => {}}
+				onDisconnect={() => {}}
+				onClose={() => {}}
+			/>,
+		);
+		const toggle = screen.getByRole("checkbox", { name: /Push notifications/ });
+		await userEvent.click(toggle);
+		expect(onPushChange).toHaveBeenCalledWith(true);
+		expect(await screen.findByRole("alert")).toHaveTextContent("Notification permission denied");
+		await userEvent.click(toggle);
+		expect(screen.queryByRole("alert")).toBeNull();
+	});
+
+	it("hides the toggle when unavailable", () => {
+		render(
+			<SettingsForm
+				settings={defaultSettings}
+				showProtocolHandler={false}
+				onChange={() => {}}
+				onDisconnect={() => {}}
+				onClose={() => {}}
+			/>,
+		);
+		expect(screen.queryByRole("checkbox", { name: /Push notifications/ })).toBeNull();
+	});
+});
+
 describe("JoinForm and Help", () => {
 	it("submits the channel", async () => {
 		const onSubmit = vi.fn();
