@@ -68,7 +68,7 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 	);
 
 	return (
-		<form className="network-form" onSubmit={handleSubmit}>
+		<form onSubmit={handleSubmit}>
 			{field("host", "Hostname", "text", {
 				required: true,
 				autoFocus: true,

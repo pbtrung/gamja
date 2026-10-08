@@ -752,13 +752,7 @@ input.switch:focus-visible {
 	color: var(--accent-fg);
 }
 
-/* Tighter spacing than other dialogs: settings have more content */
-.dialog:has(.settings-form) .dialog-header,
-.dialog:has(.network-form) .dialog-header,
-.dialog:has(.search-form) .dialog-header {
-	padding: 0.5rem 0.5rem 0.5rem 0.75rem;
-}
-
+/* Settings have more content: a tighter body than other dialogs */
 .dialog:has(.settings-form) .dialog-body {
 	padding: 0.75rem;
 }
@@ -2058,7 +2052,7 @@ textarea.composer-input:focus {
 	display: flex;
 	align-items: center;
 	gap: 1rem;
-	padding: 0.875rem 0.875rem 0.875rem 1.25rem;
+	padding: 0.5rem 0.5rem 0.5rem 0.75rem;
 	border-bottom: 1px solid var(--border);
 }
 
