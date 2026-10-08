@@ -1,5 +1,5 @@
 import { memo, type MouseEvent } from "react";
-import { Hash, Server as ServerIcon, User as UserIcon } from "lucide-react";
+import { MessagesSquare, Server as ServerIcon, User as UserIcon } from "lucide-react";
 import * as irc from "../lib/irc";
 import { strip as stripANSI } from "../lib/ansi";
 import {
@@ -106,7 +106,7 @@ const BufferItem = memo(function BufferItem({
 			break;
 	}
 
-	let Icon = Hash;
+	let Icon = MessagesSquare;
 	if (buffer.type === BufferType.SERVER) {
 		Icon = ServerIcon;
 	} else if (buffer.type === BufferType.NICK) {

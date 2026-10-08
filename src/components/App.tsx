@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
 import { CircleAlert, MessageSquareText, Users, X } from "lucide-react";
-import { getNickColorIndex } from "../format";
 import * as irc from "../lib/irc";
 import { BufferType, ServerStatus, Unread, getServerName, unionUnread, type Buffer } from "../state";
 import { setup as setupKeybindings } from "../keybindings";
@@ -167,7 +166,7 @@ function Dialogs({ state }: { state: AppState }) {
 			);
 		case "settings":
 			return (
-				<Dialog title="Settings" onDismiss={dismiss}>
+				<Dialog title="Settings" onDismiss={dismiss} size="lg">
 					<SettingsForm
 						settings={state.settings}
 						showProtocolHandler={dialog.showProtocolHandler}
@@ -337,24 +336,6 @@ function Chat({ state }: { state: AppState }) {
 						onBufferClick={handleBufferClick}
 						onBufferClose={handleBufferClose}
 					/>
-					{activeServer && (
-						<footer className="sidebar-footer">
-							<span
-								className={`avatar avatar-sm nick-${getNickColorIndex(activeServer.nick ?? "?")}`}
-								aria-hidden="true"
-							>
-								{(activeServer.nick ?? "?").charAt(0)}
-							</span>
-							<div className="sidebar-user">
-								<span className="sidebar-nick">{activeServer.nick ?? "Not connected"}</span>
-								<span className="sidebar-account">
-									{activeServer.account
-										? `Logged in as ${activeServer.account}`
-										: "Not logged in"}
-								</span>
-							</div>
-						</footer>
-					)}
 				</div>
 			</nav>
 

@@ -65,3 +65,34 @@ test("theme screenshots", async ({ page, connect, bot }) => {
 		await page.screenshot({ path: `${dir}/theme-${theme}.png` });
 	}
 });
+
+test("settings screenshots", async ({ page, connect }) => {
+	const dir = process.env.SCREENSHOTS!;
+	for (const [width, height, name] of [
+		[1280, 860, "desktop"],
+		[390, 844, "mobile"],
+	] as const) {
+		await page.setViewportSize({ width, height });
+		await connect(page, "tester", { channels: ["#gamja"] });
+		await page.screenshot({ path: `${dir}/sidebar-${name}.png` });
+		if (name === "mobile") {
+			await page.getByRole("button", { name: "Open buffer list" }).click();
+		}
+		await page.getByRole("tab", { name: "FakeNet" }).click();
+		await page.getByRole("button", { name: "Settings" }).click();
+		await page.waitForTimeout(300);
+		await page.screenshot({ path: `${dir}/settings-${name}.png` });
+		await page.locator(".dialog-body").evaluate((el) => (el.scrollTop = el.scrollHeight));
+		await page.waitForTimeout(100);
+		await page.screenshot({ path: `${dir}/settings-${name}-bottom.png` });
+		await page.locator(".dialog-body").evaluate((el) => (el.scrollTop = 0));
+		await page
+			.locator("label.theme-option")
+			.filter({ has: page.getByRole("radio", { name: "Light", exact: true }) })
+			.click();
+		await page.waitForTimeout(300);
+		await page.screenshot({ path: `${dir}/settings-${name}-light.png` });
+		await page.locator("label.theme-option", { hasText: "Dracula" }).click();
+		await page.keyboard.press("Escape");
+	}
+});

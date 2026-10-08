@@ -171,7 +171,7 @@ describe("SettingsForm", () => {
 		);
 		await userEvent.click(screen.getByLabelText("Show seconds in time indicator"));
 		expect(onChange).toHaveBeenCalledWith({ secondsInTimestamps: false });
-		await userEvent.click(screen.getByLabelText("Hide chat events"));
+		await userEvent.click(screen.getByRole("radio", { name: "Hide" }));
 		expect(onChange).toHaveBeenCalledWith({ bufferEvents: "hide" });
 		await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
 		expect(onDisconnect).toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe("SettingsForm theme and layout", () => {
 				onClose={() => {}}
 			/>,
 		);
-		expect(screen.getByRole("radio", { name: "System" })).toBeChecked();
+		expect(screen.getByRole("radio", { name: "Dracula" })).toBeChecked();
 		await userEvent.click(screen.getByRole("radio", { name: "Catppuccin Mocha" }));
 		expect(onChange).toHaveBeenCalledWith({ theme: "catppuccin-mocha" });
 		await userEvent.click(screen.getByRole("radio", { name: /Compact/ }));
