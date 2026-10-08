@@ -393,6 +393,15 @@ describe("commands", () => {
 		await expect(p2).resolves.toEqual([{ name: "#c", latestMessage: "2020-01-01T00:00:00.000Z" }]);
 	});
 
+	it("doesn't report more history when CHATHISTORY ISUPPORT is missing", async () => {
+		const { client, ws } = register("batch draft/chathistory", "CHANTYPES=#");
+		const p = client.fetchHistoryBefore("BouncerServ", "2020-01-01T00:00:00.000Z", 100);
+		await new Promise((r) => setTimeout(r, 0));
+		ws.takeSent();
+		ws.receive(":srv BATCH +a chathistory BouncerServ", ":srv BATCH -a");
+		await expect(p).resolves.toEqual({ messages: [], more: false });
+	});
+
 	it("manages bouncer networks", async () => {
 		const { client, ws } = register("batch soju.im/bouncer-networks");
 		const p = client.listBouncerNetworks();

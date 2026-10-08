@@ -272,6 +272,16 @@ describe("AppController messaging", () => {
 		expect(sent()).toEqual([]);
 	});
 
+	it("doesn't fetch history without CHATHISTORY ISUPPORT (soju bouncer connection)", async () => {
+		const { app, recv, sent } = await connectedApp({ isupport: "CASEMAPPING=ascii CHANTYPES= BOT=B" });
+		recv(":BouncerServ!BouncerServ@BouncerServ PRIVMSG me :hi");
+		app.switchBuffer(buf(app, "BouncerServ")!.id);
+		sent();
+		await app.fetchOlderMessages();
+		expect(sent().filter((l) => l.startsWith("CHATHISTORY"))).toEqual([]);
+		expect(buf(app, "BouncerServ")!.history).toBe("end");
+	});
+
 	it("stops fetching history after an error until retried", async () => {
 		const { app, recv, sent, sentRaw } = await connectedApp();
 		recv(":me!u@h JOIN #c");

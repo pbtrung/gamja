@@ -2057,6 +2057,14 @@ export default class AppController {
 		) {
 			return;
 		}
+		// soju doesn't advertise CHATHISTORY on the bouncer connection (e.g.
+		// for BouncerServ), there is no history to load there
+		if (client.isupport.chatHistory() === 0) {
+			if (buf.history !== "end") {
+				this.setBufferState(buf.id, { history: "end" });
+			}
+			return;
+		}
 		if (buf.history === "loading" || buf.history === "end" || (buf.history === "error" && !retry)) {
 			return;
 		}

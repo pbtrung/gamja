@@ -1074,7 +1074,7 @@ export default class Client extends EventTarget {
 		const max = Math.min(limit, this.isupport.chatHistory());
 		const params = ["BEFORE", target, "timestamp=" + before, max];
 		const messages = await this.roundtripChatHistory(params);
-		return { messages, more: messages.length >= max };
+		return { messages, more: max > 0 && messages.length >= max };
 	}
 
 	/* Fetch history in ascending order. */
@@ -1091,7 +1091,7 @@ export default class Client extends EventTarget {
 		if (limit <= 0) {
 			throw new Error("Cannot fetch all chat history: too many messages");
 		}
-		if (messages.length >= max) {
+		if (max > 0 && messages.length >= max) {
 			// There are still more messages to fetch
 			after = { ...after, time: messages[messages.length - 1].tags.time! };
 			const rest = await this.fetchHistoryBetween(target, after, before, limit);
@@ -1242,7 +1242,7 @@ export default class Client extends EventTarget {
 	async fetchHistoryLatest(target: string, limit: number): Promise<{ messages: Message[]; more: boolean }> {
 		const max = Math.min(limit, this.isupport.chatHistory());
 		const messages = await this.roundtripChatHistory(["LATEST", target, "*", max]);
-		return { messages, more: messages.length >= max };
+		return { messages, more: max > 0 && messages.length >= max };
 	}
 
 	/* Fetch messages around a message ID or timestamp. */
