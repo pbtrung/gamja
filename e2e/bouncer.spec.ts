@@ -5,7 +5,8 @@ test.use({ serverOptions: { bouncer: true } });
 test("lists, adds, edits and removes bouncer networks", async ({ page, connect, bot }) => {
 	const bob = await bot("bob");
 	await bob.join("#net");
-	await connect(page, "tester");
+	// soju requires logging in, which must happen before binding to networks
+	await connect(page, "alice", { password: "secret" });
 
 	const tabs = page.getByRole("tablist", { name: "Buffer list" });
 	await expect(tabs.getByRole("tab", { name: "bouncer" })).toBeVisible();

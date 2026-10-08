@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures.ts";
 
-test("opens the buffer and member lists from the header on small screens", async ({ page, connect, bot }) => {
+test("opens the buffer list from the header on small screens", async ({ page, connect, bot }) => {
 	const bob = await bot("bob");
 	await bob.join("#m");
 	await connect(page, "tester", { channels: ["#m"] });
@@ -15,11 +15,8 @@ test("opens the buffer and member lists from the header on small screens", async
 });
 
 for (const layout of ["comfortable", "compact"] as const) {
-	test(`hides message times on small screens (${layout})`, async ({ page, connect, bot }) => {
-		await page.addInitScript(
-			(l) => localStorage.setItem("gamja_settings", JSON.stringify({ layout: l })),
-			layout,
-		);
+	test(`hides message times on small screens (${layout})`, async ({ page, connect, bot, settings }) => {
+		await settings({ layout });
 		const bob = await bot("bob");
 		await bob.join("#t");
 		await connect(page, "tester", { channels: ["#t"] });
@@ -31,5 +28,7 @@ for (const layout of ["comfortable", "compact"] as const) {
 		for (const ts of times) {
 			await expect(ts).toBeHidden();
 		}
+		// No room for avatars and sender headers: the compact style is used
+		await expect(page.locator("#buffer .logline.comfortable")).toHaveCount(0);
 	});
 }

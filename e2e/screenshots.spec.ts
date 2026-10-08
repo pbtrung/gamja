@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures.ts";
 import { THEMES } from "../src/themes.ts";
 
@@ -5,17 +6,29 @@ import { THEMES } from "../src/themes.ts";
 // Run with SCREENSHOTS=dir npx playwright test screenshots
 test.skip(!process.env.SCREENSHOTS, "set SCREENSHOTS=<dir> to render screenshots");
 
+const dir = () => process.env.SCREENSHOTS!;
+
+test.beforeEach(async ({ page }) => {
+	// No animations: screenshots don't need to wait for them to finish
+	await page.emulateMedia({ reducedMotion: "reduce" });
+});
+
+/** Screenshot the open dialog, then close it */
+async function shotDialog(page: Page, name: string) {
+	await expect(page.getByRole("dialog")).toBeVisible();
+	await page.screenshot({ path: `${dir()}/dialog-${name}.png` });
+	await page.keyboard.press("Escape");
+	await expect(page.getByRole("dialog")).toBeHidden();
+}
+
 for (const scheme of ["light", "dark"] as const) {
-	test(`screenshots (${scheme})`, async ({ page, connect, bot }) => {
+	test(`screenshots (${scheme})`, async ({ page, connect, bot, settings }) => {
 		// Follow the emulated color scheme rather than the default theme
-		await page.addInitScript(() =>
-			localStorage.setItem("gamja_settings", JSON.stringify({ theme: "system" })),
-		);
-		await page.emulateMedia({ colorScheme: scheme });
+		await settings({ theme: "system", layout: "comfortable" });
+		await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
 		await page.setViewportSize({ width: 1280, height: 760 });
-		const dir = process.env.SCREENSHOTS!;
 		await page.goto("/?server=ws://invalid");
-		await page.screenshot({ path: `${dir}/connect-${scheme}.png` });
+		await page.screenshot({ path: `${dir()}/connect-${scheme}.png` });
 
 		const bob = await bot("bob");
 		const carol = await bot("carol");
@@ -29,25 +42,25 @@ for (const scheme of ["light", "dark"] as const) {
 		bob.privmsg("#gamja", "tester: what do you think of the new UI?");
 		carol.send("PRIVMSG #gamja :\x01ACTION waves\x01");
 		bob.privmsg("#gamja", "the reactions and replies work too");
-		await page.waitForTimeout(200);
 		const line = page.locator("#buffer .logline", { hasText: "reactions and replies" });
+		await expect(line).toHaveAttribute("data-msgid", /.+/);
 		const msgid = await line.getAttribute("data-msgid");
 		carol.send(`@+draft/react=🎉;+draft/reply=${msgid} TAGMSG #gamja`);
 		bob.send(`@+draft/react=👍;+draft/reply=${msgid} TAGMSG #gamja`);
 		carol.privmsg("#gamja", "indeed!", { "+draft/reply": msgid! });
 		bob.send("@+typing=active TAGMSG #gamja");
-		await page
-			.getByRole("button", { name: "Open member list" })
-			.click()
-			.catch(() => {});
-		await page.waitForTimeout(300);
+		const memberList = page.getByRole("button", { name: "Open member list" });
+		if (await memberList.isVisible()) {
+			await memberList.click();
+		}
+		await expect(page.locator("#buffer")).toContainText("indeed!");
+		await expect(page.locator(".typing-indicator")).toContainText("bob is typing");
 		await page.getByRole("textbox", { name: "Type a message" }).fill("Looks great!");
-		await page.screenshot({ path: `${dir}/chat-${scheme}.png` });
+		await page.screenshot({ path: `${dir()}/chat-${scheme}.png` });
 	});
 }
 
 test("theme screenshots", async ({ page, connect, bot }) => {
-	const dir = process.env.SCREENSHOTS!;
 	await page.setViewportSize({ width: 1100, height: 640 });
 	const bob = await bot("bob");
 	await bob.join("#themes");
@@ -57,105 +70,75 @@ test("theme screenshots", async ({ page, connect, bot }) => {
 	bob.privmsg("#themes", "links work too: https://soju.im and #gamja");
 	await page.getByRole("textbox", { name: "Type a message" }).fill("pretty!");
 	await page.keyboard.press("Enter");
+	await expect(page.locator("#buffer")).toContainText("pretty!");
 	for (const theme of THEMES.filter((t) => t.id !== "system").map((t) => t.id)) {
 		await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
-		await page.waitForTimeout(300);
-		await page.screenshot({ path: `${dir}/theme-${theme}.png` });
+		await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+		await page.screenshot({ path: `${dir()}/theme-${theme}.png` });
 	}
 });
 
 test("settings screenshots", async ({ page, connect }) => {
-	const dir = process.env.SCREENSHOTS!;
 	for (const [width, height, name] of [
 		[1280, 860, "desktop"],
 		[390, 844, "mobile"],
 	] as const) {
 		await page.setViewportSize({ width, height });
 		await connect(page, "tester", { channels: ["#gamja"] });
-		await page.screenshot({ path: `${dir}/sidebar-${name}.png` });
+		await page.screenshot({ path: `${dir()}/sidebar-${name}.png` });
 		if (name === "mobile") {
 			await page.getByRole("button", { name: "Open buffer list" }).click();
 		}
 		await page.getByRole("tab", { name: "FakeNet" }).click();
 		await page.getByRole("button", { name: "Settings" }).click();
-		await page.waitForTimeout(300);
-		await page.screenshot({ path: `${dir}/settings-${name}.png` });
-		await page.locator(".dialog-body").evaluate((el) => (el.scrollTop = el.scrollHeight));
-		await page.waitForTimeout(100);
-		await page.screenshot({ path: `${dir}/settings-${name}-bottom.png` });
-		await page.locator(".dialog-body").evaluate((el) => (el.scrollTop = 0));
+		const body = page.locator(".dialog-body");
+		await expect(body).toBeVisible();
+		await page.screenshot({ path: `${dir()}/settings-${name}.png` });
+		await body.evaluate((el) => (el.scrollTop = el.scrollHeight));
+		await page.screenshot({ path: `${dir()}/settings-${name}-bottom.png` });
+		await body.evaluate((el) => (el.scrollTop = 0));
 		await page
 			.locator("label.theme-option")
 			.filter({ has: page.getByRole("radio", { name: "Light", exact: true }) })
 			.click();
-		await page.waitForTimeout(300);
-		await page.screenshot({ path: `${dir}/settings-${name}-light.png` });
+		await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+		await page.screenshot({ path: `${dir()}/settings-${name}-light.png` });
 		await page.locator("label.theme-option", { hasText: "Dracula" }).click();
 		await page.keyboard.press("Escape");
 	}
 });
 
-test("compact layout screenshots", async ({ page, connect, bot }) => {
-	const dir = process.env.SCREENSHOTS!;
-	await page.addInitScript(() =>
-		localStorage.setItem("gamja_settings", JSON.stringify({ layout: "compact" })),
-	);
-	const bob = await bot("bob");
-	const longnick = await bot("averyveryverylongnick");
-	await bob.join("#compact");
-	await connect(page, "tester", { channels: ["#compact"] });
-	await longnick.join("#compact");
-	bob.privmsg("#compact", "hi everyone, this is the compact layout");
-	longnick.privmsg("#compact", "long nicks are truncated");
-	bob.send("PRIVMSG #compact :\x01ACTION waves\x01");
-	bob.send("NOTICE #compact :a notice");
-	await page.getByRole("textbox", { name: "Type a message" }).fill("looks neat");
-	await page.keyboard.press("Enter");
-	await expect(page.locator("#buffer")).toContainText("looks neat");
-	for (const [width, height, name] of [
-		[1100, 520, "desktop"],
-		[390, 700, "mobile"],
-	] as const) {
-		await page.setViewportSize({ width, height });
-		await page.waitForTimeout(200);
-		await page.screenshot({ path: `${dir}/compact-${name}.png` });
-	}
-});
-
 for (const layout of ["comfortable", "compact"] as const) {
-	test(`mobile screenshots without times (${layout})`, async ({ page, connect, bot }) => {
-		const dir = process.env.SCREENSHOTS!;
-		await page.addInitScript(
-			(l) => localStorage.setItem("gamja_settings", JSON.stringify({ layout: l })),
-			layout,
-		);
-		await page.setViewportSize({ width: 390, height: 700 });
+	test(`${layout} layout screenshots`, async ({ page, connect, bot, settings }) => {
+		await settings({ layout });
 		const bob = await bot("bob");
-		await bob.join("#mobile");
-		await connect(page, "tester", { channels: ["#mobile"] });
-		bob.privmsg("#mobile", "hi there, no times on small screens");
-		bob.send("PRIVMSG #mobile :\x01ACTION waves\x01");
-		await expect(page.locator("#buffer")).toContainText("waves");
-		await page.screenshot({ path: `${dir}/mobile-${layout}.png` });
+		await bob.join("#layout");
+		await connect(page, "tester", { channels: ["#layout"] });
+		bob.privmsg("#layout", `hi everyone, this is the ${layout} layout`);
+		bob.send("PRIVMSG #layout :\x01ACTION waves\x01");
+		bob.send("NOTICE #layout :a notice");
+		await page.getByRole("textbox", { name: "Type a message" }).fill("looks neat");
+		await page.keyboard.press("Enter");
+		await expect(page.locator("#buffer")).toContainText("looks neat");
+		// Small screens: no times, and the comfortable layout uses the compact style
+		for (const [width, height, name] of [
+			[1100, 520, "desktop"],
+			[390, 700, "mobile"],
+		] as const) {
+			await page.setViewportSize({ width, height });
+			await page.screenshot({ path: `${dir()}/${layout}-${name}.png` });
+		}
 	});
 }
 
-test.describe("dialog screenshots", () => {
+test.describe("bouncer dialog screenshots", () => {
 	test.use({ serverOptions: { bouncer: true } });
 
 	test("dialogs", async ({ page, connect, bot }) => {
-		const dir = process.env.SCREENSHOTS!;
 		await page.setViewportSize({ width: 1100, height: 720 });
 		const bob = await bot("bob");
 		await bob.join("#dialogs");
-		await connect(page, "tester");
-		const shot = async (name: string) => {
-			await expect(page.getByRole("dialog")).toBeVisible();
-			await page.waitForTimeout(250);
-			await page.screenshot({ path: `${dir}/dialog-${name}.png` });
-			await page.keyboard.press("Escape");
-			await expect(page.getByRole("dialog")).toBeHidden();
-		};
+		await connect(page, "alice", { password: "secret" });
 		const tabs = page.getByRole("tablist", { name: "Buffer list" });
 
 		await tabs.getByRole("tab", { name: "FakeNet" }).click();
@@ -164,24 +147,29 @@ test.describe("dialog screenshots", () => {
 		await expect(tabs.getByRole("tab", { name: "#dialogs" })).toBeVisible();
 		await tabs.getByRole("tab", { name: "FakeNet" }).click();
 		await page.getByRole("button", { name: "Join channel" }).click();
-		await shot("join");
+		await shotDialog(page, "join");
 		await page.getByRole("button", { name: "Manage network" }).click();
-		await shot("network");
+		await shotDialog(page, "network");
 		await page.locator("#buffer").click();
 		await page.keyboard.press("Control+k");
-		await shot("switcher");
+		await shotDialog(page, "switcher");
 		await tabs.getByRole("tab", { name: "#dialogs" }).click();
 		await page.getByRole("button", { name: "Search" }).click();
-		await shot("search");
+		await shotDialog(page, "search");
 		await page.getByRole("textbox", { name: "Type a message" }).fill("/help");
 		await page.keyboard.press("Enter");
-		await shot("help");
+		await shotDialog(page, "help");
 		await tabs.getByRole("tab", { name: "bouncer" }).click();
 		await page.getByRole("button", { name: "Add network" }).first().click();
-		await shot("add-network");
-		await page.getByRole("link", { name: "login" }).click();
-		await shot("auth");
-		await page.getByRole("link", { name: "register", exact: true }).click();
-		await shot("register");
+		await shotDialog(page, "add-network");
 	});
+});
+
+test("account dialog screenshots", async ({ page, connect }) => {
+	await page.setViewportSize({ width: 1100, height: 720 });
+	await connect(page, "tester");
+	await page.getByRole("link", { name: "login" }).click();
+	await shotDialog(page, "auth");
+	await page.getByRole("link", { name: "register", exact: true }).click();
+	await shotDialog(page, "register");
 });

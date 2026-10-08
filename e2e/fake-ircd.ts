@@ -621,6 +621,31 @@ export class FakeServer {
 		}
 		switch (msg.params[0]?.toUpperCase()) {
 			case "BIND":
+				// Like soju: only during registration, once logged in
+				if (!conn.account) {
+					reply({
+						command: "FAIL",
+						params: [
+							"BOUNCER",
+							"ACCOUNT_REQUIRED",
+							"BIND",
+							"Authentication needed to bind to bouncer network",
+						],
+					});
+					break;
+				}
+				if (conn.registered) {
+					reply({
+						command: "FAIL",
+						params: [
+							"BOUNCER",
+							"REGISTRATION_IS_COMPLETED",
+							"BIND",
+							"Cannot bind after registration",
+						],
+					});
+					break;
+				}
 				conn.bouncerNetwork = msg.params[1];
 				break;
 			case "LISTNETWORKS": {
@@ -708,6 +733,17 @@ export class FakeServer {
 
 	maybeRegister(conn: Conn): void {
 		if (conn.registered || conn.capNegotiating || conn.nick === "*" || !conn.user) {
+			return;
+		}
+		// Like soju, a bouncer requires logging in. Bots stand for other users of
+		// the upstream network rather than bouncer clients: let them in.
+		if (this.opts.bouncer && conn.caps.has("soju.im/bouncer-networks") && !conn.account) {
+			conn.send({
+				tags: {},
+				command: "FAIL",
+				params: ["*", "ACCOUNT_REQUIRED", "Authentication required"],
+			});
+			conn.ws.close();
 			return;
 		}
 		conn.registered = true;

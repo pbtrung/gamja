@@ -107,3 +107,24 @@ test("rejects bad SASL credentials", async ({ page, ircd }) => {
 	await page.getByRole("button", { name: "Connect" }).click();
 	await expect(page.getByRole("alert")).toContainText("SASL authentication failed");
 });
+
+test("switches the comfortable layout to the compact style on small screens", async ({
+	page,
+	connect,
+	bot,
+	settings,
+}) => {
+	await settings({ layout: "comfortable" });
+	await page.setViewportSize({ width: 1280, height: 720 });
+	const bob = await bot("bob");
+	await bob.join("#resize");
+	await connect(page, "tester", { channels: ["#resize"] });
+	bob.privmsg("#resize", "resize me");
+	const line = page.locator("#buffer .logline", { hasText: "resize me" });
+	await expect(line).toHaveClass(/comfortable/);
+	await page.setViewportSize({ width: 390, height: 720 });
+	await expect(line).not.toHaveClass(/comfortable/);
+	await expect(line).toContainText("<bob> resize me");
+	await page.setViewportSize({ width: 1280, height: 720 });
+	await expect(line).toHaveClass(/comfortable/);
+});

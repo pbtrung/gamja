@@ -92,10 +92,20 @@ export interface Fixtures {
 	serverOptions: Partial<ServerOptions>;
 	bot: (nick: string) => Promise<Bot>;
 	connect: (page: Page, nick?: string, opts?: { password?: string; channels?: string[] }) => Promise<void>;
+	/** Start the page with these settings stored, as if picked earlier */
+	settings: (settings: Record<string, unknown>) => Promise<void>;
 }
 
 export const test = base.extend<Fixtures>({
 	serverOptions: [{}, { option: true }],
+	settings: async ({ page }, use) => {
+		await use(async (settings) => {
+			await page.addInitScript(
+				(v) => localStorage.setItem("gamja_settings", v),
+				JSON.stringify(settings),
+			);
+		});
+	},
 	ircd: async ({ serverOptions }, use) => {
 		const server = startServer({ port: 0, accounts: { alice: "secret" }, ...serverOptions });
 		await new Promise((resolve) => server.wss.once("listening", resolve));
