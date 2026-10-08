@@ -248,7 +248,8 @@ function Dialogs({ state }: { state: AppState }) {
 						onSearch={(query) => app.searchMessages(dialog.server, query)}
 						onSelect={(result) => {
 							app.dismissDialog();
-							app.jumpToMessage(dialog.server, result.buffer, result.message.tags.msgid!).catch(
+							const { msgid, time } = result.message.tags;
+							app.jumpToMessage(dialog.server, result.buffer, msgid!, time ?? undefined).catch(
 								(err) => app.showError(err),
 							);
 						}}

@@ -41,6 +41,12 @@ describe("parseMessage", () => {
 });
 
 describe("formatMessage", () => {
+	it("refuses line breaks and NUL characters", () => {
+		expect(() => irc.formatMessage({ command: "JOIN", params: ["#a\r\nQUIT"] })).toThrow(/line break/);
+		expect(() => irc.formatMessage({ command: "PRIVMSG", params: ["#a", "x\0y"] })).toThrow();
+		expect(irc.parseURL("irc:///%23a%0D%0AQUIT")).toBeNull();
+	});
+
 	it("round-trips messages", () => {
 		const lines = [
 			"PING",
@@ -291,12 +297,21 @@ describe("CapRegistry", () => {
 		expect([...caps.available.keys()]).toEqual(["sasl", "batch", "server-time"]);
 		expect(caps.available.get("sasl")).toBe("PLAIN,EXTERNAL");
 
-		expect(caps.requestAvailable(["batch", "unknown"])).toEqual({
-			command: "CAP",
-			params: ["REQ", "batch"],
-		});
+		expect(caps.requestAvailable(["batch", "unknown"])).toEqual([
+			{ command: "CAP", params: ["REQ", "batch"] },
+		]);
 		caps.parse(irc.parseMessage("CAP * ACK :batch server-time"));
-		expect(caps.requestAvailable(["batch"])).toBeNull();
+		expect(caps.requestAvailable(["batch"])).toEqual([]);
+
+		// sasl gets its own REQ, long lists are split
+		const many = new irc.CapRegistry();
+		const names = Array.from({ length: 60 }, (_, i) => "draft/some-capability-" + i);
+		many.parse(irc.parseMessage("CAP * LS :sasl " + names.join(" ")));
+		const reqs = many.requestAvailable(["sasl", ...names]);
+		expect(reqs[0].params).toEqual(["REQ", "sasl"]);
+		expect(reqs.length).toBeGreaterThan(2);
+		expect(reqs.every((m) => String(m.params![1]).length <= 400)).toBe(true);
+		expect(reqs.flatMap((m) => String(m.params![1]).split(" "))).toEqual(["sasl", ...names]);
 
 		caps.parse(irc.parseMessage("CAP * ACK :-batch"));
 		expect(caps.enabled.has("batch")).toBe(false);

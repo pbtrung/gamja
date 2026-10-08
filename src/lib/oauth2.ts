@@ -11,10 +11,25 @@ import * as base64 from "./base64";
 /** sessionStorage key of the authorization request awaiting its redirect */
 const PENDING_KEY = "gamja_oauth2_pending";
 
-interface PendingAuthorization {
+export interface PendingAuthorization {
 	state: string;
 	/** PKCE code verifier, empty if PKCE isn't available */
 	codeVerifier: string;
+	/** Redirect URI sent with the request, the code exchange must repeat it */
+	redirectUri: string;
+}
+
+/**
+ * The redirect URI for the current page: without the fragment, which redirect
+ * URIs can't have, nor the parameters the authorization server appends.
+ */
+export function canonicalRedirectURI(loc: string): string {
+	const url = new URL(loc);
+	url.hash = "";
+	for (const k of ["code", "state", "iss", "session_state", "error", "error_description"]) {
+		url.searchParams.delete(k);
+	}
+	return url.toString();
 }
 
 function randomString(): string {
@@ -75,7 +90,7 @@ export async function redirectAuthorize({
 }): Promise<void> {
 	// The state prevents cross-site request forgery, PKCE code injection.
 	// Servers without PKCE support ignore its parameters.
-	const pending: PendingAuthorization = { state: randomString(), codeVerifier: "" };
+	const pending: PendingAuthorization = { state: randomString(), codeVerifier: "", redirectUri };
 	const params: Record<string, string> = {
 		response_type: "code",
 		client_id: clientId,
@@ -92,7 +107,11 @@ export async function redirectAuthorize({
 		params.code_challenge = base64.encodeURL(digest);
 		params.code_challenge_method = "S256";
 	}
-	sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+	try {
+		sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+	} catch (err) {
+		throw new Error("OAuth 2.0 login requires session storage, which is disabled", { cause: err });
+	}
 	window.location.assign(serverMetadata.authorization_endpoint + "?" + formatQueryString(params));
 }
 
@@ -100,7 +119,7 @@ export async function redirectAuthorize({
  * Check the state the server redirected back with against the pending
  * authorization request, and return its PKCE code verifier.
  */
-export function takePendingAuthorization(state: string | undefined): string {
+export function takePendingAuthorization(state: string | undefined): PendingAuthorization {
 	let pending: PendingAuthorization | null = null;
 	try {
 		const raw = sessionStorage.getItem(PENDING_KEY);
@@ -112,7 +131,7 @@ export function takePendingAuthorization(state: string | undefined): string {
 	if (!pending || !state || pending.state !== state) {
 		throw new Error("OAuth 2.0 authorization doesn't match the one we started, please try again");
 	}
-	return pending.codeVerifier;
+	return pending;
 }
 
 function buildPostHeaders(clientId: string, clientSecret?: string): Record<string, string> {

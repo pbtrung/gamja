@@ -66,9 +66,16 @@ describe("oauth2", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("builds redirect URIs without fragments or authorization parameters", () => {
+		expect(
+			oauth2.canonicalRedirectURI("https://gamja.example/app/?server=x&code=c&state=s&iss=i#/#chan"),
+		).toBe("https://gamja.example/app/?server=x");
+	});
+
 	it("returns the code verifier for a matching state", () => {
-		sessionStorage.setItem("gamja_oauth2_pending", JSON.stringify({ state: "s", codeVerifier: "v" }));
-		expect(oauth2.takePendingAuthorization("s")).toBe("v");
+		const pending = { state: "s", codeVerifier: "v", redirectUri: "https://gamja.example/" };
+		sessionStorage.setItem("gamja_oauth2_pending", JSON.stringify(pending));
+		expect(oauth2.takePendingAuthorization("s")).toEqual(pending);
 		expect(sessionStorage.getItem("gamja_oauth2_pending")).toBeNull();
 	});
 

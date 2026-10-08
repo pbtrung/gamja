@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseMessage } from "../src/lib/irc";
-import { notificationForMessage } from "../src/sw";
+import { notificationForMessage, readTarget } from "../src/sw";
 
 describe("service worker notifications", () => {
 	it("formats channel messages, private messages and actions", () => {
@@ -30,5 +30,13 @@ describe("service worker notifications", () => {
 		});
 		expect(notificationForMessage(parseMessage(":bob!u@h PRIVMSG me :\x01VERSION\x01"))).toBeNull();
 		expect(notificationForMessage(parseMessage(":bob!u@h JOIN #c"))).toBeNull();
+	});
+
+	it("recognizes buffers read on another client, and ignores soju's NOTE", () => {
+		expect(readTarget(parseMessage("MARKREAD #c timestamp=2030-01-01T00:00:00.000Z"))).toBe("#c");
+		expect(readTarget(parseMessage("PRIVMSG #c :hi"))).toBeNull();
+		expect(
+			notificationForMessage(parseMessage("NOTE WEBPUSH REGISTERED :Push subscription registered")),
+		).toBeNull();
 	});
 });

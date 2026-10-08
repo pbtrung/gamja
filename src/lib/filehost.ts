@@ -20,7 +20,10 @@ export async function uploadFile(client: Client, file: File, signal?: AbortSigna
 	}
 	const endpoint = new URL(endpointStr, location.href);
 	// Don't leak credentials over plain HTTP when the IRC connection is secure
-	if (endpoint.protocol !== "https:" && client.params.url.startsWith("wss:")) {
+	// The server URL may be relative to the page (e.g. "/socket")
+	const secure =
+		new URL(client.params.url, location.href).protocol === "wss:" || location.protocol === "https:";
+	if (endpoint.protocol !== "https:" && secure) {
 		throw new Error("Refusing to upload files to an insecure endpoint");
 	}
 

@@ -118,6 +118,17 @@ describe("Client registration", () => {
 		expect(sent).toEqual(["CAP REQ soju.im/bouncer-networks", "BOUNCER BIND 42", "CAP END"]);
 	});
 
+	it("keeps reconnecting when the connection drops during SASL", async () => {
+		const { client, ws } = connect({ saslPlain: { username: "u", password: "p" } });
+		ws.receive(":srv CAP * LS :sasl=PLAIN");
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		ws.serverClose(1006);
+		await flush();
+		expect(client.autoReconnect).toBe(true);
+		expect(client.reconnectTimeoutID).not.toBeNull();
+		client.disconnect();
+	});
+
 	it("binds to a bouncer network only once SASL succeeded", async () => {
 		const { ws } = connect({ bouncerNetwork: "42", saslPlain: { username: "u", password: "p" } });
 		ws.takeSent();
@@ -554,9 +565,20 @@ describe("soju extensions", () => {
 		expect(end.list).toHaveLength(1);
 	});
 
-	it("fetches messages around a msgid", async () => {
-		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
-		const p2 = client.fetchHistoryAround("#c", { msgid: "abc" }, 20);
+	it("fetches messages around a timestamp unless msgids are accepted", async () => {
+		let { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
+		const t = "2020-01-01T00:00:00.000Z";
+		const p1 = client.fetchHistoryAround("#c", { msgid: "abc", time: t }, 20);
+		await flush();
+		expect(ws.takeSent()[0].params).toEqual(["AROUND", "#c", "timestamp=" + t, "20"]);
+		ws.receive(":srv BATCH +a chathistory #c", ":srv BATCH -a");
+		await p1;
+
+		({ client, ws } = register(
+			"batch draft/chathistory",
+			"CHATHISTORY=50 CHANTYPES=# MSGREFTYPES=msgid,timestamp",
+		));
+		const p2 = client.fetchHistoryAround("#c", { msgid: "abc", time: t }, 20);
 		await flush();
 		expect(ws.takeSent()[0].params).toEqual(["AROUND", "#c", "msgid=abc", "20"]);
 		ws.receive(":srv BATCH +b chathistory #c", ":srv BATCH -b");

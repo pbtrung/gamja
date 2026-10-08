@@ -283,8 +283,8 @@ export default class AppController {
 			let saslOauthBearer;
 			try {
 				const state = typeof queryParams.state === "string" ? queryParams.state : undefined;
-				const codeVerifier = oauth2.takePendingAuthorization(state);
-				saslOauthBearer = await this.exchangeOauth2Code(queryParams.code, codeVerifier);
+				const pending = oauth2.takePendingAuthorization(state);
+				saslOauthBearer = await this.exchangeOauth2Code(queryParams.code, pending);
 			} catch (err) {
 				this.showError(err);
 				return;
@@ -326,30 +326,30 @@ export default class AppController {
 			return;
 		}
 
-		await oauth2.redirectAuthorize({
-			serverMetadata,
-			clientId: oauth2Config.client_id,
-			redirectUri: window.location.toString(),
-			scope: oauth2Config.scope,
-		});
+		try {
+			await oauth2.redirectAuthorize({
+				serverMetadata,
+				clientId: oauth2Config.client_id,
+				redirectUri: oauth2.canonicalRedirectURI(window.location.toString()),
+				scope: oauth2Config.scope,
+			});
+		} catch (err) {
+			this.showError(err);
+		}
 	}
 
 	async exchangeOauth2Code(
 		code: string,
-		codeVerifier: string,
+		pending: oauth2.PendingAuthorization,
 	): Promise<{ token: string; username: string | null }> {
 		const oauth2Config = this.config.oauth2!;
 		const serverMetadata = await oauth2.fetchServerMetadata(oauth2Config.url);
 
-		const redirectUri = new URL(window.location.toString());
-		redirectUri.searchParams.delete("code");
-		redirectUri.searchParams.delete("state");
-
 		const data = await oauth2.exchangeCode({
 			serverMetadata,
-			redirectUri: redirectUri.toString(),
+			redirectUri: pending.redirectUri,
 			code,
-			codeVerifier,
+			codeVerifier: pending.codeVerifier,
 			clientId: oauth2Config.client_id,
 			clientSecret: oauth2Config.client_secret,
 		});
@@ -1099,7 +1099,7 @@ export default class AppController {
 	}
 
 	/** Open a buffer and scroll to a message, loading history around it if needed. */
-	async jumpToMessage(serverID: number, target: string, msgid: string): Promise<void> {
+	async jumpToMessage(serverID: number, target: string, msgid: string, time?: string): Promise<void> {
 		const client = this.clients.get(serverID);
 		if (!client) {
 			return;
@@ -1112,7 +1112,7 @@ export default class AppController {
 
 		const loaded = buf.messages.some((m) => m.tags.msgid === msgid);
 		if (!loaded && client.caps.enabled.has("draft/chathistory")) {
-			const messages = await client.fetchHistoryAround(target, { msgid }, 50);
+			const messages = await client.fetchHistoryAround(target, { msgid, time }, 50);
 			for (const msg of messages) {
 				if (msg.command === "TAGMSG") {
 					this.handleTagMessage(serverID, msg);

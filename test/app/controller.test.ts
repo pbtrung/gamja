@@ -52,6 +52,64 @@ describe("AppController configuration", () => {
 	});
 });
 
+describe("AppController OAuth 2.0", () => {
+	const oauth2Config = {
+		server: { auth: "oauth2" as const },
+		oauth2: { url: "https://auth.example", client_id: "gamja" },
+	};
+	const metadata = {
+		issuer: "https://auth.example",
+		authorization_endpoint: "https://auth.example/authorize",
+		token_endpoint: "https://auth.example/token",
+		response_types_supported: ["code"],
+	};
+	const json = (data: unknown) =>
+		new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+
+	it("reports authorization errors", async () => {
+		window.history.replaceState(null, "", "/?error=access_denied&error_description=Nope");
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const app = new AppController();
+		await app.handleConfig(oauth2Config);
+		expect(app.state.error).toBe("Authentication failed: Nope");
+		window.history.replaceState(null, "", "/");
+	});
+
+	it("refuses a code for an authorization it didn't start", async () => {
+		window.history.replaceState(null, "", "/?code=c&state=forged");
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const fetch = vi.fn();
+		vi.stubGlobal("fetch", fetch);
+		const app = new AppController();
+		await app.handleConfig(oauth2Config);
+		expect(app.state.error).toMatch(/doesn't match/);
+		expect(fetch).not.toHaveBeenCalled();
+		// The code is stripped so that reloading doesn't retry it
+		expect(window.location.search).toBe("");
+	});
+
+	it("exchanges the code with the redirect URI and verifier of the request", async () => {
+		installFakeWebSocket();
+		const pending = { state: "s", codeVerifier: "v", redirectUri: "http://localhost:3000/?x=1" };
+		sessionStorage.setItem("gamja_oauth2_pending", JSON.stringify(pending));
+		window.history.replaceState(null, "", "/?x=1&code=c&state=s#/#chan");
+		const fetch = vi.fn(async (url: string, _init?: RequestInit) =>
+			url === metadata.token_endpoint ? json({ access_token: "tok" }) : json(metadata),
+		);
+		vi.stubGlobal("fetch", fetch);
+		const app = new AppController();
+		await app.handleConfig(oauth2Config);
+		const tokenCall = fetch.mock.calls.find(([url]) => url === metadata.token_endpoint)!;
+		const body = new URLSearchParams(tokenCall[1]!.body as string);
+		expect(body.get("code")).toBe("c");
+		expect(body.get("code_verifier")).toBe("v");
+		expect(body.get("redirect_uri")).toBe("http://localhost:3000/?x=1");
+		expect(app.state.connectParams.saslOauthBearer).toMatchObject({ token: "tok" });
+		window.history.replaceState(null, "", "/");
+		app.destroy();
+	});
+});
+
 describe("AppController messaging", () => {
 	it("creates the server buffer and leaves the connect form on registration", async () => {
 		const { app, serverID } = await connectedApp();
@@ -519,10 +577,11 @@ describe("search", () => {
 		expect(buf(app, "#c")!.messages).toHaveLength(0);
 		expect(buf(app, "bob")).toBeUndefined();
 
-		const jump = app.jumpToMessage(serverID, "#c", "a");
+		const jump = app.jumpToMessage(serverID, "#c", "a", "2020-01-01T00:00:00.000Z");
 		await flush();
+		// Like soju, the server only takes timestamps without MSGREFTYPES=msgid
 		const around = sentRaw().find((l) => l.includes("CHATHISTORY"))!;
-		expect(around).toMatch(/CHATHISTORY AROUND #c msgid=a 50$/);
+		expect(around).toMatch(/CHATHISTORY AROUND #c timestamp=2020-01-01T00:00:00.000Z 50$/);
 		const label2 = around.match(/label=(\d+)/)![1];
 		recv(
 			`@label=${label2} :srv BATCH +h chathistory #c`,

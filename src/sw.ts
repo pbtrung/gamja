@@ -48,6 +48,24 @@ export function notificationForMessage(msg: Message): PushNotification | null {
 	}
 }
 
+/**
+ * Buffer read elsewhere, if the message says so: soju pushes MARKREAD when
+ * another client reads a buffer, its notifications are stale then.
+ */
+export function readTarget(msg: Message): string | null {
+	return msg.command === "MARKREAD" && msg.params[0] ? msg.params[0] : null;
+}
+
+async function closeNotifications(target: string): Promise<void> {
+	const lower = target.toLowerCase();
+	for (const notif of await self.registration.getNotifications()) {
+		const notifTarget: unknown = notif.data?.target;
+		if (typeof notifTarget === "string" && notifTarget.toLowerCase() === lower) {
+			notif.close();
+		}
+	}
+}
+
 async function hasFocusedClient(): Promise<boolean> {
 	const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
 	return clients.some((c) => c.focused && c.visibilityState === "visible");
@@ -76,6 +94,13 @@ if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWo
 					console.error("Failed to parse push message:", raw, err);
 					return;
 				}
+				const read = readTarget(msg);
+				if (read) {
+					await closeNotifications(read);
+					return;
+				}
+				// Anything else without a notification, e.g. soju's
+				// "NOTE WEBPUSH REGISTERED", is ignored
 				const notif = notificationForMessage(msg);
 				if (!notif || (await hasFocusedClient())) {
 					// The open page shows its own notifications

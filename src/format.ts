@@ -147,15 +147,11 @@ function matchBuffer(buf: Buffer, server: Server | undefined, query: string): nu
 	let score = 2 * matchString(buf.name, query);
 	switch (buf.type) {
 		case BufferType.CHANNEL:
-			score += matchString(buf.topic || "", query);
+			score += matchString(stripANSI(buf.topic || ""), query);
 			break;
-		case BufferType.NICK: {
-			const user = server?.users.get(buf.name);
-			if (user && user.realname && irc.isMeaningfulRealname(user.realname, buf.name)) {
-				score += matchString(user.realname, query);
-			}
+		case BufferType.NICK:
+			score += matchString(meaningfulRealname(server?.users.get(buf.name), buf.name) ?? "", query);
 			break;
-		}
 	}
 	return score;
 }

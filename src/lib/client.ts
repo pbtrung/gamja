@@ -836,8 +836,7 @@ export default class Client extends EventTarget {
 			wantCaps.push("draft/event-playback");
 		}
 
-		const msg = this.caps.requestAvailable(wantCaps);
-		if (msg) {
+		for (const msg of this.caps.requestAvailable(wantCaps)) {
 			this.send(msg);
 		}
 	}
@@ -867,13 +866,20 @@ export default class Client extends EventTarget {
 					// Only end registration once SASL is done: servers abort
 					// authentication still in progress on CAP END, and soju
 					// requires it before BOUNCER BIND
+					// Ignore the outcome if the connection changed meanwhile: a
+					// dropped socket must keep reconnecting, and a newer one
+					// mustn't be closed
+					const ws = this.ws;
 					this.authenticateFromParams().then(
 						() => {
-							if (this.ws) {
+							if (this.ws === ws) {
 								this.endRegistration();
 							}
 						},
 						(err) => {
+							if (this.ws !== ws) {
+								return;
+							}
 							this.dispatchError(err);
 							this.disconnect();
 						},
@@ -1141,21 +1147,28 @@ export default class Client extends EventTarget {
 	/* Fetch history in ascending order. */
 	async fetchHistoryBetween(
 		target: string,
-		after: { time: string },
+		after: { time: string; msgid?: string },
 		before: { time: string },
 		limit: number,
 	): Promise<{ messages: Message[] }> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		const params = ["BETWEEN", target, "timestamp=" + after.time, "timestamp=" + before.time, max];
+		const from = after.msgid ? "msgid=" + after.msgid : "timestamp=" + after.time;
+		const params = ["BETWEEN", target, from, "timestamp=" + before.time, max];
 		const messages = await this.roundtripChatHistory(params);
-		limit -= messages.length;
-		if (limit <= 0) {
-			throw new Error("Cannot fetch all chat history: too many messages");
-		}
 		if (max > 0 && messages.length >= max) {
 			// There are still more messages to fetch
-			after = { ...after, time: messages[messages.length - 1].tags.time! };
-			const rest = await this.fetchHistoryBetween(target, after, before, limit);
+			limit -= messages.length;
+			if (limit <= 0) {
+				throw new Error("Cannot fetch all chat history: too many messages");
+			}
+			// Bounds are exclusive: continue from the last message's ID if the
+			// server accepts it, timestamps would skip messages sharing one
+			const last = messages[messages.length - 1];
+			const next =
+				last.tags.msgid && this.isupport.msgRefTypes().includes("msgid")
+					? { msgid: last.tags.msgid, time: last.tags.time! }
+					: { time: last.tags.time! };
+			const rest = await this.fetchHistoryBetween(target, next, before, limit);
 			return { messages: [...messages, ...rest.messages] };
 		}
 		return { messages };
@@ -1293,7 +1306,9 @@ export default class Client extends EventTarget {
 		limit: number,
 	): Promise<Message[]> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		const ref = bound.msgid ? "msgid=" + bound.msgid : "timestamp=" + bound.time;
+		// soju only accepts timestamps (MSGREFTYPES=timestamp)
+		const useMsgid = bound.msgid && (!bound.time || this.isupport.msgRefTypes().includes("msgid"));
+		const ref = useMsgid ? "msgid=" + bound.msgid : "timestamp=" + bound.time;
 		return this.roundtripChatHistory(["AROUND", target, ref, max]);
 	}
 

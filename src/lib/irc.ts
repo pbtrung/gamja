@@ -277,7 +277,14 @@ export function parseMessage(s: string): Message {
 	return msg;
 }
 
+/** Characters that would end the line or the string early on the wire */
+const unsafeLineChars = /[\r\n\0]/;
+
 export function formatMessage(msg: OutgoingMessage): string {
+	// Refuse rather than let a crafted value inject another command
+	if (unsafeLineChars.test(msg.command) || msg.params?.some((p) => unsafeLineChars.test(String(p)))) {
+		throw new Error("IRC message contains a line break or NUL character");
+	}
 	let s = "";
 	if (msg.tags && Object.keys(msg.tags).length > 0) {
 		s += "@" + formatTags(msg.tags) + " ";
@@ -529,6 +536,13 @@ export class Isupport {
 
 	network(): string | undefined {
 		return this.raw.get("NETWORK");
+	}
+
+	/** Message reference types accepted by CHATHISTORY, e.g. "timestamp" or "msgid" */
+	msgRefTypes(): string[] {
+		const v = this.raw.get("MSGREFTYPES");
+		// Without the token, only timestamps are safe to assume
+		return v ? v.split(",") : ["timestamp"];
 	}
 
 	chatHistory(): number {
@@ -912,6 +926,10 @@ export function parseURL(str: string): IRCURL | null {
 	} catch (_err) {
 		return null; // Invalid percent-encoding
 	}
+	// eslint-disable-next-line no-control-regex
+	if (/[\x00-\x1f\x7f]/.test(entity)) {
+		return null; // Control characters can't appear in a channel or nick
+	}
 	if (!enttype) {
 		// TODO: technically we should use the PREFIX ISUPPORT here
 		enttype = entity.startsWith("#") ? "channel" : "user";
@@ -988,19 +1006,41 @@ export class CapRegistry {
 		}
 	}
 
-	requestAvailable(l: string[]): OutgoingMessage | null {
+	/**
+	 * CAP REQ messages for the available caps not enabled yet. A REQ is all or
+	 * nothing: sasl gets its own so that another rejected cap can't take it
+	 * down, and long lists are split to stay well below the line length.
+	 */
+	requestAvailable(l: string[]): OutgoingMessage[] {
 		l = l.filter((cap) => {
 			return this.available.has(cap) && !this.enabled.has(cap);
 		});
 
-		if (l.length === 0) {
-			return null;
+		const groups: string[][] = [];
+		if (l.includes("sasl")) {
+			groups.push(["sasl"]);
+			l = l.filter((cap) => cap !== "sasl");
 		}
-		return { command: "CAP", params: ["REQ", l.join(" ")] };
+		let group: string[] = [];
+		let len = 0;
+		for (const cap of l) {
+			if (group.length > 0 && len + cap.length + 1 > maxCapReqLength) {
+				groups.push(group);
+				group = [];
+				len = 0;
+			}
+			group.push(cap);
+			len += cap.length + 1;
+		}
+		if (group.length > 0) {
+			groups.push(group);
+		}
+		return groups.map((caps) => ({ command: "CAP", params: ["REQ", caps.join(" ")] }));
 	}
 }
 
 const maxSASLLength = 400;
+const maxCapReqLength = 400;
 
 export function generateAuthenticateMessages(payload: string): OutgoingMessage[] {
 	const encoded = base64.encode(payload);
