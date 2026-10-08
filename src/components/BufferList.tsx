@@ -114,7 +114,7 @@ const BufferItem = memo(function BufferItem({
 	}
 
 	return (
-		<li className={classes.join(" ")}>
+		<li className={classes.join(" ")} role="presentation">
 			<a
 				href={getBufferURL(buffer, bouncerNetwork)}
 				title={title}

@@ -510,15 +510,20 @@ const LogLine = memo(
 			case irc.RPL_MONOFFLINE:
 				content = <>{createNick(buf.name)} is offline</>;
 				break;
-			default:
+			default: {
+				const isNumeric = /^\d{3}$/.test(msg.command);
 				if (irc.isError(msg.command) && msg.command !== irc.ERR_NOMOTD) {
 					lineClass = "error";
 				}
+				// Numeric replies start with our nick, which isn't worth showing
+				const text = isNumeric ? msg.params.slice(1).join(" ") : msg.params.join(" ");
 				content = (
 					<>
-						{msg.command} <RichText text={msg.params.join(" ")} onLinkClick={onChannelClick} />
+						{isNumeric ? null : msg.command + " "}
+						<RichText text={text} onLinkClick={onChannelClick} />
 					</>
 				);
+			}
 		}
 
 		if (!content) {
@@ -569,7 +574,6 @@ const LogLine = memo(
 					className={`logline comfortable ${lineClass} ${isGroupedChat ? "group-" + group : "event"}`}
 					data-key={msg.key}
 					data-msgid={msgid ?? undefined}
-					role="listitem"
 				>
 					<div className="logline-gutter">
 						{isGroupedChat && group === "first" ? (
@@ -596,12 +600,7 @@ const LogLine = memo(
 		}
 
 		return (
-			<div
-				className={`logline ${lineClass}`}
-				data-key={msg.key}
-				data-msgid={msgid ?? undefined}
-				role="listitem"
-			>
+			<div className={`logline ${lineClass}`} data-key={msg.key} data-msgid={msgid ?? undefined}>
 				{quote}
 				<Timestamp date={date} url={url} showSeconds={showSeconds} />{" "}
 				<span className="logline-content">{content}</span>
@@ -715,7 +714,7 @@ function FoldGroup({ messages: msgs, ctx }: { messages: Message[]; ctx: Context 
 
 	if (ctx.settings.layout === "comfortable") {
 		return (
-			<div className="logline comfortable event fold-group" data-key={msgs[0].key} role="listitem">
+			<div className="logline comfortable event fold-group" data-key={msgs[0].key}>
 				<div className="logline-gutter">
 					<Timestamp
 						date={firstDate}
@@ -731,7 +730,7 @@ function FoldGroup({ messages: msgs, ctx }: { messages: Message[]; ctx: Context 
 	}
 
 	return (
-		<div className="logline fold-group" data-key={msgs[0].key} role="listitem">
+		<div className="logline fold-group" data-key={msgs[0].key}>
 			{timestamp} <span className="logline-content">{content}</span>
 		</div>
 	);
@@ -755,7 +754,7 @@ function NotificationNagger({ showSeconds }: { showSeconds: boolean }) {
 	}
 
 	return (
-		<div className="logline nag" role="listitem">
+		<div className="logline nag">
 			<Timestamp showSeconds={showSeconds} />{" "}
 			<span className="logline-content">
 				<a href="#" onClick={handleClick}>
@@ -788,7 +787,7 @@ function ProtocolHandlerNagger({
 	}
 
 	return (
-		<div className="logline nag" role="listitem">
+		<div className="logline nag">
 			<Timestamp showSeconds={showSeconds} />{" "}
 			<span className="logline-content">
 				<a href="#" onClick={handleClick}>
@@ -814,7 +813,7 @@ function AccountNagger({ ctx }: { ctx: Context }) {
 	}
 
 	return (
-		<div className="logline nag" role="listitem">
+		<div className="logline nag">
 			<Timestamp showSeconds={ctx.settings.secondsInTimestamps} />{" "}
 			<span className="logline-content">
 				You are unauthenticated on this server,{" "}
@@ -1054,11 +1053,7 @@ function MessageList(props: MessageListProps) {
 	}
 	children.push(createFoldGroup(foldMessages));
 
-	return (
-		<div className="logline-list" role="list">
-			{children}
-		</div>
-	);
+	return <div className="logline-list">{children}</div>;
 }
 
 export default MessageList;

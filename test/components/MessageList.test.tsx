@@ -267,8 +267,8 @@ describe("MessageList", () => {
 				buffer: { type: BufferType.SERVER, name: "*" },
 			},
 		);
-		expect(container.querySelector(".error")).toHaveTextContent("433 me nick Nickname is already in use");
-		expect(container).toHaveTextContent("999 me custom");
+		expect(container.querySelector(".error")).toHaveTextContent("nick Nickname is already in use");
+		expect(lines(container)).toEqual(["nick Nickname is already in use", "custom"]);
 	});
 
 	it("renders channel renames and standard replies", () => {

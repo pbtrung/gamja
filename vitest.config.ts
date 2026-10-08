@@ -13,6 +13,13 @@ export default defineConfig({
 			include: ["src/**/*.{ts,tsx}"],
 			exclude: ["src/main.tsx"],
 			reporter: ["text-summary", "html"],
+			// Keep coverage from regressing
+			thresholds: {
+				statements: 80,
+				branches: 72,
+				functions: 78,
+				lines: 80,
+			},
 		},
 	},
 });

@@ -42,6 +42,11 @@ describe("themes", () => {
 		expect(getTheme(undefined).id).toBe("system");
 	});
 
+	it("keeps layout tokens separate from colors", () => {
+		expect(layoutTokens).toHaveProperty("--radius");
+		expect(layoutTokens).not.toHaveProperty("--bg");
+	});
+
 	it("includes the requested themes", () => {
 		const names = THEMES.map((t) => t.name);
 		for (const name of [
@@ -56,7 +61,8 @@ describe("themes", () => {
 		}
 	});
 
-	const lightTokens = tokens(":root", tokensCSS);
+	const lightTokens = tokens(':root,\n:root[data-theme="light"]');
+	const layoutTokens = tokens(":root", tokensCSS);
 	const required = Object.keys(lightTokens).filter(
 		(k) =>
 			k !== "--font-sans" &&
@@ -81,15 +87,18 @@ describe("themes", () => {
 			});
 
 			it("has a matching preview swatch", () => {
-				expect(theme.swatch[0]).toBe(t["--bg"]);
+				expect(theme.swatch).toEqual([t["--bg"], t["--fg"], t["--accent"]]);
 			});
 
 			it("has readable text", () => {
 				expect(contrast(t["--fg"], t["--bg"])).toBeGreaterThanOrEqual(4.5);
-				expect(contrast(t["--fg-muted"], t["--bg"])).toBeGreaterThanOrEqual(4);
+				expect(contrast(t["--fg-muted"], t["--bg"])).toBeGreaterThanOrEqual(4.5);
 				expect(contrast(t["--accent"], t["--bg"])).toBeGreaterThanOrEqual(4.5);
 				expect(contrast(t["--accent-fg"], t["--accent"])).toBeGreaterThanOrEqual(4.5);
-				expect(contrast(t["--danger-fg"], t["--bg"])).toBeGreaterThanOrEqual(4);
+				expect(contrast(t["--danger-fg"], t["--bg"])).toBeGreaterThanOrEqual(4.5);
+				for (let i = 1; i <= 16; i++) {
+					expect(contrast(t[`--nick-${i}`], t["--bg"]), `--nick-${i}`).toBeGreaterThanOrEqual(4.5);
+				}
 			});
 		});
 	}

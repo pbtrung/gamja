@@ -10,19 +10,19 @@ export interface Theme {
 export const THEMES: Theme[] = [
 	{ id: "system", name: "System", scheme: "system", swatch: ["#ffffff", "#16181d", "#3b5bdb"] },
 	{ id: "light", name: "Light", scheme: "light", swatch: ["#ffffff", "#1f2328", "#3b5bdb"] },
-	{ id: "dark", name: "Dark", scheme: "dark", swatch: ["#16181d", "#dfe3e8", "#748ffc"] },
-	{ id: "dracula", name: "Dracula", scheme: "dark", swatch: ["#282a36", "#f8f8f2", "#bd93f9"] },
+	{ id: "dark", name: "Dark", scheme: "dark", swatch: ["#16181d", "#dfe3e8", "#829afc"] },
+	{ id: "dracula", name: "Dracula", scheme: "dark", swatch: ["#282a36", "#f8f8f2", "#ceaefa"] },
 	{
 		id: "catppuccin-latte",
 		name: "Catppuccin Latte",
 		scheme: "light",
-		swatch: ["#eff1f5", "#4c4f69", "#8839ef"],
+		swatch: ["#eff1f5", "#4c4f69", "#7a33d7"],
 	},
 	{
 		id: "catppuccin-frappe",
 		name: "Catppuccin Frappé",
 		scheme: "dark",
-		swatch: ["#303446", "#c6d0f5", "#ca9ee6"],
+		swatch: ["#303446", "#c6d0f5", "#d5b1eb"],
 	},
 	{
 		id: "catppuccin-macchiato",
@@ -40,15 +40,15 @@ export const THEMES: Theme[] = [
 		id: "solarized-light",
 		name: "Solarized Light",
 		scheme: "light",
-		swatch: ["#fdf6e3", "#657b83", "#268bd2"],
+		swatch: ["#fdf6e3", "#51666c", "#1967a4"],
 	},
 	{
 		id: "solarized-dark",
 		name: "Solarized Dark",
 		scheme: "dark",
-		swatch: ["#002b36", "#839496", "#268bd2"],
+		swatch: ["#002b36", "#92a1a3", "#53a5e2"],
 	},
-	{ id: "zenburn", name: "Zenburn", scheme: "dark", swatch: ["#3f3f3f", "#dcdccc", "#8cd0d3"] },
+	{ id: "zenburn", name: "Zenburn", scheme: "dark", swatch: ["#3f3f3f", "#dcdccc", "#a3d9dc"] },
 ];
 
 export type ThemeID = string;

@@ -57,7 +57,7 @@ describe("SwitcherForm", () => {
 				onSubmit={onSubmit}
 			/>,
 		);
-		await userEvent.click(screen.getByText("#alpha"));
+		await userEvent.click(screen.getByRole("option", { name: /#alpha/ }));
 		expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "#alpha" }));
 		await userEvent.type(screen.getByRole("combobox"), "zzz");
 		expect(screen.getByText("No matching buffers")).toBeInTheDocument();

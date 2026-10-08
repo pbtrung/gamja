@@ -265,9 +265,14 @@ export class FakeServer {
 		});
 	}
 
+	/** In bouncer mode, connections not bound to a network only manage networks. */
+	isRoot(c: Conn): boolean {
+		return Boolean(this.opts.bouncer) && !c.bouncerNetwork;
+	}
+
 	findConn(nick: string): Conn | undefined {
 		for (const c of this.conns) {
-			if (c.registered && cm(c.nick) === cm(nick) && !c.bouncerNetwork?.startsWith("root")) {
+			if (c.registered && cm(c.nick) === cm(nick) && !this.isRoot(c)) {
 				return c;
 			}
 		}
@@ -275,7 +280,7 @@ export class FakeServer {
 	}
 
 	connsFor(nick: string): Conn[] {
-		return [...this.conns].filter((c) => c.registered && cm(c.nick) === cm(nick));
+		return [...this.conns].filter((c) => c.registered && cm(c.nick) === cm(nick) && !this.isRoot(c));
 	}
 
 	caps(): string[] {
@@ -306,7 +311,8 @@ export class FakeServer {
 			case "NICK": {
 				const nick = msg.params[0];
 				if (!conn.registered) {
-					if (this.findConn(nick)) {
+					// A bouncer lets several clients share a nick
+					if (!this.opts.bouncer && this.findConn(nick)) {
 						conn.send({
 							tags: {},
 							command: "433",
@@ -653,6 +659,35 @@ export class FakeServer {
 				reply({ command: "BOUNCER", params: ["ADDNETWORK", id] });
 				break;
 			}
+			case "CHANGENETWORK": {
+				const id = msg.params[1];
+				const attrs = this.networks.get(id);
+				if (!attrs) {
+					reply({
+						command: "FAIL",
+						params: ["BOUNCER", "INVALID_NETID", "CHANGENETWORK", id, "Unknown network"],
+					});
+					break;
+				}
+				const changes = Object.fromEntries(
+					msg.params[2].split(";").map((kv) => {
+						const [k, v] = kv.split("=");
+						return [k, unescapeTag(v ?? "")];
+					}),
+				);
+				Object.assign(attrs, changes);
+				for (const c of this.conns) {
+					if (c.caps.has("soju.im/bouncer-networks-notify")) {
+						c.send({
+							tags: {},
+							command: "BOUNCER",
+							params: ["NETWORK", id, this.formatAttrs(changes)],
+						});
+					}
+				}
+				reply({ command: "BOUNCER", params: ["CHANGENETWORK", id] });
+				break;
+			}
 			case "DELNETWORK":
 				this.networks.delete(msg.params[1]);
 				for (const c of this.conns) {
@@ -685,7 +720,11 @@ export class FakeServer {
 			"MONITOR=100",
 			"WHOX",
 			"BOT=B",
-			`NETWORK=${NETWORK}`,
+			...(this.isRoot(conn)
+				? []
+				: [
+						`NETWORK=${(conn.bouncerNetwork && this.networks.get(conn.bouncerNetwork)?.name) || NETWORK}`,
+					]),
 			"LINELEN=512",
 			"STATUSMSG=@+",
 			// A valid P-256 public key, push messages are never actually sent
@@ -705,6 +744,19 @@ export class FakeServer {
 		conn.numeric("375", `- ${SERVER_NAME} Message of the day -`);
 		conn.numeric("372", "- Welcome to the fake IRC server");
 		conn.numeric("376", "End of /MOTD command");
+
+		if (this.isRoot(conn) && conn.caps.has("soju.im/bouncer-networks-notify")) {
+			const ref = "nets" + ++msgidCounter;
+			conn.send({ tags: {}, command: "BATCH", params: ["+" + ref, "soju.im/bouncer-networks"] });
+			for (const [id, attrs] of this.networks) {
+				conn.send({
+					tags: { batch: ref },
+					command: "BOUNCER",
+					params: ["NETWORK", id, this.formatAttrs(attrs)],
+				});
+			}
+			conn.send({ tags: {}, command: "BATCH", params: ["-" + ref] });
+		}
 
 		// Notify monitors
 		for (const c of this.conns) {

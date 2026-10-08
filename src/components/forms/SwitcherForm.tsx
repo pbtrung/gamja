@@ -90,21 +90,14 @@ export default function SwitcherForm({ buffers, servers, bouncerNetworks, onSubm
 							id={`switcher-item-${buf.id}`}
 							role="option"
 							aria-selected={selected === i}
+							className={selected === i ? "active" : undefined}
+							title={getBufferURL(buf, bouncerNetwork)}
+							onClick={() => onSubmit(buf)}
+							onMouseMove={() => setSelected(i)}
 						>
-							<a
-								href={getBufferURL(buf, bouncerNetwork)}
-								className={selected === i ? "active" : undefined}
-								onClick={(event) => {
-									event.preventDefault();
-									onSubmit(buf);
-								}}
-							>
-								<Icon aria-hidden="true" />
-								<span className="switcher-name">{buf.name}</span>
-								<span className="switcher-server">
-									{getServerName(server, bouncerNetwork)}
-								</span>
-							</a>
+							<Icon aria-hidden="true" />
+							<span className="switcher-name">{buf.name}</span>
+							<span className="switcher-server">{getServerName(server, bouncerNetwork)}</span>
 						</li>
 					);
 				})}

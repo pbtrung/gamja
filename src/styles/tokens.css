@@ -1,7 +1,7 @@
 /*
  * Design tokens. Every color used by the UI comes from these variables, so
- * that a theme only needs to redefine them (see themes.css). The values
- * below are the default light theme.
+ * that a theme only needs to redefine them. Colors are defined per theme in
+ * themes.css.
  */
 
 :root {
@@ -19,60 +19,4 @@
 	--chat-font-size: 0.9375rem;
 
 	--transition: 0.12s ease-in-out;
-
-	/* Light theme */
-	color-scheme: light;
-	--bg: #ffffff;
-	--bg-sidebar: #f6f7f9;
-	--bg-elevated: #ffffff;
-	--bg-subtle: #f1f3f5;
-	--bg-hover: rgb(15 23 42 / 0.05);
-	--bg-active: rgb(59 91 219 / 0.12);
-	--fg: #1f2328;
-	--fg-emphasis: #0b0d10;
-	--fg-muted: #59636e;
-	--fg-subtle: #8a939d;
-	--fg-active: #2f4ac0;
-	--border: #e3e6ea;
-	--border-strong: #cdd2d8;
-	--accent: #3b5bdb;
-	--accent-hover: #2f4ac0;
-	--accent-fg: #ffffff;
-	--accent-soft: rgb(59 91 219 / 0.12);
-	--focus-ring: rgb(59 91 219 / 0.35);
-	--danger: #d6336c;
-	--danger-fg: #b02a5b;
-	--danger-soft: rgb(214 51 108 / 0.1);
-	--warning: #e8a317;
-	--warning-fg: #8a5a00;
-	--warning-soft: rgb(232 163 23 / 0.14);
-	--success: #2f9e44;
-	--info-fg: #1c5d8c;
-	--info-soft: rgb(34 139 230 / 0.1);
-	--highlight-bg: rgb(232 163 23 / 0.1);
-	--highlight-border: #e8a317;
-	--mention-bg: rgb(232 163 23 / 0.25);
-	--mention-fg: #6b4500;
-	--shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
-	--shadow-lg: 0 12px 32px rgb(15 23 42 / 0.16), 0 2px 6px rgb(15 23 42 / 0.08);
-	--backdrop: rgb(15 23 42 / 0.45);
-	--avatar-fg: #ffffff;
-	--scrollbar: rgb(15 23 42 / 0.2);
-
-	--nick-1: #d9540b;
-	--nick-2: #c92f0f;
-	--nick-3: #b9640a;
-	--nick-4: #807500;
-	--nick-5: #5e8a1f;
-	--nick-6: #3a8a34;
-	--nick-7: #287e52;
-	--nick-8: #117873;
-	--nick-9: #0077a0;
-	--nick-10: #2a6596;
-	--nick-11: #385189;
-	--nick-12: #4f4a8c;
-	--nick-13: #6a4589;
-	--nick-14: #8a3f8a;
-	--nick-15: #c0226a;
-	--nick-16: #c81f35;
 }
