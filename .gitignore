@@ -2,3 +2,7 @@ node_modules
 /config.json
 
 /dist
+
+/playwright-report
+/test-results
+/coverage

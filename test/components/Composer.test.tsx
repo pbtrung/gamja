@@ -1,0 +1,96 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import Composer from "../../src/components/Composer";
+import { computeAutocomplete } from "../../src/lib/autocomplete";
+
+function setup(props: Partial<Parameters<typeof Composer>[0]> = {}) {
+	const onSubmit = vi.fn();
+	const utils = render(
+		<Composer
+			client={null}
+			readOnly={false}
+			commandOnly={false}
+			onSubmit={onSubmit}
+			onError={() => {}}
+			autocomplete={(prefix) => ["alice", "albert", "bob"].filter((n) => n.startsWith(prefix))}
+			{...props}
+		/>,
+	);
+	return { ...utils, onSubmit, input: screen.getByRole("textbox") as HTMLTextAreaElement };
+}
+
+describe("Composer", () => {
+	it("submits with Enter and clears", async () => {
+		const { input, onSubmit } = setup();
+		expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+		await userEvent.type(input, "hello{Enter}");
+		expect(onSubmit).toHaveBeenCalledWith("hello");
+		expect(input).toHaveValue("");
+	});
+
+	it("submits with the send button", async () => {
+		const { input, onSubmit } = setup();
+		await userEvent.type(input, "hi");
+		await userEvent.click(screen.getByRole("button", { name: "Send" }));
+		expect(onSubmit).toHaveBeenCalledWith("hi");
+	});
+
+	it("tab-completes nicks and cycles", async () => {
+		const { input } = setup();
+		await userEvent.type(input, "al");
+		await userEvent.keyboard("{Tab}");
+		expect(input).toHaveValue("alice: ");
+		await userEvent.keyboard("{Tab}");
+		expect(input).toHaveValue("albert: ");
+		await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+		expect(input).toHaveValue("alice: ");
+	});
+
+	it("starts typing from anywhere on the page", async () => {
+		const { input } = setup();
+		input.blur();
+		await userEvent.keyboard("x");
+		expect(input).toHaveFocus();
+		expect(input).toHaveValue("x");
+	});
+
+	it("only accepts commands in command-only mode", async () => {
+		const { input } = setup({ commandOnly: true });
+		input.blur();
+		await userEvent.keyboard("x");
+		expect(input).toHaveValue("");
+		expect(input).toHaveAttribute("placeholder", "Type a command (see /help)");
+	});
+
+	it("flags messages that are too long", async () => {
+		const { input } = setup({ maxLen: 3 });
+		await userEvent.type(input, "abcd");
+		expect(input).toHaveAttribute("aria-invalid", "true");
+		expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+	});
+
+	it("hides when read-only and empty", () => {
+		const { container } = setup({ readOnly: true });
+		expect(container.querySelector("#composer")).toHaveClass("read-only");
+	});
+});
+
+describe("computeAutocomplete", () => {
+	const complete = (prefix: string) => ["/join", "#chan", "bob"].filter((x) => x.startsWith(prefix));
+
+	it("completes words in the middle of text", () => {
+		const ac = computeAutocomplete("hi b there", 4, null, false, complete)!;
+		expect(ac.text).toBe("hi bob there");
+		expect(ac.caretPos).toBe(6);
+	});
+
+	it("adds a space after commands", () => {
+		expect(computeAutocomplete("/jo", 3, null, false, complete)!.text).toBe("/join ");
+	});
+
+	it("returns null without matches", () => {
+		expect(computeAutocomplete("zz", 2, null, false, complete)).toBeNull();
+		expect(computeAutocomplete("a ", 2, null, false, complete)).toBeNull();
+	});
+});

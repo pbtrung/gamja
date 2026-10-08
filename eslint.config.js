@@ -31,7 +31,7 @@ export default defineConfig([
 			"no-implied-eval": "error",
 			eqeqeq: "error",
 			"no-extend-native": "error",
-			"prefer-arrow-callback": "error",
+			"prefer-arrow-callback": ["error", { allowNamedFunctions: true }],
 			"no-throw-literal": "error",
 			"object-shorthand": "warn",
 			curly: "warn",

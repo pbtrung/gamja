@@ -16,7 +16,8 @@
 		"noFallthroughCasesInSwitch": false,
 		"noImplicitOverride": true,
 		"skipLibCheck": true,
-		"types": ["vite/client", "vitest/globals"]
+		"allowImportingTsExtensions": true,
+		"types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest"]
 	},
-	"include": ["src", "test", "vite.config.ts", "vitest.config.ts", "tools"]
+	"include": ["src", "test", "e2e", "vite.config.ts", "vitest.config.ts", "playwright.config.ts", "tools"]
 }

@@ -3,16 +3,25 @@
 	"type": "module",
 	"dependencies": {
 		"@fontsource-variable/inter": "^5.3.0",
-		"bootstrap": "^5.3.8",
-		"htm": "^3.1.1",
 		"linkifyjs": "^4.3.3",
-		"lucide": "^1.52.0",
-		"preact": "^11.0.0"
+		"lucide-react": "^1.52.0",
+		"react": "^19.3.0",
+		"react-dom": "^19.3.0",
+		"zustand": "^5.0.15"
 	},
 	"devDependencies": {
 		"@eslint/css": "^2.0.0",
 		"@eslint/js": "^10.0.1",
+		"@playwright/test": "^1.64.0",
+		"@testing-library/dom": "^10.4.2",
+		"@testing-library/jest-dom": "^7.0.1",
+		"@testing-library/react": "^16.3.3",
+		"@testing-library/user-event": "^14.6.7",
 		"@types/node": "^26.6.4",
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"@types/ws": "^8.18.2",
+		"@vitejs/plugin-react": "^6.1.2",
 		"@vitest/coverage-v8": "^5.0.3",
 		"eslint": "^10.12.0",
 		"eslint-config-prettier": "^10.1.8",
@@ -41,7 +50,8 @@
 		"test:watch": "vitest",
 		"coverage": "vitest run --coverage",
 		"check": "npm run typecheck && npm run lint -- --max-warnings 0 && npm run format:check && npm test",
-		"clean": "rm -rf dist coverage"
+		"clean": "rm -rf dist coverage",
+		"e2e": "playwright test"
 	},
 	"private": true,
 	"engines": {
