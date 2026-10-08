@@ -1128,6 +1128,22 @@ export default class AppController {
 			.slice(0, 100);
 	}
 
+	/**
+	 * Detach a channel on soju: the bouncer stays in it and keeps logging,
+	 * but it's hidden from clients until joined again.
+	 */
+	async detachChannel(id: BufferID): Promise<void> {
+		const buf = S.getBuffer(this.state, id);
+		const client = buf ? this.clients.get(buf.server) : undefined;
+		if (!buf || !client || buf.type !== BufferType.CHANNEL) {
+			throw new Error("Not in a channel");
+		}
+		if (!client.isupport.bouncerNetID()) {
+			throw new Error("Detaching channels requires the soju bouncer");
+		}
+		await client.sendServiceCommand(`channel update ${buf.name} -detached true`);
+	}
+
 	/** Open a buffer and scroll to a message, loading history around it if needed. */
 	async jumpToMessage(serverID: number, target: string, msgid: string, time?: string): Promise<void> {
 		const client = this.clients.get(serverID);

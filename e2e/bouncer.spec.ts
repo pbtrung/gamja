@@ -47,3 +47,18 @@ test("lists, adds, edits and removes bouncer networks", async ({ page, connect, 
 	await expect(tabs.getByRole("tab", { name: "Example" })).toHaveCount(0);
 	await expect(tabs.getByRole("tab", { name: "FakeNet" })).toBeVisible();
 });
+
+test("detaches a channel without leaving it", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#detach");
+	await connect(page, "alice", { password: "secret" });
+	const tabs = page.getByRole("tablist", { name: "Buffer list" });
+	await tabs.getByRole("tab", { name: "FakeNet" }).click();
+	await page.getByRole("textbox", { name: /Type a command/ }).fill("/join #detach");
+	await page.keyboard.press("Enter");
+	await expect(page.locator("#buffer-header h1")).toHaveText("#detach");
+	await page.getByRole("button", { name: "Detach" }).click();
+	// The buffer stays, no longer joined, and no BouncerServ query opens
+	await expect(page.getByRole("button", { name: "Join", exact: true })).toBeVisible();
+	await expect(tabs.getByRole("tab", { name: "BouncerServ" })).toHaveCount(0);
+});

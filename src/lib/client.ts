@@ -253,6 +253,8 @@ export default class Client extends EventTarget {
 	monitored = new irc.CaseMapMap<boolean>(null, irc.CaseMapping.RFC1459);
 	pendingLists = new irc.CaseMapMap<Message[]>(null, irc.CaseMapping.RFC1459);
 	whoxQueries = new Map<string, string>();
+	/** Message handlers of pending roundtrips */
+	roundtripHandlers = new Set<(msg: Message) => void>();
 
 	constructor(params: Partial<ClientParams> & { url: string }) {
 		super();
@@ -610,6 +612,12 @@ export default class Client extends EventTarget {
 				break;
 		}
 
+		// Pending roundtrips first: they may mark the message as internal. A
+		// capture listener wouldn't do: browsers call the listeners of a plain
+		// EventTarget in the order they were added.
+		for (const handler of [...this.roundtripHandlers]) {
+			handler(msg);
+		}
 		this.dispatchEvent(
 			new CustomEvent<MessageEventDetail>("message", {
 				detail: { message: msg, batch: msgBatch },
@@ -975,9 +983,7 @@ export default class Client extends EventTarget {
 		}
 
 		return new Promise((resolve, reject) => {
-			const handleMessage = (event: Event) => {
-				const msg = (event as CustomEvent<MessageEventDetail>).detail.message;
-
+			const handleMessage = (msg: Message) => {
 				const msgLabel = irc.getMessageLabel(msg);
 				if (msgLabel && msgLabel !== label) {
 					return;
@@ -1033,13 +1039,13 @@ export default class Client extends EventTarget {
 			};
 
 			const removeEventListeners = () => {
-				this.removeEventListener("message", handleMessage, { capture: true });
+				this.roundtripHandlers.delete(handleMessage);
 				this.removeEventListener("status", handleStatus);
 			};
 
-			// Turn on capture to handle messages before external users and
-			// have the opportunity to set the "internal" flag
-			this.addEventListener("message", handleMessage, { capture: true });
+			// Handled before "message" listeners, to have the opportunity to
+			// set the "internal" flag
+			this.roundtripHandlers.add(handleMessage);
 			this.addEventListener("status", handleStatus);
 			try {
 				this.send(msg);
@@ -1228,6 +1234,35 @@ export default class Client extends EventTarget {
 		return this.roundtrip(msg, (msg) => {
 			if (msg.command === "BOUNCER" && msg.params[0] === "ADDNETWORK") {
 				return msg.params[1];
+			}
+		});
+	}
+
+	/**
+	 * Send a command to soju's BouncerServ and return its reply. The exchange
+	 * is marked internal so that it doesn't open a BouncerServ buffer.
+	 */
+	sendServiceCommand(text: string): Promise<string> {
+		const service = "BouncerServ";
+		const msg = { command: "PRIVMSG", params: [service, text] };
+		return this.roundtrip(msg, (msg) => {
+			if (msg.command !== "PRIVMSG" && msg.command !== "NOTICE") {
+				return;
+			}
+			const from = msg.prefix?.name ?? "";
+			const isEcho = this.isMyNick(from) && this.cm(msg.params[0]) === this.cm(service);
+			const isReply = this.cm(from) === this.cm(service) && this.isMyNick(msg.params[0]);
+			if (!isEcho && !isReply) {
+				return;
+			}
+			// Part of this exchange, not a conversation to show
+			msg.internal = true;
+			if (isReply) {
+				const reply = msg.params[1] ?? "";
+				if (/^error\b/i.test(reply)) {
+					throw new Error(reply);
+				}
+				return reply;
 			}
 		});
 	}

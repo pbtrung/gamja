@@ -8,6 +8,7 @@ import {
 	Search,
 	Settings,
 	SlidersHorizontal,
+	Unplug,
 	Users,
 	X,
 	type LucideIcon,
@@ -98,6 +99,8 @@ export interface BufferHeaderProps {
 	unreadElsewhere: Unread;
 	onChannelClick: LinkClickHandler;
 	onClose: () => void;
+	/** Hide the channel without leaving it, on soju networks */
+	onDetach?: () => void;
 	onJoin: () => void;
 	onReconnect: () => void;
 	onAddNetwork: () => void;
@@ -218,6 +221,11 @@ export default function BufferHeader(props: BufferHeaderProps) {
 				description = <RichText text={buffer.topic} onLinkClick={props.onChannelClick} />;
 			}
 			if (buffer.joined) {
+				if (props.onDetach) {
+					actions.push(
+						<ActionButton key="detach" icon={Unplug} label="Detach" onClick={props.onDetach} />,
+					);
+				}
 				actions.push(
 					<ActionButton key="part" icon={LogOut} label="Leave" danger onClick={props.onClose} />,
 				);

@@ -569,6 +569,46 @@ describe("bouncer networks", () => {
 	});
 });
 
+describe("detaching channels", () => {
+	it("detaches through BouncerServ without opening its buffer", async () => {
+		const { app, recv, sentRaw } = await connectedApp({
+			isupport: "CASEMAPPING=rfc1459 CHANTYPES=# BOUNCER_NETID=1 CHATHISTORY=100",
+		});
+		recv(":me!u@h JOIN #c");
+		sentRaw();
+		const p = app.detachChannel(buf(app, "#c")!.id);
+		const [req] = sentRaw();
+		expect(req).toMatch(/PRIVMSG BouncerServ :channel update #c -detached true$/);
+		const label = req.match(/label=(\d+)/)![1];
+		recv(
+			`@label=${label} :srv BATCH +l labeled-response`,
+			"@batch=l :me!u@h PRIVMSG BouncerServ :channel update #c -detached true",
+			"@batch=l :BouncerServ!BouncerServ@BouncerServ PRIVMSG me :updated channel #c",
+			":srv BATCH -l",
+			":me!u@h PART #c :Detach",
+		);
+		await p;
+		expect(buf(app, "BouncerServ")).toBeUndefined();
+		expect(buf(app, "#c")!.joined).toBe(false);
+	});
+
+	it("reports BouncerServ errors and requires soju", async () => {
+		const { app, recv, sentRaw } = await connectedApp({
+			isupport: "CASEMAPPING=rfc1459 CHANTYPES=# BOUNCER_NETID=1",
+		});
+		recv(":me!u@h JOIN #c");
+		sentRaw();
+		const p = app.detachChannel(buf(app, "#c")!.id);
+		const label = sentRaw()[0].match(/label=(\d+)/)![1];
+		recv(`@label=${label} :BouncerServ!BouncerServ@BouncerServ PRIVMSG me :error: unknown channel`);
+		await expect(p).rejects.toThrow("error: unknown channel");
+
+		const plain = await connectedApp();
+		plain.recv(":me!u@h JOIN #c");
+		await expect(plain.app.detachChannel(buf(plain.app, "#c")!.id)).rejects.toThrow(/soju/);
+	});
+});
+
 describe("search", () => {
 	it("searches and jumps to results, loading context", async () => {
 		const { app, recv, sentRaw, serverID } = await connectedApp({

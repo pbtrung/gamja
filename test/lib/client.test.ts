@@ -297,6 +297,23 @@ describe("SASL", () => {
 });
 
 describe("roundtrip", () => {
+	it("lets roundtrips mark replies internal before message listeners see them", async () => {
+		const { client, ws } = register("labeled-response batch");
+		// Added before the roundtrip: browsers call plain EventTarget listeners in order
+		const seen: boolean[] = [];
+		client.addEventListener("message", (e) =>
+			seen.push(Boolean((e as CustomEvent).detail.message.internal)),
+		);
+		const p = client.roundtrip({ command: "FOO" }, (msg) => {
+			msg.internal = true;
+			return msg.command === "BAR";
+		});
+		const [req] = ws.takeSent();
+		ws.receive(`@label=${req.tags.label} :srv BAR`);
+		await p;
+		expect(seen).toEqual([true]);
+	});
+
 	it("rejects on a labeled ACK", async () => {
 		const { client, ws } = register("labeled-response batch");
 		const p = client.roundtrip({ command: "FOO" }, () => false);

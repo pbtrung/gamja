@@ -97,6 +97,20 @@ const join: Command = {
 	},
 };
 
+const detach: Command = {
+	name: "detach",
+	usage: "[channel]",
+	description: "Hide a channel without leaving it (soju), join it again to come back",
+	execute: async (app, args) => {
+		const channel = args[0] ?? getActiveChannel(app);
+		const buf = getBuffer(app.state, { server: getActiveBuffer(app).server, name: channel });
+		if (!buf) {
+			throw new Error("Not in channel " + channel);
+		}
+		await app.detachChannel(buf.id);
+	},
+};
+
 const kick: Command = {
 	name: "kick",
 	usage: "<nick> [comment]",
@@ -185,6 +199,7 @@ const commandList: Command[] = [
 		description: "Remove operator status for a user on this channel",
 		execute: (app, args) => givemode(app, args, "-o"),
 	},
+	detach,
 	{
 		name: "devoice",
 		usage: "<nick>",

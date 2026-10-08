@@ -423,6 +423,11 @@ function Chat({ state }: { state: AppState }) {
 						unreadElsewhere={unreadElsewhere}
 						onChannelClick={handleChannelClick}
 						onClose={() => app.close(activeBuffer.id)}
+						onDetach={
+							activeServer.bouncerNetID
+								? () => app.detachChannel(activeBuffer.id).catch((err) => app.showError(err))
+								: undefined
+						}
 						onJoin={() => app.handleJoinClick(activeBuffer)}
 						onReconnect={() => app.reconnect(activeBuffer.server)}
 						onAddNetwork={() => app.openDialog({ kind: "network" })}

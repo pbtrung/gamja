@@ -958,8 +958,35 @@ export class FakeServer {
 		this.history.set(key, l);
 	}
 
+	/** A tiny BouncerServ: only "channel update <name> -detached true" */
+	bouncerServ(conn: Conn, msg: Msg): void {
+		const tags: Record<string, string> =
+			msg.tags.label && conn.caps.has("labeled-response") ? { label: msg.tags.label } : {};
+		const reply = (text: string) =>
+			conn.send({
+				tags,
+				prefix: "BouncerServ!BouncerServ@BouncerServ",
+				command: "PRIVMSG",
+				params: [conn.nick, text],
+			});
+		const m = /^channel update (\S+) -detached true$/.exec(msg.params[1] ?? "");
+		const ch = m ? this.channels.get(cm(m[1])) : undefined;
+		if (!m || !ch || !ch.members.has(cm(conn.nick))) {
+			reply("error: unknown command or channel");
+			return;
+		}
+		reply(`updated channel ${ch.name}`);
+		// Like soju, other users don't see the bouncer leave
+		ch.members.delete(cm(conn.nick));
+		conn.send({ tags: {}, prefix: conn.prefix, command: "PART", params: [ch.name, "Detach"] });
+	}
+
 	message(conn: Conn, msg: Msg): void {
 		const target = msg.params[0];
+		if (this.opts.bouncer && msg.command === "PRIVMSG" && cm(target) === "bouncerserv") {
+			this.bouncerServ(conn, msg);
+			return;
+		}
 		const clientTags = Object.fromEntries(Object.entries(msg.tags).filter(([k]) => k.startsWith("+")));
 		const time = now();
 		const msgid = this.nextMsgid();
