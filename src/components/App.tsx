@@ -25,6 +25,7 @@ import NetworkForm from "./forms/NetworkForm";
 import RegisterForm from "./forms/RegisterForm";
 import SettingsForm from "./forms/SettingsForm";
 import SwitcherForm from "./forms/SwitcherForm";
+import SearchForm from "./forms/SearchForm";
 import VerifyForm from "./forms/VerifyForm";
 
 function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void }) {
@@ -178,6 +179,22 @@ function Dialogs({ state }: { state: AppState }) {
 					/>
 				</Dialog>
 			);
+		case "search":
+			return (
+				<Dialog title={`Search ${serverTitle(dialog.server)}`} onDismiss={dismiss} size="lg">
+					<SearchForm
+						buffer={dialog.buffer}
+						initialQuery={dialog.query}
+						onSearch={(query) => app.searchMessages(dialog.server, query)}
+						onSelect={(result) => {
+							app.dismissDialog();
+							app.jumpToMessage(dialog.server, result.buffer, result.message.tags.msgid!).catch(
+								(err) => app.showError(err),
+							);
+						}}
+					/>
+				</Dialog>
+			);
 		case "switch":
 			return (
 				<Dialog title="Switch to a channel or user" onDismiss={dismiss}>
@@ -229,6 +246,7 @@ function Chat({ state }: { state: AppState }) {
 	const autocomplete = useCallback((prefix: string) => app.autocomplete(prefix), [app]);
 	const handleTextChange = useCallback((text: string) => app.notifyTyping(text), [app]);
 	const handleCancelReply = useCallback(() => app.cancelReply(), [app]);
+	const handleJumped = useCallback(() => app.update({ jumpTo: null }), [app]);
 
 	const activeID = activeBuffer?.id ?? null;
 	const myNick = activeServer?.nick ?? null;
@@ -339,6 +357,7 @@ function Chat({ state }: { state: AppState }) {
 						onAddNetwork={() => app.openDialog({ kind: "network" })}
 						onManageNetwork={() => app.handleManageNetworkClick(activeBuffer.server)}
 						onOpenSettings={() => app.handleOpenSettingsClick()}
+						onSearch={activeServer.features.search ? () => app.openSearch("buffer") : undefined}
 						onOpenBufferList={() => app.setOpenPanel("bufferList", "toggle")}
 						onOpenMemberList={() => app.setOpenPanel("memberList", "toggle")}
 					/>
@@ -348,6 +367,8 @@ function Chat({ state }: { state: AppState }) {
 			<ChatScroller
 				id="buffer"
 				scrollKey={state.activeBuffer}
+				jumpTo={state.jumpTo?.buffer === state.activeBuffer ? state.jumpTo.msgid : null}
+				onJumped={handleJumped}
 				stickTo=".logline"
 				onScrollTop={handleScrollTop}
 				label={activeBuffer ? `Messages in ${activeBuffer.name}` : "Messages"}

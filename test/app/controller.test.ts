@@ -422,3 +422,58 @@ describe("reactions, replies, redaction and typing", () => {
 		expect(buf(app, "#c")!.typing.size).toBe(0);
 	});
 });
+
+describe("search", () => {
+	it("searches and jumps to results, loading context", async () => {
+		const { app, recv, sentRaw, serverID } = await connectedApp({
+			caps: "batch server-time echo-message message-tags labeled-response draft/chathistory soju.im/search",
+		});
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		app.openSearch("buffer", "needle");
+		expect(app.state.dialog).toEqual({ kind: "search", server: serverID, buffer: "#c", query: "needle" });
+		sentRaw();
+
+		const p = app.searchMessages(serverID, { text: "needle", in: "#c" });
+		const [req] = sentRaw();
+		expect(req).toMatch(/^@label=(\d+) SEARCH text=needle;in=#c;limit=100$/);
+		const label = req.match(/label=(\d+)/)![1];
+		recv(
+			`@label=${label} :srv BATCH +s soju.im/search`,
+			"@batch=s;msgid=a;time=2020-01-01T00:00:00.000Z :bob!u@h PRIVMSG #c :old needle",
+			"@batch=s;msgid=b;time=2020-01-02T00:00:00.000Z :bob!u@h PRIVMSG me :dm needle",
+			":srv BATCH -s",
+		);
+		const results = await p;
+		expect(results.map((r) => [r.buffer, r.message.tags.msgid])).toEqual([
+			["bob", "b"],
+			["#c", "a"],
+		]);
+		// Search results aren't displayed as new messages
+		expect(buf(app, "#c")!.messages).toHaveLength(0);
+		expect(buf(app, "bob")).toBeUndefined();
+
+		const jump = app.jumpToMessage(serverID, "#c", "a");
+		await flush();
+		const around = sentRaw().find((l) => l.includes("CHATHISTORY"))!;
+		expect(around).toMatch(/CHATHISTORY AROUND #c msgid=a 50$/);
+		const label2 = around.match(/label=(\d+)/)![1];
+		recv(
+			`@label=${label2} :srv BATCH +h chathistory #c`,
+			"@batch=h;msgid=a;time=2020-01-01T00:00:00.000Z :bob!u@h PRIVMSG #c :old needle",
+			":srv BATCH -h",
+		);
+		await jump;
+		expect(buf(app, "#c")!.messages.some((m) => m.tags.msgid === "a")).toBe(true);
+		expect(app.state.jumpTo).toEqual({ buffer: buf(app, "#c")!.id, msgid: "a" });
+	});
+
+	it("doesn't search without server support", async () => {
+		const { app } = await connectedApp();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.openSearch();
+		expect(app.state.dialog).toBeNull();
+		expect(app.state.error).toMatch(/doesn't support searching/);
+	});
+});

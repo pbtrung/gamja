@@ -12,6 +12,9 @@ interface ChatScrollerProps {
 	className?: string;
 	id?: string;
 	label?: string;
+	/** data-msgid of a message to scroll to */
+	jumpTo?: string | null;
+	onJumped?: () => void;
 }
 
 function isAtBottom(el: HTMLElement): boolean {
@@ -35,6 +38,8 @@ export default function ChatScroller({
 	className,
 	id,
 	label,
+	jumpTo,
+	onJumped,
 }: ChatScrollerProps) {
 	const ref = useRef<HTMLElement>(null);
 	const stickToBottom = useRef(true);
@@ -66,6 +71,18 @@ export default function ChatScroller({
 		if (!el) {
 			return;
 		}
+		if (jumpTo) {
+			const target = el.querySelector<HTMLElement>(`[data-msgid="${CSS.escape(jumpTo)}"]`);
+			if (target) {
+				el.scrollTop +=
+					target.getBoundingClientRect().top - el.getBoundingClientRect().top - el.clientHeight / 3;
+				target.classList.add("flash");
+				save(el);
+				onJumped?.();
+				return;
+			}
+		}
+
 		const anchorKey = positions.get(scrollKey) ?? null;
 		const anchor = anchorKey
 			? el.querySelector<HTMLElement>(`[data-key="${CSS.escape(anchorKey)}"]`)

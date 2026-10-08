@@ -1573,6 +1573,91 @@ textarea.composer-input:focus {
 	padding: 0.5rem 0.75rem;
 }
 
+/* Search */
+
+.search-filters {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+	align-items: end;
+	gap: 0.75rem;
+}
+
+.search-filters .btn {
+	margin-bottom: 1rem;
+	height: 2.4rem;
+}
+
+.search-results ul {
+	max-height: 55vh;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	overflow-y: auto;
+}
+
+.search-count {
+	margin-bottom: 0.5rem;
+	font-size: 0.875rem;
+}
+
+.search-result {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	width: 100%;
+	padding: 0.5rem 0.75rem;
+	border: none;
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--fg);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.search-result:hover:not(:disabled),
+.search-result:focus-visible {
+	background-color: var(--bg-hover);
+}
+
+.search-result:disabled {
+	cursor: default;
+}
+
+.search-result-meta {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	font-size: 0.8125rem;
+}
+
+.search-result-meta .nick {
+	color: var(--nick-color, var(--fg-emphasis));
+	font-weight: 600;
+}
+
+.search-result-buffer {
+	color: var(--fg-muted);
+	font-weight: 500;
+}
+
+.search-result-text {
+	overflow-wrap: anywhere;
+}
+
+mark {
+	border-radius: 2px;
+	background-color: var(--mention-bg);
+	color: var(--mention-fg);
+}
+
+@media (max-width: 640px) {
+	.search-filters {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0;
+	}
+}
+
 /* Error toast */
 
 .toast {

@@ -1044,6 +1044,68 @@ export default class AppController {
 		client.send({ command: "TAGMSG", params: [buf.name], tags: { "+typing": status } });
 	}
 
+	/** Open the search dialog for the active server. */
+	openSearch(scope: "buffer" | "all" = "buffer", query?: string): void {
+		const buf = S.getBuffer(this.state, this.state.activeBuffer);
+		if (!buf) {
+			return;
+		}
+		const server = this.state.servers.get(buf.server);
+		if (!server?.features.search) {
+			this.showError("This server doesn't support searching messages");
+			return;
+		}
+		const inBuffer = scope === "buffer" && buf.type !== BufferType.SERVER ? buf.name : null;
+		this.openDialog({ kind: "search", server: buf.server, buffer: inBuffer, query });
+	}
+
+	/** Search messages on a server. Results are sorted newest first. */
+	async searchMessages(
+		serverID: number,
+		query: { text: string; in?: string | null; from?: string | null },
+	): Promise<{ buffer: string; message: Message }[]> {
+		const client = this.clients.get(serverID);
+		if (!client) {
+			throw new Error("Not connected to server");
+		}
+		const messages = await client.search({
+			text: query.text || undefined,
+			in: query.in || undefined,
+			from: query.from || undefined,
+			limit: 100,
+		});
+		return messages
+			.map((message) => ({ buffer: this.resolveMessageTarget(serverID, message), message }))
+			.sort((a, b) => ((a.message.tags.time ?? "") < (b.message.tags.time ?? "") ? 1 : -1));
+	}
+
+	/** Open a buffer and scroll to a message, loading history around it if needed. */
+	async jumpToMessage(serverID: number, target: string, msgid: string): Promise<void> {
+		const client = this.clients.get(serverID);
+		if (!client) {
+			return;
+		}
+		if (!S.getBuffer(this.state, { server: serverID, name: target })) {
+			this.createBuffer(serverID, target);
+		}
+		const buf = S.getBuffer(this.state, { server: serverID, name: target })!;
+		this.switchBuffer(buf.id);
+
+		const loaded = buf.messages.some((m) => m.tags.msgid === msgid);
+		if (!loaded && client.caps.enabled.has("draft/chathistory")) {
+			const messages = await client.fetchHistoryAround(target, { msgid }, 50);
+			for (const msg of messages) {
+				if (msg.command === "TAGMSG") {
+					this.handleTagMessage(serverID, msg);
+					continue;
+				}
+				this.prepareChatMessage(serverID, msg);
+				this.update((state) => S.addMessage(state, msg, buf.id));
+			}
+		}
+		this.update({ jumpTo: { buffer: buf.id, msgid } });
+	}
+
 	/** Find the buffers a message should be displayed in. */
 	routeMessage(serverID: number, msg: Message): string[] {
 		const client = this.clients.get(serverID)!;
@@ -1190,7 +1252,11 @@ export default class AppController {
 			return;
 		}
 
-		if (irc.findBatchByType(msg, "chathistory")) {
+		if (
+			irc.findBatchByType(msg, "chathistory") ||
+			irc.findBatchByType(msg, "soju.im/search") ||
+			irc.findBatchByType(msg, "search")
+		) {
 			return; // Handled by the caller
 		}
 

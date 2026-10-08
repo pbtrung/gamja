@@ -103,6 +103,14 @@ export const keybindings: KeyBinding[] = [
 		},
 	},
 	{
+		key: "f",
+		altKey: true,
+		description: "Search messages",
+		execute: (app) => {
+			app.openSearch("buffer");
+		},
+	},
+	{
 		key: "k",
 		ctrlKey: true,
 		description: "Switch to a buffer",

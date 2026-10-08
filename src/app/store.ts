@@ -40,7 +40,8 @@ export type Dialog =
 	| { kind: "register"; server: number; emailRequired: boolean; loading?: boolean }
 	| { kind: "verify"; server: number; account: string; message: string; loading?: boolean }
 	| { kind: "settings"; showProtocolHandler: boolean }
-	| { kind: "switch" };
+	| { kind: "switch" }
+	| { kind: "search"; server: number; buffer: string | null; query?: string };
 
 /** Message the user is replying to */
 export interface ReplyTo {
@@ -50,8 +51,15 @@ export interface ReplyTo {
 	text: string;
 }
 
+/** Message to scroll to once rendered */
+export interface JumpTo {
+	buffer: number;
+	msgid: string;
+}
+
 export interface AppState extends State {
 	replyTo: ReplyTo | null;
+	jumpTo: JumpTo | null;
 	connectParams: ConnectParams;
 	/** Show the connection form instead of the chat UI */
 	connectForm: boolean;
@@ -72,6 +80,7 @@ export function createAppStore(): AppStore {
 		...createState(),
 		connectParams: { ...defaultConnectParams },
 		replyTo: null,
+		jumpTo: null,
 		connectForm: true,
 		loading: true,
 		dialog: null,

@@ -6,6 +6,7 @@ import {
 	PanelLeft,
 	Plus,
 	RotateCw,
+	Search,
 	Server as ServerIcon,
 	Settings,
 	SlidersHorizontal,
@@ -100,6 +101,8 @@ export interface BufferHeaderProps {
 	onAddNetwork: () => void;
 	onManageNetwork: () => void;
 	onOpenSettings: () => void;
+	/** Open message search, if supported */
+	onSearch?: () => void;
 	onOpenBufferList: () => void;
 	onOpenMemberList: () => void;
 }
@@ -293,6 +296,12 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			actions.push(<ActionButton key="close" icon={X} label="Close" danger onClick={props.onClose} />);
 			break;
 		}
+	}
+
+	if (props.onSearch && buffer.type !== BufferType.SERVER) {
+		actions.unshift(
+			<ActionButton key="search" icon={Search} label="Search" iconOnly onClick={props.onSearch} />,
+		);
 	}
 
 	let name = buffer.name;

@@ -369,6 +369,14 @@ const commandList: Command[] = [
 		},
 	},
 	{
+		name: "search",
+		usage: "[text]",
+		description: "Search messages in the current buffer",
+		execute: (app, args) => {
+			app.openSearch("buffer", args.join(" ") || undefined);
+		},
+	},
+	{
 		name: "setname",
 		usage: "<realname>",
 		description: "Change current realname",
