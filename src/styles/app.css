@@ -754,19 +754,19 @@ input.switch:focus-visible {
 
 /* Tighter spacing than other dialogs: settings have more content */
 .dialog:has(.settings-form) .dialog-header {
-	padding: 0.625rem 0.625rem 0.625rem 1rem;
+	padding: 0.5rem 0.5rem 0.5rem 0.75rem;
 }
 
 .dialog:has(.settings-form) .dialog-body {
-	padding: 1rem;
+	padding: 0.75rem;
 }
 
 /* Keep the actions reachable while the settings scroll */
 .settings-actions {
 	position: sticky;
-	bottom: -1rem;
-	margin: 0 -1rem -1rem;
-	padding: 0.625rem 1rem;
+	bottom: -0.75rem;
+	margin: 0 -0.75rem -0.75rem;
+	padding: 0.5rem 0.75rem;
 	border-top: 1px solid var(--border);
 	background-color: var(--bg-elevated);
 }
