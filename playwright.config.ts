@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
-// Use the system Chromium when Playwright's own browsers aren't installed
+// Prefer the system Chromium when there is one, Playwright's own otherwise
 const systemChromium = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"].find(
 	(p) => existsSync(p),
 );

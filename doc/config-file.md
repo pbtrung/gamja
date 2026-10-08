@@ -1,6 +1,8 @@
 # Configuration file
 
-gamja can be configured using a `config.json` file at the root. Example:
+gamja loads a `config.json` file from the directory serving `index.html`. Put it
+in `dist/` after building, or in `public/` so that `npm run dev` serves it and
+`npm run build` copies it. Example:
 
 ```json
 {
@@ -22,7 +24,8 @@ Errors while parsing the configuration file are logged in the
 
 The `server` object configures the IRC server.
 
-- `url` (string): WebSocket URL or path to connect to. Defaults to `/socket`.
+- `url` (string): WebSocket URL or path to connect to. Defaults to `socket`
+  relative to the page URL (e.g. `/socket` when gamja is served at `/`).
 - `autojoin` (string or array of strings): Channel(s) to automatically join
   after connecting.
 - `auth` (string): configure how the password UI is presented to the user. Set

@@ -43,6 +43,12 @@ test("chat and dialogs are accessible", async ({ page, connect, bot }) => {
 	await audit(page);
 });
 
+/** "#282a36" → "rgb(40, 42, 54)", as computed styles report colors */
+function hexToRGB(hex: string): string {
+	const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+	return `rgb(${r}, ${g}, ${b})`;
+}
+
 for (const theme of THEMES.filter((t) => t.id !== "system")) {
 	test(`${theme.name} theme has sufficient contrast`, async ({ page, connect, bot }) => {
 		const bob = await bot("bob");
@@ -51,7 +57,7 @@ for (const theme of THEMES.filter((t) => t.id !== "system")) {
 		bob.privmsg("#contrast", "tester: mentions, links https://example.org and #channels");
 		await expect(page.locator("#buffer")).toContainText("mentions");
 		await page.evaluate((id) => (document.documentElement.dataset.theme = id), theme.id);
-		await page.waitForTimeout(100);
+		await expect(page.locator("body")).toHaveCSS("background-color", hexToRGB(theme.swatch[0]));
 		const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
 		const summary = results.violations.flatMap((v) =>
 			v.nodes.map((n) => `${n.target.join(" ")}: ${n.failureSummary}`),

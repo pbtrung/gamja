@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures.ts";
+import { THEMES } from "../src/themes.ts";
 
 // Not a real test: renders screenshots of the main screens for visual review.
 // Run with SCREENSHOTS=dir npx playwright test screenshots
@@ -6,6 +7,10 @@ test.skip(!process.env.SCREENSHOTS, "set SCREENSHOTS=<dir> to render screenshots
 
 for (const scheme of ["light", "dark"] as const) {
 	test(`screenshots (${scheme})`, async ({ page, connect, bot }) => {
+		// Follow the emulated color scheme rather than the default theme
+		await page.addInitScript(() =>
+			localStorage.setItem("gamja_settings", JSON.stringify({ theme: "system" })),
+		);
 		await page.emulateMedia({ colorScheme: scheme });
 		await page.setViewportSize({ width: 1280, height: 760 });
 		const dir = process.env.SCREENSHOTS!;
@@ -52,14 +57,7 @@ test("theme screenshots", async ({ page, connect, bot }) => {
 	bob.privmsg("#themes", "links work too: https://soju.im and #gamja");
 	await page.getByRole("textbox", { name: "Type a message" }).fill("pretty!");
 	await page.keyboard.press("Enter");
-	for (const theme of [
-		"dracula",
-		"catppuccin-latte",
-		"catppuccin-mocha",
-		"solarized-light",
-		"solarized-dark",
-		"zenburn",
-	]) {
+	for (const theme of THEMES.filter((t) => t.id !== "system").map((t) => t.id)) {
 		await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
 		await page.waitForTimeout(300);
 		await page.screenshot({ path: `${dir}/theme-${theme}.png` });

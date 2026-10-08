@@ -1,5 +1,7 @@
 node_modules
 /config.json
+/public/config.json
+.claude/settings.local.json
 
 /dist
 

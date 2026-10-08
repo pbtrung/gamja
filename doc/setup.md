@@ -16,7 +16,7 @@ Setup webircgateway to serve gamja files:
 ```ini
 [fileserving]
 enabled = true
-webroot = /path/to/gamja
+webroot = /path/to/gamja/dist
 ```
 
 Then configure gamja to connect to `/webirc/websocket/` (either by setting
@@ -30,7 +30,7 @@ timeout to a value higher than the IRC server PING interval. Example:
 
 ```
 location / {
-	root /path/to/gamja;
+	root /path/to/gamja/dist;
 }
 
 location /socket {
@@ -47,7 +47,7 @@ location /socket {
 
 If you are unable to configure the proxy timeout accordingly, or if your IRC
 server doesn't send PINGs, you can set the `server.ping` option in
-`config.json` (see below).
+`config.json` (see the [configuration file] documentation).
 
 ## [kimchi]
 
@@ -55,7 +55,7 @@ Setup kimchi to serve gamja files and proxy the WebSocket connection:
 
 ```
 site irc.example.org {
-	file_server /path/to/gamja
+	file_server /path/to/gamja/dist
 }
 site irc.example.org/socket {
 	reverse_proxy http://127.0.0.1:8080

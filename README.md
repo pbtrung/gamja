@@ -5,7 +5,7 @@ with the [soju] IRC bouncer.
 
 ## Usage
 
-Requires an IRC WebSocket server.
+Requires an IRC WebSocket server, and Node.js 22.22, 24.15 or 26+ to build.
 
 Build gamja with [Vite]:
 
@@ -28,20 +28,23 @@ To try gamja without an IRC server, run the fake IRC server used by the
 end-to-end tests and point gamja at it:
 
     node e2e/fake-ircd.ts 8081
-    open http://localhost:8080/?server=ws://localhost:8081
+
+and, with `npm run dev` running, open
+<http://localhost:8080/?server=ws://localhost:8081>.
 
 ### Checks
 
     npm run typecheck   # TypeScript
     npm run lint        # ESLint
-    npm run format      # Prettier
+    npm run format      # Prettier (format:check only checks)
     npm test            # Vitest unit and component tests
     npm run coverage    # Vitest with coverage report
-    npm run check       # all of the above
+    npm run check       # typecheck, lint, format:check and test
     npm run e2e         # Playwright end-to-end tests against a fake IRC server
 
-The end-to-end tests use Playwright's Chromium, or the system Chromium if it
-isn't installed (override with `CHROMIUM_PATH`).
+The end-to-end tests use the system Chromium (`/usr/bin/chromium`,
+`chromium-browser` or `google-chrome`) when present, otherwise Playwright's
+Chromium (override with `CHROMIUM_PATH`).
 
 ## Configuration
 

@@ -30,7 +30,8 @@ description: Commit staged/modified changes with a detailed message and push, no
       `components/buffer: add host to irc:// message URLs`,
       `components/{buffer-list,switcher-form}: ...` for several siblings.
       Use the bare file name (`state`, `store`, `commands`, `keybindings`,
-      `style`, `main`) for root files. For repo-wide changes
+      `themes`, `format`, `sw`, `main`) for root files, and `styles` for
+      `src/styles/*`. For repo-wide changes
       (dependencies, build setup) omit the prefix and capitalize instead, e.g.
       `Upgrade dependencies`.
     - Body (optional for trivial changes): explain _what_ changed and _why_, as bullet points if there are multiple distinct changes. Wrap at ~72 columns.

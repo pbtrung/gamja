@@ -127,7 +127,7 @@ gamja_dark = theme(
     avatar_fg="#111317",
 )
 
-# gamja's own light palette, the default
+# gamja's own light palette (also the System theme in light mode)
 gamja_light = theme(
     "light", bg="#ffffff", sidebar="#f6f7f9", elevated="#ffffff", subtle="#f1f3f5",
     fg="#1f2328", emphasis="#0b0d10", muted="#59636e", faint="#8a939d",
@@ -275,7 +275,7 @@ out = [
     block(':root[data-theme="dark"]', gamja_dark),
     "",
     "@media (prefers-color-scheme: dark) {",
-    "\t" + block(":root:not([data-theme])", gamja_dark, "\t\t").replace("\n", "\n\t"),
+    "\t" + block(":root:not([data-theme])", gamja_dark, "\t").replace("\n", "\n\t"),
     "}",
 ]
 for name, tokens in THEMES.items():

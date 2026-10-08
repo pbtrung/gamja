@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Client, { Backoff, IRCError } from "../../src/lib/client";
 import { FakeWebSocket, installFakeWebSocket } from "../helpers/fake-ws";
+import { flush } from "../helpers/app";
 
 function connect(params: Partial<ConstructorParameters<typeof Client>[0]> = {}) {
 	const client = new Client({
@@ -211,7 +212,7 @@ describe("SASL", () => {
 		// Registration only ends once SASL succeeded
 		ws.takeSent();
 		ws.receive(":srv CAP me ACK :sasl", "AUTHENTICATE +", ":srv 903 me :SASL authentication successful");
-		await new Promise((r) => setTimeout(r, 0));
+		await flush();
 		expect(ws.sent).toEqual(["CAP END"]);
 	});
 
@@ -411,7 +412,6 @@ describe("commands", () => {
 			{ time: "2021-01-01T00:00:00.000Z" },
 			100,
 		);
-		const flush = () => new Promise((r) => setTimeout(r, 0));
 		await flush();
 		expect(ws.takeSent()[0].params).toEqual([
 			"BETWEEN",
@@ -440,7 +440,7 @@ describe("commands", () => {
 	it("fetches history before a date and chat history targets", async () => {
 		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
 		const p = client.fetchHistoryBefore("#c", "2020-01-01T00:00:00.000Z", 100);
-		await new Promise((r) => setTimeout(r, 0));
+		await flush();
 		expect(ws.takeSent()[0].params).toEqual(["BEFORE", "#c", "timestamp=2020-01-01T00:00:00.000Z", "50"]);
 		ws.receive(":srv BATCH +a chathistory #c", ":srv BATCH -a");
 		await expect(p).resolves.toEqual({ messages: [], more: false });
@@ -457,7 +457,7 @@ describe("commands", () => {
 	it("doesn't report more history when CHATHISTORY ISUPPORT is missing", async () => {
 		const { client, ws } = register("batch draft/chathistory", "CHANTYPES=#");
 		const p = client.fetchHistoryBefore("BouncerServ", "2020-01-01T00:00:00.000Z", 100);
-		await new Promise((r) => setTimeout(r, 0));
+		await flush();
 		ws.takeSent();
 		ws.receive(":srv BATCH +a chathistory BouncerServ", ":srv BATCH -a");
 		await expect(p).resolves.toEqual({ messages: [], more: false });
@@ -546,7 +546,7 @@ describe("soju extensions", () => {
 	it("fetches messages around a msgid", async () => {
 		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
 		const p2 = client.fetchHistoryAround("#c", { msgid: "abc" }, 20);
-		await new Promise((r) => setTimeout(r, 0));
+		await flush();
 		expect(ws.takeSent()[0].params).toEqual(["AROUND", "#c", "msgid=abc", "20"]);
 		ws.receive(":srv BATCH +b chathistory #c", ":srv BATCH -b");
 		await expect(p2).resolves.toEqual([]);
