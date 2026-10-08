@@ -1,7 +1,6 @@
 import { memo, type MouseEvent } from "react";
-import { MessagesSquare, Server as ServerIcon, User as UserIcon } from "lucide-react";
-import * as irc from "../lib/irc";
-import { strip as stripANSI } from "../lib/ansi";
+import { meaningfulRealname, unreadLabel } from "../format";
+import BufferTypeIcon from "./BufferTypeIcon";
 import {
 	BufferType,
 	Unread,
@@ -91,9 +90,7 @@ const BufferItem = memo(function BufferItem({
 		}
 		case BufferType.NICK: {
 			const user = server.users.get(name);
-			if (user && irc.isMeaningfulRealname(user.realname, name)) {
-				title = stripANSI(user.realname!);
-			}
+			title = meaningfulRealname(user, name) ?? undefined;
 			if (user?.offline) {
 				classes.push("offline");
 			}
@@ -106,13 +103,6 @@ const BufferItem = memo(function BufferItem({
 			break;
 	}
 
-	let Icon = MessagesSquare;
-	if (buffer.type === BufferType.SERVER) {
-		Icon = ServerIcon;
-	} else if (buffer.type === BufferType.NICK) {
-		Icon = UserIcon;
-	}
-
 	return (
 		<li className={classes.join(" ")} role="presentation">
 			<a
@@ -122,14 +112,19 @@ const BufferItem = memo(function BufferItem({
 				aria-selected={active}
 				aria-current={active ? "page" : undefined}
 				aria-description={
-					buffer.type === BufferType.SERVER
-						? connectionLabel[connectionStatus(server, bouncerNetwork)]
-						: undefined
+					[
+						buffer.type === BufferType.SERVER
+							? connectionLabel[connectionStatus(server, bouncerNetwork)]
+							: null,
+						unreadLabel(buffer.unread),
+					]
+						.filter(Boolean)
+						.join(", ") || undefined
 				}
 				onClick={handleClick}
 				onMouseDown={handleMouseDown}
 			>
-				<Icon className="buffer-icon" aria-hidden="true" />
+				<BufferTypeIcon type={buffer.type} className="buffer-icon" aria-hidden="true" />
 				<span className="buffer-name">{name}</span>
 				{buffer.type === BufferType.SERVER && (
 					<span
@@ -139,10 +134,7 @@ const BufferItem = memo(function BufferItem({
 					/>
 				)}
 				{buffer.unread !== Unread.NONE ? (
-					<span
-						className="unread-indicator"
-						aria-label={buffer.unread === Unread.HIGHLIGHT ? "Mentions" : "Unread messages"}
-					/>
+					<span className="unread-indicator" aria-hidden="true" />
 				) : null}
 			</a>
 		</li>

@@ -1,26 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Reply, SmilePlus, Trash2 } from "lucide-react";
 import { QUICK_REACTIONS } from "../format";
 
 interface ReactionPickerProps {
 	onPick: (emoji: string) => void;
 	onClose: () => void;
+	/** The button toggling the picker, which handles its own clicks */
+	toggleRef: RefObject<HTMLButtonElement | null>;
 }
 
-function ReactionPicker({ onPick, onClose }: ReactionPickerProps) {
+function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 	const ref = useRef<HTMLDivElement>(null);
+	// onClose changes on every render of the parent: don't re-run the effects
+	const onCloseRef = useRef(onClose);
+	useEffect(() => {
+		onCloseRef.current = onClose;
+	});
 
 	useEffect(() => {
 		ref.current?.querySelector("button")?.focus();
+	}, []);
+
+	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape") {
 				event.stopPropagation();
-				onClose();
+				onCloseRef.current();
 			}
 		};
 		const handlePointer = (event: PointerEvent) => {
-			if (!ref.current?.contains(event.target as Node)) {
-				onClose();
+			const target = event.target as Node;
+			if (!ref.current?.contains(target) && !toggleRef.current?.contains(target)) {
+				onCloseRef.current();
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown, true);
@@ -29,7 +40,7 @@ function ReactionPicker({ onPick, onClose }: ReactionPickerProps) {
 			window.removeEventListener("keydown", handleKeyDown, true);
 			window.removeEventListener("pointerdown", handlePointer, true);
 		};
-	}, [onClose]);
+	}, [toggleRef]);
 
 	return (
 		<div className="reaction-picker" role="menu" aria-label="Pick a reaction" ref={ref}>
@@ -71,6 +82,7 @@ export default function MessageActions({
 	onRedact,
 }: MessageActionsProps) {
 	const [picking, setPicking] = useState(false);
+	const toggleRef = useRef<HTMLButtonElement>(null);
 	if (!canReact && !canReply && !canRedact) {
 		return null;
 	}
@@ -88,6 +100,7 @@ export default function MessageActions({
 					aria-label="Add reaction"
 					aria-haspopup="menu"
 					aria-expanded={picking}
+					ref={toggleRef}
 					onClick={() => setPicking((p) => !p)}
 				>
 					<SmilePlus aria-hidden="true" />
@@ -113,7 +126,9 @@ export default function MessageActions({
 					<Trash2 aria-hidden="true" />
 				</button>
 			)}
-			{picking && <ReactionPicker onPick={onReact} onClose={() => setPicking(false)} />}
+			{picking && (
+				<ReactionPicker onPick={onReact} onClose={() => setPicking(false)} toggleRef={toggleRef} />
+			)}
 		</div>
 	);
 }

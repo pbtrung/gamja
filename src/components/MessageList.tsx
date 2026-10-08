@@ -14,12 +14,19 @@ import {
 	type Settings,
 } from "../state";
 import * as store from "../store";
-import { canFoldMessage, getNickColorIndex, registerProtocolHandler, simplifyFoldGroup } from "../format";
+import {
+	canFoldMessage,
+	getNickColorIndex,
+	nickInitial,
+	registerProtocolHandler,
+	simplifyFoldGroup,
+} from "../format";
 import Membership from "./Membership";
 import Nick from "./Nick";
 import RichText, { type LinkClickHandler } from "./RichText";
 import MessageActions, { Reactions } from "./MessageActions";
 import { strip as stripANSI } from "../lib/ansi";
+import { flash } from "../lib/flash";
 
 export interface MessageActionHandlers {
 	myNick: string | null;
@@ -31,7 +38,7 @@ export interface MessageActionHandlers {
 	onRedact: (msg: Message) => void;
 }
 
-export interface MessageListHandlers {
+interface MessageListHandlers {
 	actions?: MessageActionHandlers;
 	onChannelClick: LinkClickHandler;
 	onNickClick: (nick: string) => void;
@@ -195,6 +202,8 @@ interface LogLineProps {
 	reactions?: Map<string, string[]>;
 	/** Message this one replies to, null if unknown */
 	parent?: Message | null;
+	/** Whether the message this one replies to was deleted */
+	parentRedacted?: boolean;
 	/** Position in a group of messages from the same sender (comfortable layout) */
 	group?: "first" | "continuation";
 }
@@ -217,7 +226,7 @@ function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandl
 function Avatar({ nick }: { nick: string }) {
 	return (
 		<span className={`avatar nick-${getNickColorIndex(nick)}`} aria-hidden="true">
-			{nick.replace(/^[^\p{L}\p{N}]+/u, "").charAt(0) || nick.charAt(0)}
+			{nickInitial(nick)}
 		</span>
 	);
 }
@@ -229,13 +238,19 @@ function jumpToMessage(msgid: string): boolean {
 		return false;
 	}
 	el.scrollIntoView?.({ block: "center", behavior: "smooth" });
-	el.classList.remove("flash");
-	void el.offsetWidth; // restart the animation
-	el.classList.add("flash");
+	flash(el);
 	return true;
 }
 
-function ReplyQuote({ parent, msgid, ctx }: { parent: Message | null; msgid: string; ctx: Context }) {
+function ReplyQuote({
+	parent,
+	msgid,
+	redacted,
+}: {
+	parent: Message | null;
+	msgid: string;
+	redacted: boolean;
+}) {
 	if (!parent) {
 		return (
 			<div className="reply-quote missing">
@@ -255,14 +270,22 @@ function ReplyQuote({ parent, msgid, ctx }: { parent: Message | null; msgid: str
 			<CornerUpRight aria-hidden="true" />
 			<span className={`reply-nick nick-${getNickColorIndex(nick)}`}>{nick}</span>
 			<span className="reply-text">
-				{ctx.buffer.redacted.has(msgid) ? "This message has been deleted." : stripANSI(text)}
+				{redacted ? "This message has been deleted." : stripANSI(text)}
 			</span>
 		</button>
 	);
 }
 
 const LogLine = memo(
-	function LogLine({ message: msg, redacted, ctx, reactions, parent, group }: LogLineProps) {
+	function LogLine({
+		message: msg,
+		redacted,
+		ctx,
+		reactions,
+		parent,
+		parentRedacted,
+		group,
+	}: LogLineProps) {
 		const { buffer: buf, server, bouncerNetwork, onChannelClick } = ctx;
 		const createNick = makeNick(ctx);
 		const from = msg.prefix?.name ?? "*";
@@ -563,7 +586,7 @@ const LogLine = memo(
 		const showSeconds = ctx.settings.secondsInTimestamps;
 		const quote =
 			isChat && replyTo && !redacted ? (
-				<ReplyQuote parent={parent ?? null} msgid={replyTo} ctx={ctx} />
+				<ReplyQuote parent={parent ?? null} msgid={replyTo} redacted={Boolean(parentRedacted)} />
 			) : null;
 		const reactionsEl =
 			isChat && reactions && reactions.size > 0 && !redacted ? (
@@ -674,9 +697,11 @@ const LogLine = memo(
 		prev.redacted === next.redacted &&
 		prev.reactions === next.reactions &&
 		prev.parent === next.parent &&
+		prev.parentRedacted === next.parentRedacted &&
 		prev.group === next.group &&
 		sameActions(prev.ctx.actions, next.ctx.actions) &&
 		prev.ctx.settings === next.ctx.settings &&
+		prev.ctx.bouncerNetwork === next.ctx.bouncerNetwork &&
 		prev.ctx.server.users === next.ctx.server.users,
 );
 
@@ -1049,6 +1074,7 @@ function MessageList(props: MessageListProps) {
 				redacted={!!msgid && buf.redacted.has(msgid)}
 				reactions={msgid ? buf.reactions.get(msgid) : undefined}
 				parent={replyTo ? (byMsgid.get(replyTo) ?? null) : undefined}
+				parentRedacted={!!replyTo && buf.redacted.has(replyTo)}
 				group={groupOf(msg)}
 				ctx={ctx}
 			/>

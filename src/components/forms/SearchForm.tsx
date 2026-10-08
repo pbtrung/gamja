@@ -4,7 +4,7 @@ import type { Message } from "../../lib/irc";
 import { strip as stripANSI } from "../../lib/ansi";
 import { getNickColorIndex } from "../../format";
 
-export interface SearchResult {
+interface SearchResult {
 	buffer: string;
 	message: Message;
 }

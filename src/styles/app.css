@@ -172,8 +172,7 @@ svg.lucide {
 	margin-left: -1px;
 }
 
-.btn-group > .btn:first-child,
-.btn-group > .btn.first-visible {
+.btn-group > .btn:first-child {
 	border-top-left-radius: var(--radius);
 	border-bottom-left-radius: var(--radius);
 }
@@ -558,8 +557,9 @@ input.switch:focus-visible {
 	background-color: var(--sw-bg);
 }
 
+/* Half light, half dark: the System swatch's background and foreground */
 .theme-preview.system {
-	background: linear-gradient(135deg, #ffffff 50%, #16181d 50%);
+	background: linear-gradient(135deg, var(--sw-bg) 50%, var(--sw-fg) 50%);
 }
 
 .theme-preview-sidebar {
@@ -1074,10 +1074,6 @@ li.unread-highlight .unread-indicator,
 	text-transform: uppercase;
 }
 
-.member-avatar {
-	position: relative;
-}
-
 .presence {
 	position: absolute;
 	right: -0.125rem;
@@ -1112,6 +1108,7 @@ li.unread-highlight .unread-indicator,
 }
 
 .member-avatar {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -1259,7 +1256,10 @@ li.unread-highlight .unread-indicator,
 
 /* Chat log */
 
+/* A column keeps messages anchored to the bottom when the log is short */
 #buffer {
+	display: flex;
+	flex-direction: column;
 	grid-row: 2;
 	grid-column: 2;
 	width: 100%;
@@ -1276,12 +1276,6 @@ li.unread-highlight .unread-indicator,
 	outline: none;
 }
 
-/* Keep messages anchored to the bottom when the log is short */
-#buffer {
-	display: flex;
-	flex-direction: column;
-}
-
 #buffer .logline-list {
 	margin-top: auto;
 	/* No bottom padding: the composer's own padding spaces it from the input */
@@ -1289,6 +1283,7 @@ li.unread-highlight .unread-indicator,
 }
 
 #buffer .logline {
+	position: relative;
 	padding: 0.125rem 1rem;
 	border-left: 3px solid transparent;
 	line-height: 1.55;
@@ -1298,10 +1293,6 @@ li.unread-highlight .unread-indicator,
 #buffer .logline:hover,
 #buffer .logline:focus-within {
 	background-color: var(--bg-hover);
-}
-
-#buffer .logline {
-	position: relative;
 }
 
 #buffer .logline.flash {
@@ -1363,10 +1354,6 @@ li.unread-highlight .unread-indicator,
 
 #buffer .logline.comfortable.event .logline-gutter .timestamp {
 	font-size: 0.9em;
-}
-
-#buffer .logline.comfortable.me-tell .logline-content {
-	font-style: italic;
 }
 
 #buffer .logline.comfortable.notice .logline-content {
@@ -2081,6 +2068,8 @@ textarea.composer-input:focus {
 	flex-direction: column;
 	width: 100%;
 	max-height: calc(100vh - 2rem);
+	/* The dynamic viewport excludes mobile browser bars */
+	max-height: calc(100dvh - 2rem);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-lg);
 	background-color: var(--bg-elevated);

@@ -1,8 +1,7 @@
 import { memo, type MouseEvent } from "react";
-import { strip as stripANSI } from "../lib/ansi";
 import * as irc from "../lib/irc";
 import type { BouncerNetwork, User } from "../state";
-import { getNickColorIndex, sortMembers } from "../format";
+import { getNickColorIndex, meaningfulRealname, nickInitial, sortMembers } from "../format";
 import Membership from "./Membership";
 
 interface MemberItemProps {
@@ -25,32 +24,25 @@ const MemberItem = memo(function MemberItem({
 		onClick(nick);
 	}
 
-	let title: string | undefined;
+	const lines: string[] = [];
 	const classes = ["nick"];
 	if (user) {
-		let mask = "";
-		if (user.username && user.hostname) {
-			mask = `${user.username}@${user.hostname}`;
+		const mask = user.username && user.hostname ? `${user.username}@${user.hostname}` : "";
+		const realname = meaningfulRealname(user, nick);
+		if (realname) {
+			lines.push(mask ? `${realname} (${mask})` : realname);
+		} else if (mask) {
+			lines.push(mask);
 		}
-
-		if (irc.isMeaningfulRealname(user.realname, nick)) {
-			title = stripANSI(user.realname!);
-			if (mask) {
-				title = `${title} (${mask})`;
-			}
-		} else {
-			title = mask;
-		}
-
 		if (user.account) {
-			title += `\nAuthenticated as ${user.account}`;
+			lines.push(`Authenticated as ${user.account}`);
 		}
-
 		if (user.away) {
 			classes.push("away");
-			title += "\nAway";
+			lines.push("Away");
 		}
 	}
+	const title = lines.length > 0 ? lines.join("\n") : undefined;
 
 	const url = irc.formatURL({
 		host: bouncerNetwork?.host ?? undefined,
@@ -62,7 +54,7 @@ const MemberItem = memo(function MemberItem({
 		<li>
 			<a href={url} className={classes.join(" ")} title={title} onClick={handleClick}>
 				<span className={`member-avatar nick-${getNickColorIndex(nick)}`} aria-hidden="true">
-					{nick.charAt(0)}
+					{nickInitial(nick)}
 					{user?.away && <span className="presence away" />}
 				</span>
 				<span className="member-nick">
@@ -92,18 +84,17 @@ const ROLE_TITLES: Record<string, string> = {
 
 /** Split sorted members into sections by their highest membership. */
 function groupMembers(sorted: [string, string][]): { title: string; members: [string, string][] }[] {
-	const groups: { title: string; members: [string, string][] }[] = [];
+	// Non-standard prefixes share the "Members" section, which mustn't appear
+	// twice even if they don't sort next to regular members
+	const groups = new Map<string, [string, string][]>();
 	for (const member of sorted) {
 		const role = irc.STD_MEMBERSHIP_NAMES[member[1][0]];
 		const title = (role && ROLE_TITLES[role]) || "Members";
-		let group = groups[groups.length - 1];
-		if (!group || group.title !== title) {
-			group = { title, members: [] };
-			groups.push(group);
-		}
-		group.members.push(member);
+		const group = groups.get(title) ?? [];
+		group.push(member);
+		groups.set(title, group);
 	}
-	return groups;
+	return [...groups].map(([title, members]) => ({ title, members }));
 }
 
 function MemberList({ members, users, prefixes, bouncerNetwork, onNickClick }: MemberListProps) {

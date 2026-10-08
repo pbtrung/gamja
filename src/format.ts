@@ -1,6 +1,32 @@
 import * as irc from "./lib/irc";
 import type { Message } from "./lib/irc";
-import { BufferType, type Buffer, type Server } from "./state";
+import { strip as stripANSI } from "./lib/ansi";
+import { BufferType, Unread, type Buffer, type Server, type User } from "./state";
+
+/** The user's realname without formatting, if it says more than the nick. */
+export function meaningfulRealname(user: User | undefined, nick: string): string | null {
+	if (!user || !irc.isMeaningfulRealname(user.realname, nick)) {
+		return null;
+	}
+	return stripANSI(user.realname!);
+}
+
+/** Unread state for assistive technologies, which can't see the dot */
+export function unreadLabel(unread: Unread): string | null {
+	switch (unread) {
+		case Unread.NONE:
+			return null;
+		case Unread.HIGHLIGHT:
+			return "Mentions";
+		default:
+			return "Unread messages";
+	}
+}
+
+/** Letter shown in a nick's avatar: the first letter or digit, if any. */
+export function nickInitial(nick: string): string {
+	return nick.replace(/^[^\p{L}\p{N}]+/u, "").charAt(0) || nick.charAt(0);
+}
 
 function djb2(s: string): number {
 	let hash = 5381;

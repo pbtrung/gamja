@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
+import IconButton from "./IconButton";
 
 interface DialogProps {
 	title: ReactNode;
@@ -75,17 +76,7 @@ export default function Dialog({ title, onDismiss, children, size = "md" }: Dial
 			>
 				<header className="dialog-header">
 					<h2 id={titleID}>{title}</h2>
-					{onDismiss && (
-						<button
-							type="button"
-							className="icon-btn"
-							title="Close"
-							aria-label="Close"
-							onClick={onDismiss}
-						>
-							<X aria-hidden="true" />
-						</button>
-					)}
+					{onDismiss && <IconButton icon={X} label="Close" onClick={onDismiss} />}
 				</header>
 				<div className="dialog-body">{children}</div>
 			</div>

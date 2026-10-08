@@ -72,6 +72,27 @@ describe("Composer", () => {
 		expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
 	});
 
+	it("doesn't send over-length messages with Enter, but allows commands", async () => {
+		const { input, onSubmit } = setup({ maxLen: 3 });
+		await userEvent.type(input, "abcd{Enter}");
+		expect(onSubmit).not.toHaveBeenCalled();
+		expect(input).toHaveValue("abcd");
+		await userEvent.clear(input);
+		await userEvent.type(input, "/join #long{Enter}");
+		expect(onSubmit).toHaveBeenCalledWith("/join #long");
+	});
+
+	it("doesn't steal keys while a dialog is open", async () => {
+		const { input } = setup();
+		const dialog = document.createElement("div");
+		dialog.setAttribute("aria-modal", "true");
+		document.body.appendChild(dialog);
+		input.blur();
+		await userEvent.keyboard("x");
+		expect(input).toHaveValue("");
+		dialog.remove();
+	});
+
 	it("hides when read-only and empty", () => {
 		const { container } = setup({ readOnly: true });
 		expect(container.querySelector("#composer")).toHaveClass("read-only");

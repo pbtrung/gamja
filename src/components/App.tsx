@@ -12,6 +12,7 @@ import ChatScroller from "./ChatScroller";
 import Composer, { type ComposerHandle } from "./Composer";
 import Dialog from "./Dialog";
 import ErrorBoundary from "./ErrorBoundary";
+import IconButton from "./IconButton";
 import MemberList from "./MemberList";
 import MessageList, { type MessageActionHandlers } from "./MessageList";
 import TypingIndicator from "./TypingIndicator";
@@ -33,16 +34,17 @@ function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void
 		<div id="error-msg" className="alert alert-danger toast" role="alert">
 			<CircleAlert aria-hidden="true" />
 			<div className="toast-text">{error}</div>
-			<button
-				type="button"
-				className="icon-btn"
-				title="Dismiss"
-				aria-label="Dismiss"
-				onClick={onDismiss}
-			>
-				<X aria-hidden="true" />
-			</button>
+			<IconButton icon={X} label="Dismiss" onClick={onDismiss} />
 		</div>
+	);
+}
+
+/** A spinner next to a short status, e.g. while a dialog waits on the server */
+function LoadingText({ children }: { children: string }) {
+	return (
+		<p className="loading-text" role="status">
+			<span className="spinner" aria-hidden="true" /> {children}
+		</p>
 	);
 }
 
@@ -114,9 +116,7 @@ function Dialogs({ state }: { state: AppState }) {
 			return (
 				<Dialog title={`Login to ${serverTitle(dialog.server)}`} onDismiss={dismiss} size="sm">
 					{dialog.loading ? (
-						<p className="loading-text">
-							<span className="spinner" aria-hidden="true" /> Logging in…
-						</p>
+						<LoadingText>Logging in…</LoadingText>
 					) : (
 						<AuthForm
 							username={dialog.username}
@@ -135,9 +135,7 @@ function Dialogs({ state }: { state: AppState }) {
 					size="sm"
 				>
 					{dialog.loading ? (
-						<p className="loading-text">
-							<span className="spinner" aria-hidden="true" /> Creating account…
-						</p>
+						<LoadingText>Creating account…</LoadingText>
 					) : (
 						<RegisterForm
 							emailRequired={dialog.emailRequired}
@@ -152,9 +150,7 @@ function Dialogs({ state }: { state: AppState }) {
 			return (
 				<Dialog title={`Verify ${serverTitle(dialog.server)} account`} onDismiss={dismiss} size="sm">
 					{dialog.loading ? (
-						<p className="loading-text">
-							<span className="spinner" aria-hidden="true" /> Verifying account…
-						</p>
+						<LoadingText>Verifying account…</LoadingText>
 					) : (
 						<VerifyForm
 							account={dialog.account}
@@ -238,6 +234,14 @@ function Chat({ state }: { state: AppState }) {
 		[app],
 	);
 	const handleNickClick = useCallback((nick: string) => app.open(nick), [app]);
+	// Stable, so that the memoized member list doesn't re-render on every message
+	const handleMemberClick = useCallback(
+		(nick: string) => {
+			app.open(nick);
+			app.setOpenPanel("memberList", false);
+		},
+		[app],
+	);
 	const handleBufferClick = useCallback((buf: Buffer) => app.switchBuffer(buf.id), [app]);
 	const handleBufferClose = useCallback((buf: Buffer) => app.close(buf.id), [app]);
 	const handleScrollTop = useCallback(() => {
@@ -318,15 +322,12 @@ function Chat({ state }: { state: AppState }) {
 					<header className="sidebar-brand">
 						<MessageSquareText aria-hidden="true" />
 						<span>gamja</span>
-						<button
-							type="button"
-							className="icon-btn panel-close"
-							title="Close buffer list"
-							aria-label="Close buffer list"
+						<IconButton
+							icon={X}
+							label="Close buffer list"
+							className="panel-close"
 							onClick={() => app.setOpenPanel("bufferList", false)}
-						>
-							<X aria-hidden="true" />
-						</button>
+						/>
 					</header>
 					<BufferList
 						buffers={state.buffers}
@@ -376,6 +377,8 @@ function Chat({ state }: { state: AppState }) {
 				label={activeBuffer ? `Messages in ${activeBuffer.name}` : "Messages"}
 			>
 				<ErrorBoundary
+					// Another buffer may display fine: start over when switching
+					key={state.activeBuffer ?? "none"}
 					fallback={(error, reset) => (
 						<div className="alert alert-danger inline-error" role="alert">
 							<CircleAlert aria-hidden="true" />
@@ -417,25 +420,19 @@ function Chat({ state }: { state: AppState }) {
 							<span className="badge" aria-label={`${activeBuffer.members.size} members`}>
 								{activeBuffer.members.size}
 							</span>
-							<button
-								type="button"
-								className="icon-btn panel-close"
-								title="Close member list"
-								aria-label="Close member list"
+							<IconButton
+								icon={X}
+								label="Close member list"
+								className="panel-close"
 								onClick={() => app.setOpenPanel("memberList", false)}
-							>
-								<X aria-hidden="true" />
-							</button>
+							/>
 						</header>
 						<MemberList
 							members={activeBuffer.members}
 							users={activeServer.users}
 							prefixes={activeServer.membershipModes?.map((m) => m.prefix).join("")}
 							bouncerNetwork={activeBouncerNetwork}
-							onNickClick={(nick) => {
-								handleNickClick(nick);
-								app.setOpenPanel("memberList", false);
-							}}
+							onNickClick={handleMemberClick}
 						/>
 					</div>
 				</aside>

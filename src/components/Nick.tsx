@@ -1,8 +1,7 @@
 import type { MouseEvent } from "react";
 import * as irc from "../lib/irc";
-import { strip as stripANSI } from "../lib/ansi";
 import type { BouncerNetwork, User } from "../state";
-import { getNickColorIndex } from "../format";
+import { getNickColorIndex, meaningfulRealname } from "../format";
 
 interface NickProps {
 	nick: string;
@@ -17,10 +16,7 @@ export default function Nick({ nick, user, bouncerNetwork, onClick }: NickProps)
 		onClick?.(nick);
 	}
 
-	let title: string | undefined;
-	if (user && irc.isMeaningfulRealname(user.realname, nick)) {
-		title = stripANSI(user.realname!);
-	}
+	const title = meaningfulRealname(user, nick) ?? undefined;
 
 	const url = irc.formatURL({ host: bouncerNetwork?.host ?? undefined, entity: nick, enttype: "user" });
 	return (

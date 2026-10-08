@@ -1,13 +1,7 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
-import { Hash, Search, User as UserIcon } from "lucide-react";
-import {
-	BufferType,
-	getBufferURL,
-	getServerName,
-	type Buffer,
-	type BouncerNetwork,
-	type Server,
-} from "../../state";
+import { Search } from "lucide-react";
+import BufferTypeIcon from "../BufferTypeIcon";
+import { getBufferURL, getServerName, type Buffer, type BouncerNetwork, type Server } from "../../state";
 import { matchBuffers } from "../../format";
 
 interface SwitcherFormProps {
@@ -83,7 +77,6 @@ export default function SwitcherForm({ buffers, servers, bouncerNetworks, onSubm
 					const bouncerNetwork = server.bouncerNetID
 						? (bouncerNetworks.get(server.bouncerNetID) ?? null)
 						: null;
-					const Icon = buf.type === BufferType.CHANNEL ? Hash : UserIcon;
 					return (
 						<li
 							key={buf.id}
@@ -95,7 +88,7 @@ export default function SwitcherForm({ buffers, servers, bouncerNetworks, onSubm
 							onClick={() => onSubmit(buf)}
 							onMouseMove={() => setSelected(i)}
 						>
-							<Icon aria-hidden="true" />
+							<BufferTypeIcon type={buf.type} aria-hidden="true" />
 							<span className="switcher-name">{buf.name}</span>
 							<span className="switcher-server">{getServerName(server, bouncerNetwork)}</span>
 						</li>

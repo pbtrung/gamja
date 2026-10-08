@@ -1,22 +1,20 @@
 import type { ReactNode } from "react";
 import {
 	CirclePlus,
-	Hash,
 	LogOut,
 	PanelLeft,
 	Plus,
 	RotateCw,
 	Search,
-	Server as ServerIcon,
 	Settings,
 	SlidersHorizontal,
-	User as UserIcon,
 	Users,
 	X,
 	type LucideIcon,
 } from "lucide-react";
 import { strip as stripANSI } from "../lib/ansi";
-import * as irc from "../lib/irc";
+import { meaningfulRealname, unreadLabel } from "../format";
+import BufferTypeIcon from "./BufferTypeIcon";
 import {
 	BufferType,
 	ServerStatus,
@@ -59,6 +57,8 @@ interface ActionButtonProps {
 	danger?: boolean;
 	iconOnly?: boolean;
 	className?: string;
+	/** Extra information for assistive technologies */
+	description?: string;
 	onClick: () => void;
 	children?: ReactNode;
 }
@@ -69,6 +69,7 @@ function ActionButton({
 	danger,
 	iconOnly,
 	className,
+	description,
 	onClick,
 	children,
 }: ActionButtonProps) {
@@ -78,6 +79,7 @@ function ActionButton({
 			className={`btn btn-sm ${danger ? "btn-danger-outline" : ""} ${className || ""}`}
 			title={label}
 			aria-label={iconOnly ? label : undefined}
+			aria-description={description}
 			onClick={onClick}
 		>
 			<Icon aria-hidden="true" />
@@ -237,10 +239,7 @@ export default function BufferHeader(props: BufferHeaderProps) {
 					status = UserStatus.GONE;
 				}
 
-				let realname = buffer.name;
-				if (irc.isMeaningfulRealname(user.realname, buffer.name)) {
-					realname = stripANSI(user.realname || "");
-				}
+				const realname = meaningfulRealname(user, buffer.name) ?? buffer.name;
 
 				const details: ReactNode[] = [];
 				if (user.username && user.hostname) {
@@ -322,10 +321,11 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			label="Open buffer list"
 			iconOnly
 			className="buffer-list-toggle"
+			description={unreadLabel(props.unreadElsewhere) ?? undefined}
 			onClick={props.onOpenBufferList}
 		>
 			{props.unreadElsewhere !== Unread.NONE ? (
-				<span className={`unread-indicator unread-${props.unreadElsewhere}`} />
+				<span className={`unread-indicator unread-${props.unreadElsewhere}`} aria-hidden="true" />
 			) : null}
 		</ActionButton>,
 	];
@@ -342,17 +342,10 @@ export default function BufferHeader(props: BufferHeaderProps) {
 		);
 	}
 
-	let TypeIcon: LucideIcon = Hash;
-	if (buffer.type === BufferType.SERVER) {
-		TypeIcon = ServerIcon;
-	} else if (buffer.type === BufferType.NICK) {
-		TypeIcon = UserIcon;
-	}
-
 	return (
 		<>
 			<div className="title">
-				<TypeIcon className="title-icon" aria-hidden="true" />
+				<BufferTypeIcon type={buffer.type} className="title-icon" aria-hidden="true" />
 				<h1 className="title-text" title={name}>
 					{name}
 				</h1>

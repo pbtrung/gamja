@@ -361,6 +361,38 @@ describe("MessageList interactions", () => {
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
 
+	it("closes the reaction picker with its toggle button", async () => {
+		renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], { actions: true });
+		const toggle = screen.getByRole("button", { name: "Add reaction" });
+		await userEvent.click(toggle);
+		expect(screen.getByRole("menu")).toBeInTheDocument();
+		await userEvent.click(toggle);
+		expect(screen.queryByRole("menu")).toBeNull();
+	});
+
+	it("updates reply quotes when the original message is deleted", () => {
+		const messages = [
+			msg("@msgid=m1 :bob!u@h PRIVMSG #c :original text"),
+			msg("@msgid=m2;+draft/reply=m1 :carol!u@h PRIVMSG #c :a reply"),
+		];
+		const { container, rerender } = renderList(messages);
+		expect(container.querySelector(".reply-quote")).toHaveTextContent("original text");
+		rerender(
+			<MessageList
+				buffer={buffer(messages, { redacted: new Set(["m1"]) })}
+				server={server()}
+				bouncerNetwork={null}
+				settings={{ ...defaultSettings, layout: "compact" }}
+				onChannelClick={() => {}}
+				onNickClick={() => {}}
+				onAuthClick={() => {}}
+				onRegisterClick={() => {}}
+				onVerifyClick={() => {}}
+			/>,
+		);
+		expect(container.querySelector(".reply-quote")).toHaveTextContent("This message has been deleted.");
+	});
+
 	it("has no actions without msgid or when disabled", () => {
 		renderList([msg(":bob!u@h PRIVMSG #c :no id")], { actions: true });
 		expect(screen.queryByRole("toolbar")).toBeNull();

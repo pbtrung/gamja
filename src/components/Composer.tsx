@@ -15,6 +15,7 @@ import { CornerUpRight, Paperclip, SendHorizontal, X } from "lucide-react";
 import type { ReplyTo } from "../app/store";
 import type Client from "../lib/client";
 import { uploadFile } from "../lib/filehost";
+import IconButton from "./IconButton";
 import { computeAutocomplete, type Autocomplete } from "../lib/autocomplete";
 
 export interface ComposerHandle {
@@ -27,7 +28,6 @@ interface ComposerProps {
 	readOnly: boolean;
 	commandOnly: boolean;
 	maxLen?: number;
-	placeholder?: string;
 	onSubmit: (text: string) => void;
 	onError: (err: unknown) => void;
 	autocomplete: (prefix: string) => string[];
@@ -60,7 +60,6 @@ export default function Composer({
 	readOnly,
 	commandOnly,
 	maxLen,
-	placeholder,
 	onSubmit,
 	onError,
 	autocomplete,
@@ -144,7 +143,7 @@ export default function Composer({
 	}, [text]);
 
 	function submit() {
-		if (!text) {
+		if (!text || tooLong) {
 			return;
 		}
 		onSubmit(text);
@@ -217,7 +216,12 @@ export default function Composer({
 	// Global listeners: start typing anywhere to focus the composer
 	useEffect(() => {
 		const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-			if (isEditableFocused() || event.defaultPrevented) {
+			// Don't steal keys from editable fields or from an open dialog
+			if (
+				isEditableFocused() ||
+				document.querySelector('[aria-modal="true"]') ||
+				event.defaultPrevented
+			) {
 				return;
 			}
 			// If a modifier is pressed, reserve for key bindings.
@@ -287,8 +291,10 @@ export default function Composer({
 		classes.push("dragging");
 	}
 
-	const label = placeholder ?? (commandOnly ? "Type a command (see /help)" : "Type a message");
-	const tooLong = maxLen !== undefined && new TextEncoder().encode(text).length > maxLen;
+	const label = commandOnly ? "Type a command (see /help)" : "Type a message";
+	// Commands aren't sent as is ("//" escapes a message starting with "/")
+	const isCommand = text.startsWith("/") && !text.startsWith("//");
+	const tooLong = maxLen !== undefined && !isCommand && new TextEncoder().encode(text).length > maxLen;
 
 	return (
 		<form
@@ -331,15 +337,7 @@ export default function Composer({
 					<span className="composer-reply-text">
 						Replying to <strong>{replyTo.nick}</strong>: {replyTo.text}
 					</span>
-					<button
-						type="button"
-						className="icon-btn"
-						title="Cancel reply"
-						aria-label="Cancel reply"
-						onClick={onCancelReply}
-					>
-						<X aria-hidden="true" />
-					</button>
+					<IconButton icon={X} label="Cancel reply" onClick={onCancelReply} />
 				</div>
 			)}
 			<div className={"composer-box" + (tooLong ? " too-long" : "")}>
@@ -372,28 +370,22 @@ export default function Composer({
 						</button>
 					)}
 					{canUploadFiles && (
-						<button
-							type="button"
-							className="icon-btn"
-							title="Upload file"
-							aria-label="Upload file"
+						<IconButton
+							icon={Paperclip}
+							label="Upload file"
 							onClick={() => {
 								inputRef.current?.focus();
 								fileInputRef.current?.click();
 							}}
-						>
-							<Paperclip aria-hidden="true" />
-						</button>
+						/>
 					)}
-					<button
+					<IconButton
 						type="submit"
-						className="icon-btn composer-send"
-						title="Send"
-						aria-label="Send"
+						icon={SendHorizontal}
+						label="Send"
+						className="composer-send"
 						disabled={!text || tooLong}
-					>
-						<SendHorizontal aria-hidden="true" />
-					</button>
+					/>
 				</div>
 			</div>
 			{canUploadFiles && (

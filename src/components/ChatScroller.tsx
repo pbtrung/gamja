@@ -1,7 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { flash } from "../lib/flash";
+
+/** A message and its distance from the top of the viewport, in pixels */
+interface Anchor {
+	key: string;
+	offset: number;
+}
 
 /** Saved scroll anchors, by scroll key. null means "stick to the bottom". */
-const positions = new Map<unknown, string | null>();
+const positions = new Map<unknown, Anchor | null>();
 
 interface ChatScrollerProps {
 	scrollKey: unknown;
@@ -9,7 +16,6 @@ interface ChatScrollerProps {
 	stickTo: string;
 	onScrollTop: () => void;
 	children: ReactNode;
-	className?: string;
 	id?: string;
 	label?: string;
 	/** data-msgid of a message to scroll to */
@@ -35,7 +41,6 @@ export default function ChatScroller({
 	stickTo,
 	onScrollTop,
 	children,
-	className,
 	id,
 	label,
 	jumpTo,
@@ -49,11 +54,12 @@ export default function ChatScroller({
 		onScrollTopRef.current = onScrollTop;
 	});
 
-	function firstVisibleKey(el: HTMLElement): string | null {
+	function firstVisibleAnchor(el: HTMLElement): Anchor | null {
 		const top = el.getBoundingClientRect().top;
 		for (const child of el.querySelectorAll<HTMLElement>(stickTo)) {
-			if (child.getBoundingClientRect().top >= top) {
-				return child.dataset.key ?? null;
+			const childTop = child.getBoundingClientRect().top;
+			if (childTop >= top && child.dataset.key) {
+				return { key: child.dataset.key, offset: childTop - top };
 			}
 		}
 		return null;
@@ -61,7 +67,7 @@ export default function ChatScroller({
 
 	function save(el: HTMLElement) {
 		stickToBottom.current = isAtBottom(el);
-		positions.set(scrollKey, stickToBottom.current ? null : firstVisibleKey(el));
+		positions.set(scrollKey, stickToBottom.current ? null : firstVisibleAnchor(el));
 	}
 
 	// Restore the position after every render: either the buffer changed or
@@ -76,19 +82,20 @@ export default function ChatScroller({
 			if (target) {
 				el.scrollTop +=
 					target.getBoundingClientRect().top - el.getBoundingClientRect().top - el.clientHeight / 3;
-				target.classList.add("flash");
+				flash(target);
 				save(el);
 				onJumped?.();
 				return;
 			}
 		}
 
-		const anchorKey = positions.get(scrollKey) ?? null;
-		const anchor = anchorKey
-			? el.querySelector<HTMLElement>(`[data-key="${CSS.escape(anchorKey)}"]`)
-			: null;
-		if (anchor) {
-			el.scrollTop += anchor.getBoundingClientRect().top - el.getBoundingClientRect().top;
+		// Put the anchor back where it was, to the pixel: re-renders that
+		// don't change the messages above it mustn't move the view
+		const saved = positions.get(scrollKey) ?? null;
+		const anchor = saved ? el.querySelector<HTMLElement>(`[data-key="${CSS.escape(saved.key)}"]`) : null;
+		if (saved && anchor) {
+			el.scrollTop +=
+				anchor.getBoundingClientRect().top - el.getBoundingClientRect().top - saved.offset;
 			stickToBottom.current = false;
 		} else {
 			scrollToBottom(el);
@@ -110,17 +117,25 @@ export default function ChatScroller({
 				scrollToBottom(el);
 			}
 		});
+		// Children can be replaced (e.g. an error fallback): watch new ones too
+		const observeChildren = () => {
+			for (const child of el.children) {
+				observer.observe(child);
+			}
+		};
 		observer.observe(el);
-		if (el.firstElementChild) {
-			observer.observe(el.firstElementChild);
-		}
-		return () => observer.disconnect();
+		observeChildren();
+		const mutationObserver = new MutationObserver(observeChildren);
+		mutationObserver.observe(el, { childList: true });
+		return () => {
+			observer.disconnect();
+			mutationObserver.disconnect();
+		};
 	}, []);
 
 	return (
 		<section
 			id={id}
-			className={className}
 			ref={ref}
 			tabIndex={-1}
 			role="log"
