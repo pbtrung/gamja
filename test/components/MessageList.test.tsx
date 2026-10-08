@@ -52,6 +52,7 @@ function buffer(messages: irc.Message[], patch: Partial<Buffer> = {}): Buffer {
 		joined: true,
 		topic: null,
 		hasInitialWho: true,
+		hasNames: true,
 		members: new irc.CaseMapMap(null, irc.CaseMapping.RFC1459),
 		messages,
 		redacted: new Set(),
@@ -241,6 +242,23 @@ describe("MessageList", () => {
 		);
 		expect(container.querySelector(".error")).toHaveTextContent("433 me nick Nickname is already in use");
 		expect(container).toHaveTextContent("999 me custom");
+	});
+
+	it("renders channel renames and standard replies", () => {
+		const { container } = renderList([
+			msg(":srv RENAME #old #c :merged"),
+			msg(":srv FAIL CHATHISTORY MESSAGE_ERROR :Failed to fetch"),
+			msg(":srv WARN * ACCOUNT_REQUIRED :Login soon"),
+			msg(":srv NOTE * SOMETHING :FYI"),
+		]);
+		expect(lines(container)).toEqual([
+			"The channel has been renamed from #old to #c (merged)",
+			"CHATHISTORY: Failed to fetch",
+			"Login soon",
+			"FYI",
+		]);
+		expect(container.querySelector(".error")).toHaveTextContent("Failed to fetch");
+		expect(container.querySelector(".warning")).toHaveTextContent("Login soon");
 	});
 
 	it("collapses repeated MONITOR status", () => {

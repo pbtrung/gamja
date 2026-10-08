@@ -463,6 +463,69 @@ describe("commands", () => {
 	});
 });
 
+describe("soju extensions", () => {
+	it("requests NAMES explicitly with no-implicit-names", async () => {
+		const { client, ws } = register("soju.im/no-implicit-names batch");
+		expect(client.hasNoImplicitNames()).toBe(true);
+		const p = client.names("#c");
+		expect(ws.sent).toEqual(["NAMES #c"]);
+		ws.receive(":srv 353 me = #c :@a b", ":srv 366 me #C :End");
+		const end = await p;
+		expect(end.list).toHaveLength(1);
+	});
+
+	it("fetches the latest messages and messages around a msgid", async () => {
+		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
+		const p = client.fetchHistoryLatest("#c", 100);
+		await new Promise((r) => setTimeout(r, 0));
+		expect(ws.takeSent()[0].params).toEqual(["LATEST", "#c", "*", "50"]);
+		ws.receive(":srv BATCH +a chathistory #c", "@batch=a :x PRIVMSG #c :1", ":srv BATCH -a");
+		await expect(p).resolves.toMatchObject({ more: false });
+
+		const p2 = client.fetchHistoryAround("#c", { msgid: "abc" }, 20);
+		await new Promise((r) => setTimeout(r, 0));
+		expect(ws.takeSent()[0].params).toEqual(["AROUND", "#c", "msgid=abc", "20"]);
+		ws.receive(":srv BATCH +b chathistory #c", ":srv BATCH -b");
+		await expect(p2).resolves.toEqual([]);
+	});
+
+	it("searches messages", async () => {
+		const { client, ws } = register("batch soju.im/search");
+		expect(client.supportsSearch()).toBe(true);
+		const p = client.search({ text: "hello world", in: "#c", limit: 10, from: "" });
+		expect(ws.sent).toEqual(["SEARCH text=hello\\sworld;in=#c;limit=10"]);
+		ws.receive(
+			":srv BATCH +s soju.im/search",
+			"@batch=s;msgid=1;time=2020-01-01T00:00:00.000Z :bob!u@h PRIVMSG #c :hello world",
+			":srv BATCH -s",
+		);
+		const results = await p;
+		expect(results.map((m) => m.params[1])).toEqual(["hello world"]);
+
+		const p2 = client.search({ text: "x" });
+		ws.receive("FAIL SEARCH INVALID_PARAMS :Invalid parameters");
+		await expect(p2).rejects.toThrow("Invalid parameters");
+	});
+
+	it("registers and unregisters Web Push subscriptions", async () => {
+		const { client, ws } = register("soju.im/webpush", "VAPID=BAkey CHANTYPES=#");
+		expect(client.supportsWebPush()).toBe(true);
+		expect(client.isupport.vapid()).toBe("BAkey");
+		const p = client.registerWebPush("https://push.example/abc", { p256dh: "pk", auth: "sec" });
+		expect(ws.sent).toEqual(["WEBPUSH REGISTER https://push.example/abc p256dh=pk;auth=sec"]);
+		ws.receive(":srv WEBPUSH REGISTER https://push.example/abc");
+		await p;
+		ws.takeSent();
+		const p2 = client.unregisterWebPush("https://push.example/abc");
+		ws.receive(":srv WEBPUSH UNREGISTER https://push.example/abc");
+		await p2;
+
+		const p3 = client.registerWebPush("https://bad", { p256dh: "x", auth: "y" });
+		ws.receive("FAIL WEBPUSH INVALID_PARAMS REGISTER https://bad :Invalid endpoint");
+		await expect(p3).rejects.toThrow("Invalid endpoint");
+	});
+});
+
 describe("batches", () => {
 	it("attaches nested batches to messages", () => {
 		const { client, ws } = register("batch");

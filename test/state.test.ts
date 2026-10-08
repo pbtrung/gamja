@@ -285,6 +285,36 @@ describe("handleMessage", () => {
 		expect(server).toMatchObject({ name: "Test", bouncerNetID: "7", statusMsg: "@" });
 	});
 
+	it("renames channels", () => {
+		const t = setup(["#old", "#b"]);
+		const id = t.buf("#old").id;
+		t.handle(":srv RENAME #old #z :moved");
+		expect(t.buf("#z").id).toBe(id);
+		expect(S.getBuffer(t.state, { server: t.serverID, name: "#old" })).toBeUndefined();
+		expect([...t.state.buffers.values()].map((b) => b.name)).toEqual([SERVER_BUFFER, "#b", "#z"]);
+		expect(
+			S.handleMessage(t.state, irc.parseMessage(":srv RENAME #nope #x"), t.serverID, t.client),
+		).toBeUndefined();
+	});
+
+	it("learns accounts from account-tag", () => {
+		const t = setup();
+		t.handle("@account=bobacct :bob!u@h PRIVMSG #c :hi");
+		expect(t.user("bob")?.account).toBe("bobacct");
+		t.handle("@account=x :srv NOTICE * :server");
+		expect(t.user("srv")).toBeUndefined();
+	});
+
+	it("marks NAMES as received", () => {
+		const t = setup(["#c"]);
+		expect(t.buf("#c").hasNames).toBe(false);
+		const msg = irc.parseMessage(":srv 366 me #c :End");
+		msg.prefix = { name: "srv" };
+		msg.list = [];
+		const state = { ...t.state, ...S.handleMessage(t.state, msg, t.serverID, t.client) };
+		expect(S.getBuffer(state, { server: t.serverID, name: "#c" })!.hasNames).toBe(true);
+	});
+
 	it("tracks redactions", () => {
 		const t = setup(["#c", "bob"]);
 		t.handle(":bob!u@h REDACT #c msg1");

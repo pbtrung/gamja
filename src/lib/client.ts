@@ -5,8 +5,10 @@ import type { Message, OutgoingMessage, Prefix, Batch } from "./irc";
 // server
 const permanentCaps = [
 	"account-notify",
+	"account-tag",
 	"away-notify",
 	"batch",
+	"cap-notify",
 	"chghost",
 	"echo-message",
 	"extended-join",
@@ -18,14 +20,20 @@ const permanentCaps = [
 	"sasl",
 	"server-time",
 	"setname",
+	"userhost-in-names",
 
 	"draft/account-registration",
+	"draft/channel-rename",
 	"draft/chathistory",
 	"draft/extended-monitor",
 	"draft/message-redaction",
+	"draft/no-implicit-names",
 	"draft/read-marker",
 
 	"soju.im/bouncer-networks",
+	"soju.im/no-implicit-names",
+	"soju.im/search",
+	"soju.im/webpush",
 ];
 
 const RECONNECT_MIN_DELAY_MSEC = 10 * 1000; // 10s
@@ -1010,7 +1018,8 @@ export default class Client extends EventTarget {
 		});
 	}
 
-	fetchBatch(msg: OutgoingMessage, batchType: string): Promise<BatchResult> {
+	fetchBatch(msg: OutgoingMessage, batchType: string | string[]): Promise<BatchResult> {
+		const batchTypes = Array.isArray(batchType) ? batchType : [batchType];
 		let batchName: string | null = null;
 		const messages: Message[] = [];
 		return this.roundtrip(msg, (msg) => {
@@ -1031,7 +1040,7 @@ export default class Client extends EventTarget {
 
 			const enter = msg.params[0].startsWith("+");
 			const name = msg.params[0].slice(1);
-			if (enter && msg.params[1] === batchType) {
+			if (enter && batchTypes.includes(msg.params[1])) {
 				batchName = name;
 				return;
 			}
@@ -1209,6 +1218,84 @@ export default class Client extends EventTarget {
 		this.send({
 			command: "MARKREAD",
 			params: [target, "timestamp=" + t],
+		});
+	}
+
+	/** Whether the server omits NAMES replies after JOIN. */
+	hasNoImplicitNames(): boolean {
+		return (
+			this.caps.enabled.has("draft/no-implicit-names") ||
+			this.caps.enabled.has("soju.im/no-implicit-names")
+		);
+	}
+
+	/** Request the member list of a channel. */
+	names(channel: string): Promise<Message> {
+		return this.roundtrip({ command: "NAMES", params: [channel] }, (msg) => {
+			if (msg.command === irc.RPL_ENDOFNAMES && this.cm(msg.params[1]) === this.cm(channel)) {
+				return msg;
+			}
+		});
+	}
+
+	/* Fetch the latest messages of a target, in ascending order. */
+	async fetchHistoryLatest(target: string, limit: number): Promise<{ messages: Message[]; more: boolean }> {
+		const max = Math.min(limit, this.isupport.chatHistory());
+		const messages = await this.roundtripChatHistory(["LATEST", target, "*", max]);
+		return { messages, more: messages.length >= max };
+	}
+
+	/* Fetch messages around a message ID or timestamp. */
+	async fetchHistoryAround(
+		target: string,
+		bound: { msgid?: string; time?: string },
+		limit: number,
+	): Promise<Message[]> {
+		const max = Math.min(limit, this.isupport.chatHistory());
+		const ref = bound.msgid ? "msgid=" + bound.msgid : "timestamp=" + bound.time;
+		return this.roundtripChatHistory(["AROUND", target, ref, max]);
+	}
+
+	supportsSearch(): boolean {
+		return this.caps.enabled.has("soju.im/search");
+	}
+
+	/** Run a server-side message search (soju.im/search). */
+	async search(query: {
+		text?: string;
+		in?: string;
+		from?: string;
+		before?: string;
+		after?: string;
+		limit?: number;
+	}): Promise<Message[]> {
+		const attrs: irc.Tags = {};
+		for (const [k, v] of Object.entries(query)) {
+			if (v !== undefined && v !== null && v !== "") {
+				attrs[k] = String(v);
+			}
+		}
+		const msg = { command: "SEARCH", params: [irc.formatTags(attrs)] };
+		const batch = await this.fetchBatch(msg, ["soju.im/search", "search"]);
+		return batch.messages;
+	}
+
+	supportsWebPush(): boolean {
+		return this.caps.enabled.has("soju.im/webpush") && Boolean(this.isupport.vapid());
+	}
+
+	/** Subscribe to Web Push notifications (soju.im/webpush). */
+	async registerWebPush(endpoint: string, keys: Record<string, string>): Promise<void> {
+		const msg = { command: "WEBPUSH", params: ["REGISTER", endpoint, irc.formatTags(keys)] };
+		await this.roundtrip(msg, (msg) => {
+			return msg.command === "WEBPUSH" && msg.params[0] === "REGISTER" && msg.params[1] === endpoint;
+		});
+	}
+
+	async unregisterWebPush(endpoint: string): Promise<void> {
+		const msg = { command: "WEBPUSH", params: ["UNREGISTER", endpoint] };
+		await this.roundtrip(msg, (msg) => {
+			return msg.command === "WEBPUSH" && msg.params[0] === "UNREGISTER" && msg.params[1] === endpoint;
 		});
 	}
 

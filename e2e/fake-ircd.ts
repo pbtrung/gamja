@@ -129,6 +129,7 @@ function now(): string {
 
 const AVAILABLE_CAPS = [
 	"account-notify",
+	"account-tag",
 	"away-notify",
 	"batch",
 	"chghost",
@@ -147,6 +148,9 @@ const AVAILABLE_CAPS = [
 	"draft/read-marker",
 	"draft/message-redaction",
 	"draft/account-registration=before-connect",
+	"soju.im/no-implicit-names",
+	"soju.im/search",
+	"userhost-in-names",
 ];
 
 class Conn {
@@ -350,6 +354,18 @@ export class FakeServer {
 				break;
 			case "PART":
 				this.part(conn, msg.params[0], msg.params[1]);
+				break;
+			case "NAMES": {
+				const ch = this.channels.get(cm(msg.params[0]));
+				if (ch) {
+					this.names(conn, ch, label);
+				} else {
+					reply({ command: "366", params: [conn.nick, msg.params[0], "End of /NAMES list"] });
+				}
+				break;
+			}
+			case "SEARCH":
+				this.search(conn, msg, label);
 				break;
 			case "PRIVMSG":
 			case "NOTICE":
@@ -767,17 +783,27 @@ export class FakeServer {
 		} else {
 			conn.numeric("331", ch.name, "No topic is set");
 		}
-		const names = [...ch.members.entries()].map(([k, p]) => {
-			const c = this.connsFor(k)[0];
-			const display = c ? c.nick : k;
-			return (conn.caps.has("multi-prefix") ? p : p.slice(0, 1)) + display;
-		});
-		conn.numeric("353", "=", ch.name, names.join(" "));
-		conn.numeric("366", ch.name, "End of /NAMES list");
+		if (!conn.caps.has("soju.im/no-implicit-names")) {
+			this.names(conn, ch);
+		}
 		if (conn.caps.has("draft/read-marker")) {
 			const ts = this.readMarkers.get(this.markerKey(conn, ch.name));
 			conn.send({ tags: {}, command: "MARKREAD", params: [ch.name, ts ? "timestamp=" + ts : "*"] });
 		}
+	}
+
+	names(conn: Conn, ch: Channel, label?: string): void {
+		const names = [...ch.members.entries()].map(([k, p]) => {
+			const c = this.connsFor(k)[0];
+			let display = c ? c.nick : k;
+			if (c && conn.caps.has("userhost-in-names")) {
+				display = c.prefix;
+			}
+			return (conn.caps.has("multi-prefix") ? p : p.slice(0, 1)) + display;
+		});
+		const tags: Record<string, string> = label && conn.caps.has("labeled-response") ? { label } : {};
+		conn.send({ tags, command: "353", params: [conn.nick, "=", ch.name, names.join(" ")] });
+		conn.send({ tags, command: "366", params: [conn.nick, ch.name, "End of /NAMES list"] });
 	}
 
 	part(conn: Conn, name: string, reason?: string): void {
@@ -996,6 +1022,59 @@ export class FakeServer {
 		for (const e of entries) {
 			conn.send({
 				tags: { ...e.tags, batch: ref, msgid: e.msgid, time: e.time },
+				prefix: e.prefix,
+				command: e.command,
+				params: e.params,
+			});
+		}
+		conn.send({ tags: {}, command: "BATCH", params: ["-" + ref] });
+	}
+
+	search(conn: Conn, msg: Msg, label?: string): void {
+		const attrs = Object.fromEntries(
+			msg.params[0].split(";").map((kv) => {
+				const i = kv.indexOf("=");
+				return i < 0 ? [kv, ""] : [kv.slice(0, i), unescapeTag(kv.slice(i + 1))];
+			}),
+		);
+		const tags: Record<string, string> = label && conn.caps.has("labeled-response") ? { label } : {};
+		const ref = "search" + ++msgidCounter;
+		const results: { target: string; e: HistoryEntry }[] = [];
+		for (const [key, entries] of this.history) {
+			const isChannel = key.startsWith("#");
+			if (
+				isChannel
+					? !this.channels.get(key)?.members.has(cm(conn.nick))
+					: !key.split("\0").includes(cm(conn.nick))
+			) {
+				continue;
+			}
+			for (const e of entries) {
+				if (e.command !== "PRIVMSG" && e.command !== "NOTICE") {
+					continue;
+				}
+				if (
+					attrs.in &&
+					cm(e.params[0]) !== cm(attrs.in) &&
+					!(cm(e.prefix.split("!")[0]) === cm(attrs.in))
+				) {
+					continue;
+				}
+				if (attrs.from && cm(e.prefix.split("!")[0]) !== cm(attrs.from)) {
+					continue;
+				}
+				if (attrs.text && !e.params[1].toLowerCase().includes(attrs.text.toLowerCase())) {
+					continue;
+				}
+				results.push({ target: e.params[0], e });
+			}
+		}
+		results.sort((a, b) => (a.e.time < b.e.time ? -1 : 1));
+		const limit = parseInt(attrs.limit || "100", 10);
+		conn.send({ tags, command: "BATCH", params: ["+" + ref, "soju.im/search"] });
+		for (const { e } of results.slice(-limit)) {
+			conn.send({
+				tags: { batch: ref, msgid: e.msgid, time: e.time },
 				prefix: e.prefix,
 				command: e.command,
 				params: e.params,

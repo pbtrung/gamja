@@ -490,6 +490,15 @@ export default class AppController {
 				this.whoUserBuffer(buf.name, buf.server);
 			}
 
+			if (
+				buf.type === BufferType.CHANNEL &&
+				buf.joined &&
+				!buf.hasNames &&
+				client.hasNoImplicitNames()
+			) {
+				this.fetchNames(buf);
+			}
+
 			if (buf.type === BufferType.CHANNEL && !buf.hasInitialWho) {
 				this.whoChannelBuffer(buf.name, buf.server).catch((err) => {
 					console.warn(`Failed to WHO ${buf.name}:`, err);
@@ -507,6 +516,20 @@ export default class AppController {
 
 		// TODO: only mark as read if user scrolled at the bottom
 		this.markBufferAsRead(buf.id);
+	}
+
+	/** Request the member list of a channel when the server doesn't send it on JOIN. */
+	fetchNames(buf: Buffer): void {
+		const client = this.clients.get(buf.server);
+		if (!client) {
+			return;
+		}
+		// Mark as loaded right away to avoid sending NAMES twice
+		this.setBufferState(buf.id, { hasNames: true });
+		client.names(buf.name).catch((err) => {
+			console.warn(`Failed to fetch NAMES for ${buf.name}:`, err);
+			this.setBufferState(buf.id, { hasNames: false });
+		});
 	}
 
 	markBufferAsRead(id: BufferID): void {
@@ -920,6 +943,8 @@ export default class AppController {
 			case "KICK":
 			case "TOPIC":
 				return [msg.params[0]];
+			case "RENAME":
+				return [msg.params[1]];
 			case "QUIT":
 			case "NICK": {
 				const affectedBuffers: string[] = [];
@@ -999,6 +1024,7 @@ export default class AppController {
 			case "BOUNCER":
 			case "MARKREAD":
 			case "REDACT":
+			case "WEBPUSH":
 				// Ignore these
 				return [];
 			default:
@@ -1040,6 +1066,10 @@ export default class AppController {
 
 				if (client.isMyNick(from)) {
 					this.syncBufferUnread(serverID, channel);
+					const buf = S.getBuffer(this.state, { server: serverID, name: channel });
+					if (buf && buf.id === this.state.activeBuffer && client.hasNoImplicitNames()) {
+						this.fetchNames(buf);
+					}
 				}
 				if (this.switchToChannel && client.cm(channel) === client.cm(this.switchToChannel)) {
 					this.switchBuffer({ server: serverID, name: channel });
@@ -1050,6 +1080,20 @@ export default class AppController {
 			case "BOUNCER":
 				this.handleBouncerNetwork(serverID, client, msg);
 				break;
+			case "RENAME": {
+				const [from, to] = msg.params;
+				const stored = this.bufferStore.get({ name: from, server: client.params });
+				if (stored) {
+					this.bufferStore.delete({ name: from, server: client.params });
+					this.bufferStore.put({ ...stored, name: to, server: client.params });
+				}
+				const buf = S.getBuffer(this.state, { server: serverID, name: to });
+				if (buf && buf.id === this.state.activeBuffer) {
+					this.updateWindowHash();
+					this.updateDocumentTitle();
+				}
+				break;
+			}
 			case "BATCH": {
 				if (!msg.params[0].startsWith("-")) {
 					break;

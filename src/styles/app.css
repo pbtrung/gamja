@@ -871,6 +871,10 @@ li.unread-highlight .unread-indicator,
 	color: var(--danger-fg);
 }
 
+#buffer .warning {
+	color: var(--warning-fg);
+}
+
 #buffer .me-tell {
 	color: var(--fg);
 	font-style: italic;

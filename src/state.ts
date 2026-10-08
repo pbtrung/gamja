@@ -112,6 +112,8 @@ export interface Buffer {
 	joined: boolean;
 	topic: string | null;
 	hasInitialWho: boolean;
+	/** Whether a NAMES reply has been received, if channel */
+	hasNames: boolean;
 	/** Nick → membership prefixes, if channel */
 	members: irc.CaseMapMap<string>;
 	messages: Message[];
@@ -492,6 +494,7 @@ export function createBuffer(
 		joined: false,
 		topic: null,
 		hasInitialWho: false,
+		hasNames: false,
 		members: new irc.CaseMapMap<string>(null, client.cm),
 		messages: [],
 		redacted: new Set(),
@@ -625,7 +628,7 @@ export function handleMessage(
 						members.set(name, member.prefix);
 					}
 				}
-				return { members };
+				return { members, hasNames: true };
 			});
 		}
 		case irc.RPL_ENDOFWHO: {
@@ -837,6 +840,33 @@ export function handleMessage(
 
 				return { members };
 			});
+		}
+		case "RENAME": {
+			// draft/channel-rename
+			const [from, to] = msg.params;
+			const buf = getBuffer(state, { server: serverID, name: from });
+			if (!buf) {
+				return;
+			}
+			let bufferList = Array.from(state.buffers.values()).map((b) =>
+				b.id === buf.id ? { ...b, name: to } : b,
+			);
+			bufferList = bufferList.sort((a, b) => compareBuffers(state, a, b));
+			return { buffers: new Map(bufferList.map((b) => [b.id, b])) };
+		}
+		case "PRIVMSG":
+		case "NOTICE":
+		case "TAGMSG": {
+			// account-tag
+			const account = msg.tags.account;
+			if (account === undefined || !msg.prefix?.user) {
+				return;
+			}
+			const user = state.servers.get(serverID)?.users.get(prefix.name);
+			if (user && user.account === account) {
+				return;
+			}
+			return updateUser(prefix.name, { account });
 		}
 		case "REDACT":
 			target = msg.params[0];

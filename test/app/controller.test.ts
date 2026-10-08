@@ -221,6 +221,32 @@ describe("AppController messaging", () => {
 		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
 	});
 
+	it("keeps renamed channels and their stored state", async () => {
+		const { app, recv } = await connectedApp();
+		recv(":me!u@h JOIN #old");
+		app.switchBuffer(buf(app, "#old")!.id);
+		recv(":srv RENAME #old #new :merge");
+		expect(buf(app, "#old")).toBeUndefined();
+		expect(buf(app, "#new")!.messages.at(-1)!.command).toBe("RENAME");
+		expect(window.location.hash).toBe("#/#new");
+		expect(app.bufferStore.get({ name: "#new", server: {} })).toBeDefined();
+		expect(app.bufferStore.get({ name: "#old", server: {} })).toBeUndefined();
+	});
+
+	it("fetches NAMES lazily with no-implicit-names", async () => {
+		const { app, recv, sent } = await connectedApp({ caps: "batch soju.im/no-implicit-names" });
+		recv(":me!u@h JOIN #a", ":me!u@h JOIN #b");
+		expect(sent()).toEqual([]);
+		app.setBufferState({ name: "#b" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#b")!.id);
+		expect(sent()).toEqual(["NAMES #b"]);
+		recv(":srv 353 me = #b :@me bob", ":srv 366 me #b :End");
+		expect([...buf(app, "#b")!.members.keys()]).toEqual(["me", "bob"]);
+		app.switchBuffer(buf(app, SERVER_BUFFER)!.id);
+		app.switchBuffer(buf(app, "#b")!.id);
+		expect(sent()).toEqual([]);
+	});
+
 	it("fetches older messages on scroll", async () => {
 		const { app, recv, sent, sentRaw } = await connectedApp();
 		recv(":me!u@h JOIN #c", "@time=2030-01-02T00:00:00.000Z :bob!u@h PRIVMSG #c :new");

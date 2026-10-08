@@ -324,6 +324,28 @@ const LogLine = memo(
 				}
 				break;
 			}
+			case "RENAME":
+				content = (
+					<>
+						The channel has been renamed from {msg.params[0]} to {msg.params[1]}
+						{msg.params[2] ? <> ({msg.params[2]})</> : null}
+					</>
+				);
+				break;
+			case "FAIL":
+			case "WARN":
+			case "NOTE": {
+				// Standard replies: <command> <code> [context...] <description>
+				lineClass = msg.command === "FAIL" ? "error" : msg.command === "WARN" ? "warning" : "";
+				const command = msg.params[0] === "*" ? "" : msg.params[0] + ": ";
+				content = (
+					<>
+						{command}
+						<RichText text={msg.params[msg.params.length - 1]} onLinkClick={onChannelClick} />
+					</>
+				);
+				break;
+			}
 			case irc.RPL_WELCOME:
 				content = <>Connected to server, your nickname is {msg.params[0]}</>;
 				break;
