@@ -8,6 +8,11 @@ import {
 	Search,
 	Settings,
 	SlidersHorizontal,
+	Ban,
+	Bell,
+	BellOff,
+	Pin,
+	PinOff,
 	Unplug,
 	Users,
 	X,
@@ -21,9 +26,11 @@ import {
 	ServerStatus,
 	Unread,
 	getServerName,
+	getTargetMetadata,
 	type Buffer,
 	type BouncerNetwork,
 	type Server,
+	type TargetMetadata,
 	type User,
 } from "../state";
 import RichText, { type LinkClickHandler } from "./RichText";
@@ -101,6 +108,8 @@ export interface BufferHeaderProps {
 	onClose: () => void;
 	/** Hide the channel without leaving it, on soju networks */
 	onDetach?: () => void;
+	/** Pin, mute or block the buffer, on soju networks */
+	onSetMetadata?: (field: keyof TargetMetadata, value: boolean) => void;
 	onJoin: () => void;
 	onReconnect: () => void;
 	onAddNetwork: () => void;
@@ -309,6 +318,39 @@ export default function BufferHeader(props: BufferHeaderProps) {
 		actions.unshift(
 			<ActionButton key="search" icon={Search} label="Search" iconOnly onClick={props.onSearch} />,
 		);
+	}
+
+	const setMetadata = props.onSetMetadata;
+	if (setMetadata && buffer.type !== BufferType.SERVER) {
+		const metadata = getTargetMetadata(server, buffer.name);
+		const toggles: ReactNode[] = [
+			<ActionButton
+				key="pin"
+				icon={metadata.pinned ? PinOff : Pin}
+				label={metadata.pinned ? "Unpin" : "Pin"}
+				iconOnly
+				onClick={() => setMetadata("pinned", !metadata.pinned)}
+			/>,
+			<ActionButton
+				key="mute"
+				icon={metadata.muted ? Bell : BellOff}
+				label={metadata.muted ? "Unmute" : "Mute"}
+				iconOnly
+				onClick={() => setMetadata("muted", !metadata.muted)}
+			/>,
+		];
+		if (buffer.type === BufferType.NICK) {
+			toggles.push(
+				<ActionButton
+					key="block"
+					icon={Ban}
+					label={metadata.blocked ? "Unblock" : "Block"}
+					iconOnly
+					onClick={() => setMetadata("blocked", !metadata.blocked)}
+				/>,
+			);
+		}
+		actions.unshift(...toggles);
 	}
 
 	let name = buffer.name;

@@ -7,6 +7,7 @@ import {
 	ServerStatus,
 	BufferEventsDisplayMode,
 	getMessageURL,
+	getTargetMetadata,
 	isMessageBeforeReceipt,
 	type Buffer,
 	type BouncerNetwork,
@@ -1045,6 +1046,11 @@ function MessageList(props: MessageListProps) {
 	let lastMonitor: string | null = null;
 	for (const msg of buf.messages) {
 		const sep: ReactNode[] = [];
+
+		// Users blocked through soju's metadata
+		if (msg.prefix && getTargetMetadata(server, msg.prefix.name).blocked) {
+			continue;
+		}
 
 		if (settings.bufferEvents === BufferEventsDisplayMode.HIDE && canFoldMessage(msg)) {
 			continue;

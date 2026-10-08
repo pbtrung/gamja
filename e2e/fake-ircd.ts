@@ -148,6 +148,7 @@ const AVAILABLE_CAPS = [
 	"draft/read-marker",
 	"draft/message-redaction",
 	"draft/account-registration=before-connect",
+	"draft/metadata-2",
 	"soju.im/no-implicit-names",
 	"soju.im/search",
 	"soju.im/webpush",
@@ -220,6 +221,7 @@ export class FakeServer {
 	history = new Map<string, HistoryEntry[]>(); // cm(target) → entries
 	readMarkers = new Map<string, string>(); // account/nick + target → timestamp
 	webpush = new Map<string, boolean>(); // endpoint → registered
+	metadata = new Map<string, Record<string, string>>(); // target → key → value
 	networks = new Map<string, Record<string, string>>([
 		["1", { name: NETWORK, host: "irc.fake.test", state: "connected" }],
 	]);
@@ -375,6 +377,34 @@ export class FakeServer {
 			case "SEARCH":
 				this.search(conn, msg, label);
 				break;
+			case "METADATA": {
+				// Like soju: SUB to its keys, SET synced to every client
+				const [target, sub, ...rest] = msg.params;
+				if (sub?.toUpperCase() === "SUB") {
+					for (const key of rest) {
+						for (const [t, values] of this.metadata) {
+							if (values[key] !== undefined) {
+								conn.send({
+									tags: {},
+									command: "METADATA",
+									params: [t, key, "*", values[key]],
+								});
+							}
+						}
+						reply({ command: "770", params: ["*", key] });
+					}
+				} else if (sub?.toUpperCase() === "SET") {
+					const [key, value = "0"] = rest;
+					this.metadata.set(target, { ...this.metadata.get(target), [key]: value });
+					reply({ command: "761", params: ["*", target, key, "*", value] });
+					for (const c of this.conns) {
+						if (c.registered && c.caps.has("draft/metadata-2")) {
+							c.send({ tags: {}, command: "METADATA", params: [target, key, "*", value] });
+						}
+					}
+				}
+				break;
+			}
 			case "WEBPUSH":
 				this.webpush.set(msg.params[1], msg.params[0].toUpperCase() === "REGISTER");
 				reply({ command: "WEBPUSH", params: [msg.params[0].toUpperCase(), msg.params[1]] });

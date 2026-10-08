@@ -10,6 +10,7 @@ import {
 	type Buffer,
 	type Server,
 	type Settings,
+	type TargetMetadata,
 } from "../../src/state";
 
 let key = 0;
@@ -46,7 +47,9 @@ function server(patch: Partial<Server> = {}): Server {
 			redaction: true,
 			search: false,
 			webPush: false,
+			targetMetadata: false,
 		},
+		metadata: new irc.CaseMapMap(null, irc.CaseMapping.RFC1459),
 		...patch,
 	};
 }
@@ -436,6 +439,18 @@ it("offers to retry failed history fetches", async () => {
 	expect(screen.getByRole("alert")).toHaveTextContent("Failed to load older messages.");
 	await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 	expect(onRetryHistory).toHaveBeenCalled();
+});
+
+describe("blocked users", () => {
+	it("hides messages from users blocked through soju", () => {
+		const metadata = new irc.CaseMapMap<TargetMetadata>(null, irc.CaseMapping.RFC1459);
+		metadata.set("Troll", { blocked: true });
+		const { container } = renderList(
+			[msg(":bob!u@h PRIVMSG #c :hello"), msg(":troll!u@h PRIVMSG #c :spam")],
+			{ server: { metadata } },
+		);
+		expect(lines(container)).toEqual(["<bob> hello"]);
+	});
 });
 
 describe("comfortable layout", () => {

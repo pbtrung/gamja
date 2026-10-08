@@ -1,6 +1,6 @@
 import * as irc from "./lib/irc";
 import type Client from "./lib/client";
-import { SERVER_BUFFER, BufferType, Unread, getBuffer, unionUnread } from "./state";
+import { SERVER_BUFFER, BufferType, Unread, getBuffer, unionUnread, type TargetMetadata } from "./state";
 import type AppController from "./app/controller";
 
 export interface Command {
@@ -111,6 +111,30 @@ const detach: Command = {
 	},
 };
 
+/** /pin, /mute, /block and their opposites (soju metadata) */
+function metadataCommand(
+	name: string,
+	field: keyof TargetMetadata,
+	value: boolean,
+	usage: string,
+	description: string,
+): Command {
+	return {
+		name,
+		usage,
+		description,
+		execute: (app, args) => {
+			const buf = getActiveBuffer(app);
+			// Blocking needs a nick, the others default to the current buffer
+			const target = field === "blocked" ? requireArg(args, 0, "nick") : (args[0] ?? buf.name);
+			if (target === SERVER_BUFFER) {
+				throw new Error("Not in a channel or conversation");
+			}
+			app.setTargetMetadata(buf.server, target, field, value);
+		},
+	};
+}
+
 const kick: Command = {
 	name: "kick",
 	usage: "<nick> [comment]",
@@ -167,6 +191,7 @@ const commandList: Command[] = [
 		},
 	},
 	ban,
+	metadataCommand("block", "blocked", true, "<nick>", "Hide messages from a user (soju)"),
 	{
 		name: "buffer",
 		usage: "<name>",
@@ -300,6 +325,7 @@ const commandList: Command[] = [
 			app.sendChatMessage("PRIVMSG", target, args.slice(1).join(" "));
 		},
 	},
+	metadataCommand("mute", "muted", true, "[target]", "Silence a buffer's notifications (soju)"),
 	{
 		name: "nick",
 		usage: "<nick>",
@@ -340,6 +366,7 @@ const commandList: Command[] = [
 			getActiveClient(app).send({ command: "PART", params });
 		},
 	},
+	metadataCommand("pin", "pinned", true, "[target]", "Pin a buffer to the top of the list (soju)"),
 	{
 		name: "query",
 		usage: "<nick> [message]",
@@ -445,12 +472,15 @@ const commandList: Command[] = [
 			getActiveClient(app).send({ command: "TOPIC", params });
 		},
 	},
+	metadataCommand("unblock", "blocked", false, "<nick>", "Show messages from a blocked user again (soju)"),
 	{
 		name: "unban",
 		usage: "<nick>",
 		description: "Remove a user from the ban list",
 		execute: (app, args) => setUserHostMode(app, args, "-b"),
 	},
+	metadataCommand("unmute", "muted", false, "[target]", "Restore a buffer's notifications (soju)"),
+	metadataCommand("unpin", "pinned", false, "[target]", "Unpin a buffer (soju)"),
 	{
 		name: "unquiet",
 		usage: "<nick>",

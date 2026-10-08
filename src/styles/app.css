@@ -983,9 +983,27 @@ kbd {
 	opacity: 0.6;
 }
 
+/* Pinned and muted marks (soju metadata) */
+.buffer-items .buffer-flag {
+	flex-shrink: 0;
+	width: 0.875rem;
+	height: 0.875rem;
+	opacity: 0.6;
+}
+
+.buffer-items li.muted a {
+	color: var(--fg-subtle);
+}
+
 .buffer-items li.unread-message a {
 	color: var(--fg-emphasis);
 	font-weight: 600;
+}
+
+/* Muted buffers stay quiet even with unread messages */
+.buffer-items li.muted.unread-message a {
+	color: var(--fg-subtle);
+	font-weight: inherit;
 }
 
 .buffer-items li.unread-highlight a {

@@ -71,6 +71,10 @@ export const RPL_QUIETLIST = "728";
 export const RPL_ENDOFQUIETLIST = "729";
 // IRCv3 MONITOR: https://ircv3.net/specs/extensions/monitor
 export const RPL_MONONLINE = "730";
+// IRCv3 metadata: https://ircv3.net/specs/extensions/metadata
+export const RPL_KEYVALUE = "761";
+export const RPL_METADATASUBOK = "770";
+export const RPL_METADATAUNSUBOK = "771";
 export const RPL_MONOFFLINE = "731";
 export const RPL_MONLIST = "732";
 export const RPL_ENDOFMONLIST = "733";

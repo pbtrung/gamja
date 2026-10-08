@@ -428,6 +428,17 @@ function Chat({ state }: { state: AppState }) {
 								? () => app.detachChannel(activeBuffer.id).catch((err) => app.showError(err))
 								: undefined
 						}
+						onSetMetadata={
+							activeServer.features.targetMetadata
+								? (field, value) =>
+										app.setTargetMetadata(
+											activeBuffer.server,
+											activeBuffer.name,
+											field,
+											value,
+										)
+								: undefined
+						}
 						onJoin={() => app.handleJoinClick(activeBuffer)}
 						onReconnect={() => app.reconnect(activeBuffer.server)}
 						onAddNetwork={() => app.openDialog({ kind: "network" })}

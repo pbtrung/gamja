@@ -609,6 +609,54 @@ describe("detaching channels", () => {
 	});
 });
 
+describe("soju metadata", () => {
+	const caps =
+		"batch server-time echo-message message-tags labeled-response draft/chathistory draft/metadata-2";
+	const isupport = "CASEMAPPING=rfc1459 CHANTYPES=# BOUNCER_NETID=1 CHATHISTORY=100";
+
+	it("subscribes, follows updates and sets values", async () => {
+		const { app, recv, sent, serverID } = await connectedApp({ caps, isupport, register: false });
+		recv(`:srv CAP * LS :${caps}`, `:srv CAP me ACK :${caps}`);
+		recv(":srv 001 me :Welcome", `:srv 005 me ${isupport} :are supported`, ":srv 376 me :End of MOTD");
+		expect(sent()).toContain("METADATA * SUB soju.im/pinned soju.im/muted soju.im/blocked");
+		recv(":srv METADATA #c soju.im/pinned * 1", ":srv 761 me bob soju.im/blocked * 1");
+		const server = app.state.servers.get(serverID)!;
+		expect(server.metadata.get("#C")).toEqual({ pinned: true });
+		expect(server.metadata.get("bob")).toEqual({ blocked: true });
+		recv(":srv METADATA #c soju.im/pinned * 0");
+		expect(app.state.servers.get(serverID)!.metadata.get("#c")).toEqual({ pinned: false });
+		// Not shown anywhere
+		expect(buf(app, SERVER_BUFFER)!.messages.some((m) => m.command === "METADATA")).toBe(false);
+
+		recv(":me!u@h JOIN #c");
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		app.handleComposerSubmit("/mute");
+		app.handleComposerSubmit("/block bob");
+		app.handleComposerSubmit("/unpin #other");
+		expect(sent()).toEqual([
+			"METADATA #c SET soju.im/muted 1",
+			"METADATA bob SET soju.im/blocked 1",
+			"METADATA #other SET soju.im/pinned 0",
+		]);
+	});
+
+	it("ignores blocked users and keeps muted buffers quiet", async () => {
+		const { app, recv } = await connectedApp({ caps, isupport });
+		recv(":srv METADATA troll soju.im/blocked * 1", ":srv METADATA #quiet soju.im/muted * 1");
+		recv("@time=2030-01-01T00:00:00.000Z :troll!u@h PRIVMSG me :spam");
+		expect(buf(app, "troll")).toBeUndefined();
+		recv(":me!u@h JOIN #quiet");
+		recv("@time=2030-01-01T00:00:01.000Z :bob!u@h PRIVMSG #quiet :me: ping");
+		expect(buf(app, "#quiet")!.unread).toBe(Unread.MESSAGE);
+	});
+
+	it("requires soju", async () => {
+		const { app, serverID } = await connectedApp();
+		expect(() => app.setTargetMetadata(serverID, "#c", "pinned", true)).toThrow(/soju/);
+	});
+});
+
 describe("search", () => {
 	it("searches and jumps to results, loading context", async () => {
 		const { app, recv, sentRaw, serverID } = await connectedApp({

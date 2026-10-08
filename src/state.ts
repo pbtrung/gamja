@@ -109,6 +109,28 @@ export interface Server {
 	nick: string | null;
 	/** Optional features supported by the server */
 	features: Features;
+	/** Per-target settings synced by soju (draft/metadata-2), by target name */
+	metadata: irc.CaseMapMap<TargetMetadata>;
+}
+
+/** soju's metadata keys: https://soju.im/ext/metadata */
+export interface TargetMetadata {
+	/** Displayed more prominently than other buffers */
+	pinned?: boolean;
+	/** Displayed less prominently, without notifications */
+	muted?: boolean;
+	/** Messages from this user are hidden */
+	blocked?: boolean;
+}
+
+export const METADATA_KEYS: Record<keyof TargetMetadata, string> = {
+	pinned: "soju.im/pinned",
+	muted: "soju.im/muted",
+	blocked: "soju.im/blocked",
+};
+
+export function getTargetMetadata(server: Server | undefined, target: string): TargetMetadata {
+	return server?.metadata.get(target) ?? {};
 }
 
 export interface Features {
@@ -118,6 +140,8 @@ export interface Features {
 	redaction: boolean;
 	search: boolean;
 	webPush: boolean;
+	/** Pinning, muting and blocking synced by soju */
+	targetMetadata: boolean;
 }
 
 export const noFeatures: Features = {
@@ -127,6 +151,7 @@ export const noFeatures: Features = {
 	redaction: false,
 	search: false,
 	webPush: false,
+	targetMetadata: false,
 };
 
 function computeFeatures(client: Pick<Client, "caps" | "isupport">): Features {
@@ -138,6 +163,9 @@ function computeFeatures(client: Pick<Client, "caps" | "isupport">): Features {
 		redaction: client.caps.enabled.has("draft/message-redaction"),
 		search: client.caps.enabled.has("soju.im/search"),
 		webPush: client.caps.enabled.has("soju.im/webpush") && Boolean(client.isupport.vapid()),
+		// soju's keys only apply to a network's targets
+		targetMetadata:
+			client.caps.enabled.has("draft/metadata-2") && Boolean(client.isupport.bouncerNetID()),
 	};
 }
 
@@ -528,6 +556,7 @@ export function createServer(state: State): [number, Partial<State>] {
 		bouncerNetID: null,
 		nick: null,
 		features: noFeatures,
+		metadata: new irc.CaseMapMap<TargetMetadata>(null, irc.CaseMapping.RFC1459),
 	});
 	return [id, { servers }];
 }
@@ -656,6 +685,7 @@ export function handleMessage(
 						name: client.isupport.network() ?? null,
 						cm: client.cm,
 						users: new irc.CaseMapMap(server.users, client.cm),
+						metadata: new irc.CaseMapMap(server.metadata, client.cm),
 						reliableUserAccounts: client.isupport.monitor() > 0 && client.isupport.whox(),
 						statusMsg: client.isupport.statusMsg(),
 						membershipModes: client.isupport.membershipModes(),
@@ -667,6 +697,23 @@ export function handleMessage(
 		}
 		case irc.RPL_WELCOME:
 			return updateServerWith({ nick: msg.params[0] });
+		case "METADATA":
+		case irc.RPL_KEYVALUE: {
+			// METADATA <target> <key> <visibility> [value]
+			// RPL_KEYVALUE <client> <target> <key> <visibility> <value>
+			const [target, key, , value] = msg.command === "METADATA" ? msg.params : msg.params.slice(1);
+			const field = (Object.keys(METADATA_KEYS) as (keyof TargetMetadata)[]).find(
+				(k) => METADATA_KEYS[k] === key?.toLowerCase(),
+			);
+			if (!target || !field) {
+				return;
+			}
+			return updateServerWith((server) => {
+				const metadata = new irc.CaseMapMap(server.metadata);
+				metadata.set(target, { ...metadata.get(target), [field]: value === "1" });
+				return { metadata };
+			});
+		}
 		case "CAP":
 			return updateServerWith({
 				features: computeFeatures(client),

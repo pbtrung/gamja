@@ -27,6 +27,7 @@ const permanentCaps = [
 	"draft/chathistory",
 	"draft/extended-monitor",
 	"draft/message-redaction",
+	"draft/metadata-2",
 	"draft/no-implicit-names",
 	"draft/read-marker",
 
@@ -1265,6 +1266,16 @@ export default class Client extends EventTarget {
 				return reply;
 			}
 		});
+	}
+
+	/** Subscribe to soju's per-target metadata (pinned, muted, blocked). */
+	subscribeTargetMetadata(keys: string[]): void {
+		this.send({ command: "METADATA", params: ["*", "SUB", ...keys] });
+	}
+
+	/** Set or clear a boolean metadata key of a target, synced to all clients. */
+	setTargetMetadata(target: string, key: string, value: boolean): void {
+		this.send({ command: "METADATA", params: [target, "SET", key, value ? "1" : "0"] });
 	}
 
 	/** Change a bouncer network's attributes, rejects with soju's error. */

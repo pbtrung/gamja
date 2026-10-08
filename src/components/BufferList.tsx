@@ -1,4 +1,5 @@
 import { memo, type MouseEvent } from "react";
+import { BellOff, Pin } from "lucide-react";
 import { meaningfulRealname, unreadLabel } from "../format";
 import BufferTypeIcon from "./BufferTypeIcon";
 import {
@@ -7,6 +8,7 @@ import {
 	ServerStatus,
 	getBufferURL,
 	getServerName,
+	getTargetMetadata,
 	type Buffer,
 	type BouncerNetwork,
 	type Server,
@@ -77,6 +79,10 @@ const BufferItem = memo(function BufferItem({
 	if (active) {
 		classes.push("active");
 	}
+	const metadata = buffer.type === BufferType.SERVER ? {} : getTargetMetadata(server, buffer.name);
+	if (metadata.muted) {
+		classes.push("muted");
+	}
 	if (buffer.unread !== Unread.NONE) {
 		classes.push("unread-" + buffer.unread);
 	}
@@ -117,6 +123,8 @@ const BufferItem = memo(function BufferItem({
 							? connectionLabel[connectionStatus(server, bouncerNetwork)]
 							: null,
 						unreadLabel(buffer.unread),
+						metadata.pinned ? "Pinned" : null,
+						metadata.muted ? "Muted" : null,
 					]
 						.filter(Boolean)
 						.join(", ") || undefined
@@ -126,6 +134,8 @@ const BufferItem = memo(function BufferItem({
 			>
 				<BufferTypeIcon type={buffer.type} className="buffer-icon" aria-hidden="true" />
 				<span className="buffer-name">{name}</span>
+				{metadata.muted && <BellOff className="buffer-flag" aria-hidden="true" />}
+				{metadata.pinned && <Pin className="buffer-flag" aria-hidden="true" />}
 				{buffer.type === BufferType.SERVER && (
 					<span
 						className={`connection-status status-${connectionStatus(server, bouncerNetwork)}`}
@@ -150,8 +160,27 @@ interface BufferListProps {
 	onBufferClose: (buf: Buffer) => void;
 }
 
+/**
+ * Buffers in display order: pinned ones right after their server's buffer,
+ * keeping the order of the others.
+ */
+function displayOrder(buffers: Map<number, Buffer>, servers: Map<number, Server>): Buffer[] {
+	const pinned = (buf: Buffer) =>
+		buf.type !== BufferType.SERVER &&
+		Boolean(getTargetMetadata(servers.get(buf.server), buf.name).pinned);
+	const groups = new Map<number, Buffer[]>();
+	for (const buf of buffers.values()) {
+		groups.set(buf.server, [...(groups.get(buf.server) ?? []), buf]);
+	}
+	return [...groups.values()].flatMap((group) => [
+		...group.filter((buf) => buf.type === BufferType.SERVER),
+		...group.filter(pinned),
+		...group.filter((buf) => buf.type !== BufferType.SERVER && !pinned(buf)),
+	]);
+}
+
 export default function BufferList(props: BufferListProps) {
-	const items = Array.from(props.buffers.values()).map((buf) => {
+	const items = displayOrder(props.buffers, props.servers).map((buf) => {
 		const server = props.servers.get(buf.server);
 		if (!server) {
 			return null;

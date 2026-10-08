@@ -62,3 +62,25 @@ test("detaches a channel without leaving it", async ({ page, connect, bot }) => 
 	await expect(page.getByRole("button", { name: "Join", exact: true })).toBeVisible();
 	await expect(tabs.getByRole("tab", { name: "BouncerServ" })).toHaveCount(0);
 });
+
+test("pins and mutes buffers, synced through the bouncer", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#zzz");
+	await connect(page, "alice", { password: "secret" });
+	const tabs = page.getByRole("tablist", { name: "Buffer list" });
+	await tabs.getByRole("tab", { name: "FakeNet" }).click();
+	for (const channel of ["#aaa", "#zzz"]) {
+		await page.getByRole("textbox", { name: /Type a command/ }).fill("/join " + channel);
+		await page.keyboard.press("Enter");
+		await expect(page.locator("#buffer-header h1")).toHaveText(channel);
+		await tabs.getByRole("tab", { name: "FakeNet" }).click();
+	}
+	const names = () => tabs.getByRole("tab").allInnerTexts();
+	expect((await names()).filter((n) => n.startsWith("#"))).toEqual(["#aaa", "#zzz"]);
+	await tabs.getByRole("tab", { name: "#zzz" }).click();
+	await page.getByRole("button", { name: "Pin" }).click();
+	await expect(page.getByRole("button", { name: "Unpin" })).toBeVisible();
+	await expect.poll(async () => (await names()).filter((n) => n.startsWith("#"))).toEqual(["#zzz", "#aaa"]);
+	await page.getByRole("button", { name: "Mute" }).click();
+	await expect(tabs.getByRole("tab", { name: "#zzz" }).locator("xpath=..")).toHaveClass(/muted/);
+});

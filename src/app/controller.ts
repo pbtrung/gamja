@@ -662,6 +662,17 @@ export default class AppController {
 			isRead = true;
 		}
 
+		// soju's metadata: blocked users are ignored, muted buffers are quiet
+		const server = this.state.servers.get(serverID);
+		const blocked = Boolean(S.getTargetMetadata(server, from).blocked);
+		const muted = Boolean(S.getTargetMetadata(server, bufName).muted);
+		if (blocked) {
+			if (!S.getBuffer(this.state, { server: serverID, name: bufName })) {
+				return; // Don't open a conversation for a blocked user
+			}
+			isRead = true;
+		}
+
 		let msgUnread: Unread = Unread.NONE;
 		if ((msg.command === "PRIVMSG" || msg.command === "NOTICE") && !isRead) {
 			const target = msg.params[0];
@@ -675,6 +686,9 @@ export default class AppController {
 				msgUnread = Unread.HIGHLIGHT;
 				kind = "private message";
 			} else {
+				msgUnread = Unread.MESSAGE;
+			}
+			if (muted) {
 				msgUnread = Unread.MESSAGE;
 			}
 
@@ -1128,6 +1142,16 @@ export default class AppController {
 			.slice(0, 100);
 	}
 
+	/** Pin, mute or block a target, synced to all clients by soju. */
+	setTargetMetadata(serverID: number, target: string, field: keyof S.TargetMetadata, value: boolean): void {
+		const client = this.clients.get(serverID);
+		if (!client || !this.state.servers.get(serverID)?.features.targetMetadata) {
+			throw new Error("Pinning, muting and blocking require the soju bouncer");
+		}
+		// soju echoes the new value to all clients, including this one
+		client.setTargetMetadata(target, S.METADATA_KEYS[field], value);
+	}
+
 	/**
 	 * Detach a channel on soju: the bouncer stays in it and keeps logging,
 	 * but it's hidden from clients until joined again.
@@ -1304,6 +1328,10 @@ export default class AppController {
 			case "MARKREAD":
 			case "REDACT":
 			case "WEBPUSH":
+			case "METADATA":
+			case irc.RPL_KEYVALUE:
+			case irc.RPL_METADATASUBOK:
+			case irc.RPL_METADATAUNSUBOK:
 				// Ignore these
 				return [];
 			default:
@@ -1486,6 +1514,10 @@ export default class AppController {
 		});
 
 		// RPL_ENDOFMOTD and ERR_NOMOTD indicate the end of the ISUPPORT list
+
+		if (this.state.servers.get(serverID)?.features.targetMetadata) {
+			client.subscribeTargetMetadata(Object.values(S.METADATA_KEYS));
+		}
 
 		// Restore opened channel and user buffers
 		let join: string[] = [];
