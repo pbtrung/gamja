@@ -330,6 +330,17 @@ describe("dialogs", () => {
 		expect(app.state.dialog).toMatchObject({ loading: false });
 	});
 
+	it("applies the theme from settings", async () => {
+		const app = new AppController();
+		app.handleSettingsChange({ theme: "zenburn" });
+		expect(document.documentElement.dataset.theme).toBe("zenburn");
+		document.documentElement.removeAttribute("data-theme");
+		new AppController();
+		expect(document.documentElement.dataset.theme).toBe("zenburn");
+		app.handleSettingsChange({ theme: "system" });
+		expect(document.documentElement.dataset.theme).toBeUndefined();
+	});
+
 	it("persists settings", async () => {
 		const app = new AppController();
 		app.handleSettingsChange({ secondsInTimestamps: false });

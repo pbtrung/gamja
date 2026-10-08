@@ -21,6 +21,7 @@ import {
 import * as store from "../store";
 import commands from "../commands";
 import * as webpush from "./webpush";
+import { applyTheme } from "../themes";
 import { createAppStore, type AppState, type AppStore, type ConnectParams, type Dialog } from "./store";
 import {
 	fetchConfig,
@@ -117,6 +118,7 @@ export default class AppController {
 		if (settings) {
 			this.update((state) => ({ settings: { ...state.settings, ...settings } }));
 		}
+		applyTheme(this.state.settings.theme);
 	}
 
 	/** Called by the UI to let the controller focus the composer. Returns a cleanup function. */
@@ -2318,6 +2320,9 @@ export default class AppController {
 		const updated = { ...this.state.settings, ...settings };
 		store.settings.put(updated as unknown as Record<string, unknown>);
 		this.update({ settings: updated });
+		if (settings.theme !== undefined) {
+			applyTheme(updated.theme);
+		}
 	}
 
 	handleWindowFocus(): void {

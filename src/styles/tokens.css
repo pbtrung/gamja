@@ -1,6 +1,7 @@
 /*
  * Design tokens. Every color used by the UI comes from these variables, so
- * that a theme only needs to redefine them (see themes.css).
+ * that a theme only needs to redefine them (see themes.css). The values
+ * below are the default light theme.
  */
 
 :root {
@@ -74,64 +75,4 @@
 	--nick-14: #8a3f8a;
 	--nick-15: #c0226a;
 	--nick-16: #c81f35;
-}
-
-/* Dark theme, used when the system prefers it unless a theme is forced */
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme]) {
-		color-scheme: dark;
-		--bg: #16181d;
-		--bg-sidebar: #111317;
-		--bg-elevated: #1d2026;
-		--bg-subtle: #22262d;
-		--bg-hover: rgb(255 255 255 / 0.05);
-		--bg-active: rgb(116 143 252 / 0.16);
-		--fg: #dfe3e8;
-		--fg-emphasis: #f5f7fa;
-		--fg-muted: #9aa4af;
-		--fg-subtle: #6c7681;
-		--fg-active: #a5b8ff;
-		--border: #2a2f37;
-		--border-strong: #3a414b;
-		--accent: #748ffc;
-		--accent-hover: #91a7ff;
-		--accent-fg: #0f1320;
-		--accent-soft: rgb(116 143 252 / 0.16);
-		--focus-ring: rgb(116 143 252 / 0.4);
-		--danger: #f06595;
-		--danger-fg: #f783ac;
-		--danger-soft: rgb(240 101 149 / 0.14);
-		--warning: #fcc419;
-		--warning-fg: #ffd43b;
-		--warning-soft: rgb(252 196 25 / 0.14);
-		--success: #51cf66;
-		--info-fg: #74c0fc;
-		--info-soft: rgb(116 192 252 / 0.12);
-		--highlight-bg: rgb(252 196 25 / 0.08);
-		--highlight-border: #fcc419;
-		--mention-bg: rgb(252 196 25 / 0.2);
-		--mention-fg: #ffe066;
-		--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
-		--shadow-lg: 0 16px 40px rgb(0 0 0 / 0.5);
-		--backdrop: rgb(0 0 0 / 0.6);
-		--avatar-fg: #111317;
-		--scrollbar: rgb(255 255 255 / 0.18);
-
-		--nick-1: #f6844a;
-		--nick-2: #f2694d;
-		--nick-3: #fbab4f;
-		--nick-4: #d6cb3c;
-		--nick-5: #a5d65e;
-		--nick-6: #78c871;
-		--nick-7: #5bc48d;
-		--nick-8: #6bccc7;
-		--nick-9: #4fc0e3;
-		--nick-10: #6fa6d6;
-		--nick-11: #9fb0e4;
-		--nick-12: #a9a5ef;
-		--nick-13: #bb8fe0;
-		--nick-14: #d98fd9;
-		--nick-15: #f067a6;
-		--nick-16: #f5667a;
-	}
 }

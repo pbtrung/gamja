@@ -40,3 +40,28 @@ for (const scheme of ["light", "dark"] as const) {
 		await page.screenshot({ path: `${dir}/chat-${scheme}.png` });
 	});
 }
+
+test("theme screenshots", async ({ page, connect, bot }) => {
+	const dir = process.env.SCREENSHOTS!;
+	await page.setViewportSize({ width: 1100, height: 640 });
+	const bob = await bot("bob");
+	await bob.join("#themes");
+	bob.send("TOPIC #themes :Theme preview — https://example.org");
+	await connect(page, "tester", { channels: ["#themes"] });
+	bob.privmsg("#themes", "hello tester, how do you like this theme?");
+	bob.privmsg("#themes", "links work too: https://soju.im and #gamja");
+	await page.getByRole("textbox", { name: "Type a message" }).fill("pretty!");
+	await page.keyboard.press("Enter");
+	for (const theme of [
+		"dracula",
+		"catppuccin-latte",
+		"catppuccin-mocha",
+		"solarized-light",
+		"solarized-dark",
+		"zenburn",
+	]) {
+		await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
+		await page.waitForTimeout(300);
+		await page.screenshot({ path: `${dir}/theme-${theme}.png` });
+	}
+});

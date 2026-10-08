@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { LogOut } from "lucide-react";
 import { BufferEventsDisplayMode, type Settings } from "../../state";
 import { registerProtocolHandler } from "../../format";
+import { THEMES } from "../../themes";
 
 interface SettingsFormProps {
 	settings: Settings;
@@ -54,6 +55,38 @@ export default function SettingsForm({
 
 	return (
 		<form onSubmit={handleSubmit}>
+			<fieldset className="settings-section">
+				<legend className="settings-heading">Theme</legend>
+				<div className="theme-grid">
+					{THEMES.map((theme) => (
+						<label
+							key={theme.id}
+							className={"theme-option" + (settings.theme === theme.id ? " selected" : "")}
+						>
+							<input
+								type="radio"
+								name="theme"
+								value={theme.id}
+								checked={settings.theme === theme.id}
+								onChange={() => onChange({ theme: theme.id })}
+							/>
+							<span
+								className={"theme-swatch" + (theme.scheme === "system" ? " system" : "")}
+								style={{ backgroundColor: theme.swatch[0], color: theme.swatch[1] }}
+								aria-hidden="true"
+							>
+								<span className="theme-swatch-text">Aa</span>
+								<span
+									className="theme-swatch-accent"
+									style={{ backgroundColor: theme.swatch[2] }}
+								/>
+							</span>
+							<span className="theme-name">{theme.name}</span>
+						</label>
+					))}
+				</div>
+			</fieldset>
+
 			<fieldset className="settings-section">
 				<legend className="settings-heading">Message layout</legend>
 				<label className="check">

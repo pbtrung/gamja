@@ -178,6 +178,26 @@ describe("SettingsForm", () => {
 	});
 });
 
+describe("SettingsForm theme and layout", () => {
+	it("picks a theme and a layout", async () => {
+		const onChange = vi.fn();
+		render(
+			<SettingsForm
+				settings={defaultSettings}
+				showProtocolHandler={false}
+				onChange={onChange}
+				onDisconnect={() => {}}
+				onClose={() => {}}
+			/>,
+		);
+		expect(screen.getByRole("radio", { name: "System" })).toBeChecked();
+		await userEvent.click(screen.getByRole("radio", { name: "Catppuccin Mocha" }));
+		expect(onChange).toHaveBeenCalledWith({ theme: "catppuccin-mocha" });
+		await userEvent.click(screen.getByRole("radio", { name: /Compact/ }));
+		expect(onChange).toHaveBeenCalledWith({ layout: "compact" });
+	});
+});
+
 describe("SettingsForm push notifications", () => {
 	it("toggles push and shows errors", async () => {
 		const onPushChange = vi

@@ -56,6 +56,8 @@ export type BufferEventsDisplayMode = (typeof BufferEventsDisplayMode)[keyof typ
 export type MessageLayout = "comfortable" | "compact";
 
 export interface Settings {
+	/** Color theme ID, see themes.ts */
+	theme: string;
 	/** Comfortable groups messages under the sender's name, compact is classic IRC */
 	layout: MessageLayout;
 	secondsInTimestamps: boolean;
@@ -66,6 +68,7 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
+	theme: "system",
 	layout: "comfortable",
 	secondsInTimestamps: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
