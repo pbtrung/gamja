@@ -753,7 +753,8 @@ input.switch:focus-visible {
 }
 
 /* Tighter spacing than other dialogs: settings have more content */
-.dialog:has(.settings-form) .dialog-header {
+.dialog:has(.settings-form) .dialog-header,
+.dialog:has(.network-form) .dialog-header {
 	padding: 0.5rem 0.5rem 0.5rem 0.75rem;
 }
 
@@ -1360,11 +1361,6 @@ li.unread-highlight .unread-indicator,
 	color: var(--fg-muted);
 }
 
-#buffer .logline.comfortable.highlight a.nick {
-	background: none;
-	color: var(--nick-color, var(--fg-emphasis));
-}
-
 .logline-header {
 	display: flex;
 	align-items: baseline;
@@ -1650,10 +1646,11 @@ a.nick:hover {
 	text-decoration: underline;
 }
 
+/* The line's background and border already mark mentions: tinting the
+   sender's nick on top of it would leave too little contrast */
 #buffer .highlight a.nick {
-	border-radius: var(--radius-sm);
-	background-color: var(--mention-bg);
-	color: var(--mention-fg);
+	background: none;
+	color: var(--nick-color, var(--fg-emphasis));
 }
 
 #buffer .separator {

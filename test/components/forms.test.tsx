@@ -193,8 +193,9 @@ describe("SettingsForm theme and layout", () => {
 		expect(screen.getByRole("radio", { name: "Dracula" })).toBeChecked();
 		await userEvent.click(screen.getByRole("radio", { name: "Catppuccin Mocha" }));
 		expect(onChange).toHaveBeenCalledWith({ theme: "catppuccin-mocha" });
-		await userEvent.click(screen.getByRole("radio", { name: /Compact/ }));
-		expect(onChange).toHaveBeenCalledWith({ layout: "compact" });
+		expect(screen.getByRole("radio", { name: /Compact/ })).toBeChecked();
+		await userEvent.click(screen.getByRole("radio", { name: /Comfortable/ }));
+		expect(onChange).toHaveBeenCalledWith({ layout: "comfortable" });
 	});
 });
 

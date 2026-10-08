@@ -69,7 +69,7 @@ export interface Settings {
 
 export const defaultSettings: Settings = {
 	theme: "dracula",
-	layout: "comfortable",
+	layout: "compact",
 	secondsInTimestamps: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
 	showMemberList: false,
