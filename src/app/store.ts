@@ -42,7 +42,16 @@ export type Dialog =
 	| { kind: "settings"; showProtocolHandler: boolean }
 	| { kind: "switch" };
 
+/** Message the user is replying to */
+export interface ReplyTo {
+	buffer: number;
+	msgid: string;
+	nick: string;
+	text: string;
+}
+
 export interface AppState extends State {
+	replyTo: ReplyTo | null;
 	connectParams: ConnectParams;
 	/** Show the connection form instead of the chat UI */
 	connectForm: boolean;
@@ -62,6 +71,7 @@ export function createAppStore(): AppStore {
 	return createStore<AppState>()(() => ({
 		...createState(),
 		connectParams: { ...defaultConnectParams },
+		replyTo: null,
 		connectForm: true,
 		loading: true,
 		dialog: null,

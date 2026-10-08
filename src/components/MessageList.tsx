@@ -1,4 +1,5 @@
-import { memo, useState, type MouseEvent, type ReactNode } from "react";
+import { memo, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { CornerUpRight } from "lucide-react";
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
 import {
@@ -13,12 +14,25 @@ import {
 	type Settings,
 } from "../state";
 import * as store from "../store";
-import { canFoldMessage, registerProtocolHandler, simplifyFoldGroup } from "../format";
+import { canFoldMessage, getNickColorIndex, registerProtocolHandler, simplifyFoldGroup } from "../format";
 import Membership from "./Membership";
 import Nick from "./Nick";
 import RichText, { type LinkClickHandler } from "./RichText";
+import MessageActions, { Reactions } from "./MessageActions";
+import { strip as stripANSI } from "../lib/ansi";
+
+export interface MessageActionHandlers {
+	myNick: string | null;
+	canReact: boolean;
+	canReply: boolean;
+	canRedact: boolean;
+	onReact: (msg: Message, emoji: string) => void;
+	onReply: (msg: Message) => void;
+	onRedact: (msg: Message) => void;
+}
 
 export interface MessageListHandlers {
+	actions?: MessageActionHandlers;
 	onChannelClick: LinkClickHandler;
 	onNickClick: (nick: string) => void;
 	onAuthClick: () => void;
@@ -158,10 +172,64 @@ interface LogLineProps {
 	message: Message;
 	redacted: boolean;
 	ctx: Context;
+	reactions?: Map<string, string[]>;
+	/** Message this one replies to, null if unknown */
+	parent?: Message | null;
+}
+
+function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandlers | undefined): boolean {
+	if (!a || !b) {
+		return a === b;
+	}
+	return (
+		a.myNick === b.myNick &&
+		a.canReact === b.canReact &&
+		a.canReply === b.canReply &&
+		a.canRedact === b.canRedact
+	);
+}
+
+/** Scroll to a message and briefly highlight it. */
+function jumpToMessage(msgid: string): boolean {
+	const el = document.querySelector<HTMLElement>(`[data-msgid="${CSS.escape(msgid)}"]`);
+	if (!el) {
+		return false;
+	}
+	el.scrollIntoView?.({ block: "center", behavior: "smooth" });
+	el.classList.remove("flash");
+	void el.offsetWidth; // restart the animation
+	el.classList.add("flash");
+	return true;
+}
+
+function ReplyQuote({ parent, msgid, ctx }: { parent: Message | null; msgid: string; ctx: Context }) {
+	if (!parent) {
+		return (
+			<div className="reply-quote missing">
+				<CornerUpRight aria-hidden="true" /> Reply to an earlier message
+			</div>
+		);
+	}
+	const text = irc.parseCTCP(parent)?.param ?? parent.params[1] ?? "";
+	const nick = parent.prefix?.name ?? "*";
+	return (
+		<button
+			type="button"
+			className="reply-quote"
+			title="Jump to the original message"
+			onClick={() => jumpToMessage(msgid)}
+		>
+			<CornerUpRight aria-hidden="true" />
+			<span className={`reply-nick nick-${getNickColorIndex(nick)}`}>{nick}</span>
+			<span className="reply-text">
+				{ctx.buffer.redacted.has(msgid) ? "This message has been deleted." : stripANSI(text)}
+			</span>
+		</button>
+	);
 }
 
 const LogLine = memo(
-	function LogLine({ message: msg, redacted, ctx }: LogLineProps) {
+	function LogLine({ message: msg, redacted, ctx, reactions, parent }: LogLineProps) {
 		const { buffer: buf, server, bouncerNetwork, onChannelClick } = ctx;
 		const createNick = makeNick(ctx);
 		const from = msg.prefix?.name ?? "*";
@@ -429,20 +497,58 @@ const LogLine = memo(
 			return null;
 		}
 
+		const msgid = msg.tags.msgid;
+		const ctcp = irc.parseCTCP(msg);
+		const isChat =
+			(msg.command === "PRIVMSG" || msg.command === "NOTICE") && (!ctcp || ctcp.command === "ACTION");
+		const actions = ctx.actions;
+		const isMine = (nick: string) =>
+			Boolean(actions?.myNick) && server.cm(nick) === server.cm(actions!.myNick!);
+		const replyTo = msg.tags["+draft/reply"];
+
 		return (
-			<div className={`logline ${lineClass}`} data-key={msg.key} role="listitem">
+			<div
+				className={`logline ${lineClass}`}
+				data-key={msg.key}
+				data-msgid={msgid ?? undefined}
+				role="listitem"
+			>
+				{isChat && replyTo && !redacted && (
+					<ReplyQuote parent={parent ?? null} msgid={replyTo} ctx={ctx} />
+				)}
 				<Timestamp
 					date={new Date(msg.tags.time!)}
 					url={getMessageURL(buf, msg, bouncerNetwork)}
 					showSeconds={ctx.settings.secondsInTimestamps}
 				/>{" "}
 				<span className="logline-content">{content}</span>
+				{isChat && reactions && reactions.size > 0 && !redacted && (
+					<Reactions
+						reactions={reactions}
+						isMine={isMine}
+						canReact={Boolean(actions?.canReact)}
+						onToggle={(emoji) => actions?.onReact(msg, emoji)}
+					/>
+				)}
+				{isChat && msgid && !redacted && actions && (
+					<MessageActions
+						canReact={actions.canReact}
+						canReply={actions.canReply}
+						canRedact={actions.canRedact && isMine(from)}
+						onReact={(emoji) => actions.onReact(msg, emoji)}
+						onReply={() => actions.onReply(msg)}
+						onRedact={() => actions.onRedact(msg)}
+					/>
+				)}
 			</div>
 		);
 	},
 	(prev, next) =>
 		prev.message === next.message &&
 		prev.redacted === next.redacted &&
+		prev.reactions === next.reactions &&
+		prev.parent === next.parent &&
+		sameActions(prev.ctx.actions, next.ctx.actions) &&
 		prev.ctx.settings === next.ctx.settings &&
 		prev.ctx.server.users === next.ctx.server.users,
 );
@@ -688,6 +794,17 @@ function MessageList(props: MessageListProps) {
 	const ctx: Context = props;
 	const showSeconds = settings.secondsInTimestamps;
 
+	// Index messages by ID to resolve replies
+	const byMsgid = useMemo(() => {
+		const m = new Map<string, Message>();
+		for (const msg of buf.messages) {
+			if (msg.tags.msgid) {
+				m.set(msg.tags.msgid, msg);
+			}
+		}
+		return m;
+	}, [buf.messages]);
+
 	const children: ReactNode[] = [];
 	if (buf.type === BufferType.SERVER) {
 		children.push(<NotificationNagger key="nag-notif" showSeconds={showSeconds} />);
@@ -706,14 +823,20 @@ function MessageList(props: MessageListProps) {
 		children.push(<AccountNagger key="nag-account" ctx={ctx} />);
 	}
 
-	const createLogLine = (msg: Message) => (
-		<LogLine
-			key={"msg-" + msg.key}
-			message={msg}
-			redacted={!!msg.tags.msgid && buf.redacted.has(msg.tags.msgid)}
-			ctx={ctx}
-		/>
-	);
+	const createLogLine = (msg: Message) => {
+		const msgid = msg.tags.msgid;
+		const replyTo = msg.tags["+draft/reply"];
+		return (
+			<LogLine
+				key={"msg-" + msg.key}
+				message={msg}
+				redacted={!!msgid && buf.redacted.has(msgid)}
+				reactions={msgid ? buf.reactions.get(msgid) : undefined}
+				parent={replyTo ? (byMsgid.get(replyTo) ?? null) : undefined}
+				ctx={ctx}
+			/>
+		);
+	};
 	const createFoldGroup = (msgs: Message[]) => {
 		msgs = simplifyFoldGroup(msgs);
 		if (msgs.length === 0) {

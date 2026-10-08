@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import * as irc from "../../src/lib/irc";
@@ -38,6 +38,15 @@ function server(patch: Partial<Server> = {}): Server {
 		],
 		isBouncer: false,
 		bouncerNetID: null,
+		nick: "me",
+		features: {
+			reactions: true,
+			replies: true,
+			typing: true,
+			redaction: true,
+			search: false,
+			webPush: false,
+		},
 		...patch,
 	};
 }
@@ -56,6 +65,8 @@ function buffer(messages: irc.Message[], patch: Partial<Buffer> = {}): Buffer {
 		members: new irc.CaseMapMap(null, irc.CaseMapping.RFC1459),
 		messages,
 		redacted: new Set(),
+		reactions: new Map(),
+		typing: new Map(),
 		unread: "",
 		prevReadReceipt: { time: "2099-01-01T00:00:00.000Z" },
 		...patch,
@@ -64,8 +75,22 @@ function buffer(messages: irc.Message[], patch: Partial<Buffer> = {}): Buffer {
 
 function renderList(
 	messages: irc.Message[],
-	opts: { buffer?: Partial<Buffer>; server?: Partial<Server>; settings?: Partial<Settings> } = {},
+	opts: {
+		buffer?: Partial<Buffer>;
+		server?: Partial<Server>;
+		settings?: Partial<Settings>;
+		actions?: boolean;
+	} = {},
 ) {
+	const actions = {
+		myNick: "me",
+		canReact: true,
+		canReply: true,
+		canRedact: true,
+		onReact: vi.fn(),
+		onReply: vi.fn(),
+		onRedact: vi.fn(),
+	};
 	const handlers = {
 		onChannelClick: vi.fn(),
 		onNickClick: vi.fn(),
@@ -79,10 +104,11 @@ function renderList(
 			server={server(opts.server)}
 			bouncerNetwork={null}
 			settings={{ ...defaultSettings, ...opts.settings }}
+			actions={opts.actions ? actions : undefined}
 			{...handlers}
 		/>,
 	);
-	return { ...utils, handlers };
+	return { ...utils, handlers, actions };
 }
 
 const lines = (container: HTMLElement) =>
@@ -267,5 +293,82 @@ describe("MessageList", () => {
 			{ buffer: { type: BufferType.NICK, name: "bob" } },
 		);
 		expect(lines(container)).toEqual(["bob is online", "bob is offline"]);
+	});
+});
+
+describe("MessageList interactions", () => {
+	it("renders reactions and toggles them", async () => {
+		const { actions } = renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], {
+			actions: true,
+			buffer: {
+				reactions: new Map([
+					[
+						"m1",
+						new Map([
+							["👍", ["bob", "me"]],
+							["🎉", ["carol"]],
+						]),
+					],
+				]),
+			},
+		});
+		const mine = screen.getByRole("button", { name: "👍 2: bob, me" });
+		expect(mine).toHaveAttribute("aria-pressed", "true");
+		expect(screen.getByRole("button", { name: "🎉 1: carol" })).toHaveAttribute("aria-pressed", "false");
+		await userEvent.click(mine);
+		expect(actions.onReact).toHaveBeenCalledWith(
+			expect.objectContaining({ tags: expect.objectContaining({ msgid: "m1" }) }),
+			"👍",
+		);
+	});
+
+	it("reacts, replies and deletes from the action bar", async () => {
+		vi.spyOn(window, "confirm").mockReturnValue(true);
+		const { actions } = renderList(
+			[msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello"), msg("@msgid=m2 :me!u@h PRIVMSG #c :mine")],
+			{ actions: true },
+		);
+		const toolbars = screen.getAllByRole("toolbar", { name: "Message actions" });
+		expect(toolbars).toHaveLength(2);
+		// Only our own messages can be deleted
+		expect(within(toolbars[0]).queryByRole("button", { name: "Delete message" })).toBeNull();
+
+		await userEvent.click(within(toolbars[0]).getByRole("button", { name: "Add reaction" }));
+		await userEvent.click(screen.getByRole("menuitem", { name: "React with 🎉" }));
+		expect(actions.onReact).toHaveBeenCalledWith(expect.anything(), "🎉");
+		expect(screen.queryByRole("menu")).toBeNull();
+
+		await userEvent.click(within(toolbars[0]).getByRole("button", { name: "Reply" }));
+		expect(actions.onReply).toHaveBeenCalled();
+
+		await userEvent.click(within(toolbars[1]).getByRole("button", { name: "Delete message" }));
+		expect(actions.onRedact).toHaveBeenCalledWith(expect.objectContaining({ params: ["#c", "mine"] }));
+	});
+
+	it("closes the reaction picker with Escape", async () => {
+		renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], { actions: true });
+		await userEvent.click(screen.getByRole("button", { name: "Add reaction" }));
+		expect(screen.getByRole("menu")).toBeInTheDocument();
+		await userEvent.keyboard("{Escape}");
+		expect(screen.queryByRole("menu")).toBeNull();
+	});
+
+	it("has no actions without msgid or when disabled", () => {
+		renderList([msg(":bob!u@h PRIVMSG #c :no id")], { actions: true });
+		expect(screen.queryByRole("toolbar")).toBeNull();
+	});
+
+	it("quotes the message being replied to", async () => {
+		const { container } = renderList([
+			msg("@msgid=m1 :bob!u@h PRIVMSG #c :original text"),
+			msg("@msgid=m2;+draft/reply=m1 :carol!u@h PRIVMSG #c :a reply"),
+			msg("@msgid=m3;+draft/reply=gone :carol!u@h PRIVMSG #c :old reply"),
+		]);
+		const quote = screen.getByRole("button", { name: /original text/ });
+		expect(quote).toHaveTextContent("bob");
+		const target = container.querySelector('[data-msgid="m1"]')!;
+		await userEvent.click(quote);
+		expect(target).toHaveClass("flash");
+		expect(screen.getByText("Reply to an earlier message")).toBeInTheDocument();
 	});
 });

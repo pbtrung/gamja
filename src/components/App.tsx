@@ -13,7 +13,9 @@ import Composer, { type ComposerHandle } from "./Composer";
 import Dialog from "./Dialog";
 import ErrorBoundary from "./ErrorBoundary";
 import MemberList from "./MemberList";
-import MessageList from "./MessageList";
+import MessageList, { type MessageActionHandlers } from "./MessageList";
+import TypingIndicator from "./TypingIndicator";
+import type { Message } from "../lib/irc";
 import AuthForm from "./forms/AuthForm";
 import ConfirmOpenBuffer from "./forms/ConfirmOpenBuffer";
 import ConnectForm from "./forms/ConnectForm";
@@ -225,6 +227,28 @@ function Chat({ state }: { state: AppState }) {
 	const handleComposerSubmit = useCallback((text: string) => app.handleComposerSubmit(text), [app]);
 	const handleError = useCallback((err: unknown) => app.showError(err), [app]);
 	const autocomplete = useCallback((prefix: string) => app.autocomplete(prefix), [app]);
+	const handleTextChange = useCallback((text: string) => app.notifyTyping(text), [app]);
+	const handleCancelReply = useCallback(() => app.cancelReply(), [app]);
+
+	const activeID = activeBuffer?.id ?? null;
+	const myNick = activeServer?.nick ?? null;
+	const canAct = activeServer?.status === ServerStatus.REGISTERED;
+	const canReact = canAct && Boolean(activeServer?.features.reactions);
+	const canReply = canAct && Boolean(activeServer?.features.replies);
+	const canRedact = canAct && Boolean(activeServer?.features.redaction);
+	// LogLine compares the flags rather than this object's identity
+	const actions: MessageActionHandlers | undefined =
+		activeID === null || (!canReact && !canReply && !canRedact)
+			? undefined
+			: {
+					myNick,
+					canReact,
+					canReply,
+					canRedact,
+					onReact: (msg: Message, emoji: string) => app.react(activeID, msg, emoji),
+					onReply: (msg: Message) => app.startReply(activeID, msg),
+					onRedact: (msg: Message) => app.redact(activeID, msg),
+				};
 
 	const handlers = useMemo(
 		() => ({
@@ -347,6 +371,7 @@ function Chat({ state }: { state: AppState }) {
 							server={activeServer}
 							bouncerNetwork={activeBouncerNetwork}
 							settings={state.settings}
+							actions={actions}
 							onChannelClick={handlers.onChannelClick}
 							onNickClick={handlers.onNickClick}
 							onAuthClick={() => app.handleAuthClick(activeBuffer.server)}
@@ -392,6 +417,10 @@ function Chat({ state }: { state: AppState }) {
 
 			<Composer
 				ref={composer}
+				status={<TypingIndicator buffer={activeBuffer} />}
+				replyTo={state.replyTo?.buffer === activeBuffer?.id ? state.replyTo : null}
+				onCancelReply={handleCancelReply}
+				onTextChange={handleTextChange}
 				client={activeClient}
 				readOnly={composerReadOnly}
 				onSubmit={handleComposerSubmit}

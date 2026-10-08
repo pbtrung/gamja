@@ -94,6 +94,40 @@ export interface Server {
 	membershipModes: MembershipMode[] | null;
 	isBouncer: boolean;
 	bouncerNetID: string | null;
+	/** Our current nickname */
+	nick: string | null;
+	/** Optional features supported by the server */
+	features: Features;
+}
+
+export interface Features {
+	reactions: boolean;
+	replies: boolean;
+	typing: boolean;
+	redaction: boolean;
+	search: boolean;
+	webPush: boolean;
+}
+
+const noFeatures: Features = {
+	reactions: false,
+	replies: false,
+	typing: false,
+	redaction: false,
+	search: false,
+	webPush: false,
+};
+
+export function computeFeatures(client: Pick<Client, "caps" | "isupport">): Features {
+	const tags = client.caps.enabled.has("message-tags");
+	return {
+		reactions: tags && irc.isClientTagAllowed(client.isupport, "draft/react"),
+		replies: tags && irc.isClientTagAllowed(client.isupport, "draft/reply"),
+		typing: tags && irc.isClientTagAllowed(client.isupport, "typing"),
+		redaction: client.caps.enabled.has("draft/message-redaction"),
+		search: client.caps.enabled.has("soju.im/search"),
+		webPush: client.caps.enabled.has("soju.im/webpush") && Boolean(client.isupport.vapid()),
+	};
 }
 
 export interface ServerInfo {
@@ -119,9 +153,22 @@ export interface Buffer {
 	messages: Message[];
 	/** msgids of deleted messages */
 	redacted: Set<string>;
+	/** msgid → emoji → nicks who reacted */
+	reactions: Map<string, Map<string, string[]>>;
+	/** Users currently typing, by nick */
+	typing: Map<string, TypingState>;
 	unread: Unread;
 	prevReadReceipt: Receipt | null;
 }
+
+export interface TypingState {
+	status: "active" | "paused";
+	/** When the status was received, in milliseconds since the epoch */
+	time: number;
+}
+
+/** How long typing notifications stay valid without updates, per the +typing spec */
+export const TYPING_TIMEOUT = { active: 6000, paused: 30000 } as const;
 
 export type BouncerNetwork = Record<string, string | null | undefined>;
 
@@ -457,6 +504,8 @@ export function createServer(state: State): [number, Partial<State>] {
 		membershipModes: null,
 		isBouncer: false,
 		bouncerNetID: null,
+		nick: null,
+		features: noFeatures,
 	});
 	return [id, { servers }];
 }
@@ -498,6 +547,8 @@ export function createBuffer(
 		members: new irc.CaseMapMap<string>(null, client.cm),
 		messages: [],
 		redacted: new Set(),
+		reactions: new Map(),
+		typing: new Map(),
 		unread: Unread.NONE,
 		prevReadReceipt: null,
 	});
@@ -582,12 +633,16 @@ export function handleMessage(
 						statusMsg: client.isupport.statusMsg(),
 						membershipModes: client.isupport.membershipModes(),
 						bouncerNetID: client.isupport.bouncerNetID() ?? null,
+						features: computeFeatures(client),
 					};
 				}),
 			};
 		}
+		case irc.RPL_WELCOME:
+			return updateServerWith({ nick: msg.params[0] });
 		case "CAP":
 			return updateServerWith({
+				features: computeFeatures(client),
 				supportsSASLPlain: client.supportsSASL("PLAIN"),
 				supportsAccountRegistration: client.caps.enabled.has("draft/account-registration"),
 				isBouncer: client.caps.enabled.has("soju.im/bouncer-networks"),
@@ -756,6 +811,9 @@ export function handleMessage(
 		}
 		case "NICK": {
 			const newNick = msg.params[0];
+			if (client.isMyNick(prefix.name) || client.isMyNick(newNick)) {
+				apply(updateServerWith({ nick: newNick }));
+			}
 
 			const buffers = new Map(state.buffers);
 			state.buffers.forEach((buf) => {
@@ -889,6 +947,69 @@ export function handleMessage(
 		}
 	}
 	return undefined;
+}
+
+/** Add or remove a reaction to a message. */
+export function applyReaction(
+	buf: Buffer,
+	msgid: string,
+	emoji: string,
+	nick: string,
+	add: boolean,
+	cm: CaseMapFn,
+): Partial<Buffer> | undefined {
+	const byEmoji = new Map(buf.reactions.get(msgid));
+	const nicks = byEmoji.get(emoji) ?? [];
+	const has = nicks.some((n) => cm(n) === cm(nick));
+	if (has === add) {
+		return;
+	}
+	const updated = add ? [...nicks, nick] : nicks.filter((n) => cm(n) !== cm(nick));
+	if (updated.length > 0) {
+		byEmoji.set(emoji, updated);
+	} else {
+		byEmoji.delete(emoji);
+	}
+	const reactions = new Map(buf.reactions);
+	if (byEmoji.size > 0) {
+		reactions.set(msgid, byEmoji);
+	} else {
+		reactions.delete(msgid);
+	}
+	return { reactions };
+}
+
+/** Update the typing status of a user, "done" clears it. */
+export function applyTyping(
+	buf: Buffer,
+	nick: string,
+	status: string,
+	cm: CaseMapFn,
+	now = Date.now(),
+): Partial<Buffer> | undefined {
+	const typing = new Map(buf.typing);
+	for (const k of typing.keys()) {
+		if (cm(k) === cm(nick)) {
+			typing.delete(k);
+		}
+	}
+	if (status === "active" || status === "paused") {
+		typing.set(nick, { status, time: now });
+	} else if (typing.size === buf.typing.size) {
+		return;
+	}
+	return { typing };
+}
+
+/** Nicks currently typing in a buffer, excluding expired notifications. */
+export function getTypingNicks(buf: Buffer, now = Date.now()): string[] {
+	const nicks: string[] = [];
+	for (const [nick, t] of buf.typing) {
+		if (now - t.time < TYPING_TIMEOUT[t.status] && t.status === "active") {
+			nicks.push(nick);
+		}
+	}
+	return nicks;
 }
 
 export function addMessage(state: State, msg: Message, bufID: BufferID): Partial<State> | undefined {

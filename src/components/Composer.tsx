@@ -8,9 +8,11 @@ import {
 	type DragEvent,
 	type FormEvent,
 	type KeyboardEvent,
+	type ReactNode,
 	type Ref,
 } from "react";
-import { Paperclip, SendHorizontal, X } from "lucide-react";
+import { CornerUpRight, Paperclip, SendHorizontal, X } from "lucide-react";
+import type { ReplyTo } from "../app/store";
 import type Client from "../lib/client";
 import { uploadFile } from "../lib/filehost";
 import { computeAutocomplete, type Autocomplete } from "../lib/autocomplete";
@@ -29,6 +31,12 @@ interface ComposerProps {
 	onSubmit: (text: string) => void;
 	onError: (err: unknown) => void;
 	autocomplete: (prefix: string) => string[];
+	replyTo?: ReplyTo | null;
+	onCancelReply?: () => void;
+	/** Called when the text changes, e.g. to send typing notifications */
+	onTextChange?: (text: string) => void;
+	/** Rendered above the input, e.g. typing notifications */
+	status?: ReactNode;
 }
 
 function isEditableFocused(): boolean {
@@ -56,6 +64,10 @@ export default function Composer({
 	onSubmit,
 	onError,
 	autocomplete,
+	replyTo,
+	onCancelReply,
+	onTextChange,
+	status,
 }: ComposerProps) {
 	const [text, setText] = useState("");
 	const [uploading, setUploading] = useState(false);
@@ -123,7 +135,18 @@ export default function Composer({
 		[client, onError],
 	);
 
+	const onTextChangeRef = useRef(onTextChange);
+	useEffect(() => {
+		onTextChangeRef.current = onTextChange;
+	});
+	useEffect(() => {
+		onTextChangeRef.current?.(text);
+	}, [text]);
+
 	function submit() {
+		if (!text) {
+			return;
+		}
 		onSubmit(text);
 		setText("");
 		lastAutocomplete.current = null;
@@ -136,6 +159,12 @@ export default function Composer({
 
 	function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
 		const input = event.currentTarget;
+
+		if (event.key === "Escape" && replyTo) {
+			event.preventDefault();
+			onCancelReply?.();
+			return;
+		}
 
 		if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
 			event.preventDefault();
@@ -295,6 +324,24 @@ export default function Composer({
 				await uploadFileList(event.dataTransfer.files);
 			}}
 		>
+			{status}
+			{replyTo && (
+				<div className="composer-reply">
+					<CornerUpRight aria-hidden="true" />
+					<span className="composer-reply-text">
+						Replying to <strong>{replyTo.nick}</strong>: {replyTo.text}
+					</span>
+					<button
+						type="button"
+						className="icon-btn"
+						title="Cancel reply"
+						aria-label="Cancel reply"
+						onClick={onCancelReply}
+					>
+						<X aria-hidden="true" />
+					</button>
+				</div>
+			)}
 			<div className={"composer-box" + (tooLong ? " too-long" : "")}>
 				<textarea
 					name="text"

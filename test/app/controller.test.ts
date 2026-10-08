@@ -316,3 +316,109 @@ describe("dialogs", () => {
 		expect(new AppController().state.settings.secondsInTimestamps).toBe(false);
 	});
 });
+
+describe("reactions, replies, redaction and typing", () => {
+	async function chat(caps?: string) {
+		const h = await connectedApp(caps ? { caps } : {});
+		h.recv(":me!u@h JOIN #c");
+		h.app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		h.app.switchBuffer(buf(h.app, "#c")!.id);
+		h.recv("@msgid=m1;time=2030-01-01T00:00:00.000Z :bob!u@h PRIVMSG #c :hello");
+		h.sent();
+		return { ...h, id: buf(h.app, "#c")!.id, msg: buf(h.app, "#c")!.messages.at(-1)! };
+	}
+
+	it("applies reactions from other users, including in queries", async () => {
+		const { app, recv } = await chat();
+		recv("@+draft/react=👍;+draft/reply=m1 :bob!u@h TAGMSG #c");
+		recv("@+draft/react=👍;+draft/reply=m1 :carol!u@h TAGMSG #c");
+		expect(buf(app, "#c")!.reactions.get("m1")!.get("👍")).toEqual(["bob", "carol"]);
+		recv("@+draft/unreact=👍;+draft/reply=m1 :bob!u@h TAGMSG #c");
+		expect(buf(app, "#c")!.reactions.get("m1")!.get("👍")).toEqual(["carol"]);
+
+		recv("@msgid=d1 :dave!u@h PRIVMSG me :hi", "@+draft/react=🎉;+draft/reply=d1 :dave!u@h TAGMSG me");
+		expect(buf(app, "dave")!.reactions.get("d1")!.get("🎉")).toEqual(["dave"]);
+	});
+
+	it("toggles our own reactions", async () => {
+		const { app, recv, sentRaw, id, msg } = await chat();
+		app.react(id, msg, "❤️");
+		expect(sentRaw()).toEqual(["@+draft/react=❤️;+draft/reply=m1 TAGMSG #c"]);
+		recv("@+draft/react=❤️;+draft/reply=m1 :me!u@h TAGMSG #c");
+		app.react(id, buf(app, "#c")!.messages.at(-1)!, "❤️");
+		expect(sentRaw()).toEqual(["@+draft/unreact=❤️;+draft/reply=m1 TAGMSG #c"]);
+	});
+
+	it("applies reactions locally without echo-message", async () => {
+		const { app, id, msg } = await chat("batch server-time message-tags");
+		app.react(id, msg, "👍");
+		expect(buf(app, "#c")!.reactions.get("m1")!.get("👍")).toEqual(["me"]);
+	});
+
+	it("sends replies with the reply tag", async () => {
+		const { app, sentRaw, id, msg } = await chat();
+		app.startReply(id, msg);
+		expect(app.state.replyTo).toEqual({ buffer: id, msgid: "m1", nick: "bob", text: "hello" });
+		app.handleComposerSubmit("hi bob");
+		expect(sentRaw()).toEqual(["@+draft/reply=m1 PRIVMSG #c :hi bob"]);
+		expect(app.state.replyTo).toBeNull();
+	});
+
+	it("cancels a reply when switching buffers", async () => {
+		const { app, id, msg } = await chat();
+		app.startReply(id, msg);
+		app.switchBuffer(buf(app, SERVER_BUFFER)!.id);
+		expect(app.state.replyTo).toBeNull();
+	});
+
+	it("doesn't send client tags the server denies", async () => {
+		const h = await connectedApp({
+			isupport: "CHANTYPES=# CLIENTTAGDENY=*,-typing NETWORK=T",
+		});
+		expect(h.app.canReact(h.serverID)).toBe(false);
+		expect(h.app.canReply(h.serverID)).toBe(false);
+		expect(h.app.canSendClientTag(h.app.getClient(h.serverID), "typing")).toBe(true);
+	});
+
+	it("deletes messages", async () => {
+		const { app, recv, sent, id, msg } = await chat(
+			"batch server-time echo-message message-tags draft/message-redaction",
+		);
+		expect(app.canRedact(app.state.servers.keys().next().value!)).toBe(true);
+		app.redact(id, msg);
+		expect(sent()).toEqual(["REDACT #c m1"]);
+		recv(":me!u@h REDACT #c m1");
+		expect(buf(app, "#c")!.redacted.has("m1")).toBe(true);
+	});
+
+	it("sends throttled typing notifications", async () => {
+		vi.useFakeTimers();
+		const { app, sentRaw } = await chat();
+		app.notifyTyping("h");
+		app.notifyTyping("he");
+		expect(sentRaw()).toEqual(["@+typing=active TAGMSG #c"]);
+		vi.advanceTimersByTime(3000);
+		app.notifyTyping("hel");
+		expect(sentRaw()).toEqual(["@+typing=active TAGMSG #c"]);
+		app.notifyTyping("");
+		expect(sentRaw()).toEqual(["@+typing=done TAGMSG #c"]);
+		app.notifyTyping("");
+		app.notifyTyping("/join");
+		expect(sentRaw()).toEqual([]);
+		// Sending a message resets the state without an explicit done
+		app.notifyTyping("x");
+		app.handleComposerSubmit("x");
+		app.notifyTyping("");
+		expect(sentRaw()).toEqual(["@+typing=active TAGMSG #c", "PRIVMSG #c x"]);
+	});
+
+	it("shows and clears typing from other users", async () => {
+		const { app, recv } = await chat();
+		recv("@+typing=active :bob!u@h TAGMSG #c");
+		expect([...buf(app, "#c")!.typing.keys()]).toEqual(["bob"]);
+		recv(":bob!u@h PRIVMSG #c :done typing");
+		expect(buf(app, "#c")!.typing.size).toBe(0);
+		recv("@+typing=active :me!u@h TAGMSG #c");
+		expect(buf(app, "#c")!.typing.size).toBe(0);
+	});
+});

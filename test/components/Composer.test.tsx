@@ -76,6 +76,37 @@ describe("Composer", () => {
 	});
 });
 
+describe("Composer replies and typing", () => {
+	it("shows the reply banner and cancels with Escape", async () => {
+		const onCancelReply = vi.fn();
+		const { input } = setup({
+			replyTo: { buffer: 1, msgid: "m1", nick: "bob", text: "hello" },
+			onCancelReply,
+		});
+		expect(screen.getByText("bob")).toBeInTheDocument();
+		expect(screen.getByText(/Replying to/)).toHaveTextContent("Replying to bob: hello");
+		input.focus();
+		await userEvent.keyboard("{Escape}");
+		expect(onCancelReply).toHaveBeenCalledOnce();
+		await userEvent.click(screen.getByRole("button", { name: "Cancel reply" }));
+		expect(onCancelReply).toHaveBeenCalledTimes(2);
+	});
+
+	it("reports text changes", async () => {
+		const onTextChange = vi.fn();
+		const { input } = setup({ onTextChange });
+		await userEvent.type(input, "ab");
+		expect(onTextChange).toHaveBeenLastCalledWith("ab");
+		await userEvent.keyboard("{Enter}");
+		expect(onTextChange).toHaveBeenLastCalledWith("");
+	});
+
+	it("renders a status line", () => {
+		setup({ status: <p>bob is typing…</p> });
+		expect(screen.getByText("bob is typing…")).toBeInTheDocument();
+	});
+});
+
 describe("computeAutocomplete", () => {
 	const complete = (prefix: string) => ["/join", "#chan", "bob"].filter((x) => x.startsWith(prefix));
 

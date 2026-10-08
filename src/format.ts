@@ -164,3 +164,21 @@ export function matchBuffers(
 
 	return l.slice(0, limit);
 }
+
+export function describeTyping(nicks: string[]): string | null {
+	switch (nicks.length) {
+		case 0:
+			return null;
+		case 1:
+			return `${nicks[0]} is typing…`;
+		case 2:
+			return `${nicks[0]} and ${nicks[1]} are typing…`;
+		case 3:
+			return `${nicks[0]}, ${nicks[1]} and ${nicks[2]} are typing…`;
+		default:
+			return "Several people are typing…";
+	}
+}
+
+/** Reactions offered by the reaction picker. */
+export const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "😮", "😢", "👀", "🙏"];

@@ -478,6 +478,7 @@ export default class AppController {
 
 		this.update((state) => ({
 			activeBuffer: buf.id,
+			replyTo: state.replyTo?.buffer === buf.id ? state.replyTo : null,
 			...S.updateBuffer(state, buf.id, { prevReadReceipt }),
 			openPanels: { ...state.openPanels, bufferList: false },
 		}));
@@ -713,6 +714,11 @@ export default class AppController {
 
 		const bufID = { server: serverID, name: bufName };
 		this.update((state) => S.addMessage(state, msg, bufID));
+		if (msg.command === "PRIVMSG" || msg.command === "NOTICE") {
+			this.setBufferState(bufID, (b) =>
+				b.typing.size > 0 ? S.applyTyping(b, from, "done", client.cm) : undefined,
+			);
+		}
 
 		const buf = S.getBuffer(this.state, bufID);
 		if (!buf) {
@@ -868,6 +874,176 @@ export default class AppController {
 		return null;
 	}
 
+	/** Find the buffer name for a PRIVMSG, NOTICE or TAGMSG. */
+	resolveMessageTarget(serverID: number, msg: Message): string {
+		const client = this.clients.get(serverID)!;
+		const from = msg.prefix?.name ?? "*";
+		let target = msg.params[0];
+		if (client.isMyNick(target)) {
+			if (client.cm(from) === client.cm(client.serverPrefix.name)) {
+				target = SERVER_BUFFER;
+			} else {
+				const context = msg.tags["+draft/channel-context"];
+				if (
+					context &&
+					client.isChannel(context) &&
+					S.getBuffer(this.state, { server: serverID, name: context })
+				) {
+					target = context;
+				} else {
+					target = from;
+				}
+			}
+		}
+
+		const allowedPrefixes = client.isupport.statusMsg();
+		if (allowedPrefixes) {
+			const parts = irc.parseTargetPrefix(target, allowedPrefixes);
+			if (client.isChannel(parts.name)) {
+				target = parts.name;
+			}
+		}
+		return target;
+	}
+
+	/** Handle client-only tags: reactions and typing notifications. */
+	handleTagMessage(serverID: number, msg: Message): void {
+		const client = this.clients.get(serverID);
+		if (!client || !msg.prefix) {
+			return;
+		}
+		const from = msg.prefix.name;
+		const target = this.resolveMessageTarget(serverID, msg);
+		const buf = S.getBuffer(this.state, { server: serverID, name: target });
+		if (!buf) {
+			return;
+		}
+
+		const replyTo = msg.tags["+draft/reply"];
+		const react = msg.tags["+draft/react"];
+		const unreact = msg.tags["+draft/unreact"];
+		if (replyTo && (react || unreact)) {
+			this.setBufferState(buf.id, (b) =>
+				S.applyReaction(b, replyTo, (react || unreact)!, from, Boolean(react), client.cm),
+			);
+		}
+
+		const typing = msg.tags["+typing"];
+		if (typing && !client.isMyNick(from) && !irc.findBatchByType(msg, "chathistory")) {
+			this.setBufferState(buf.id, (b) => S.applyTyping(b, from, typing, client.cm));
+		}
+	}
+
+	/** Whether the server relays a client-only tag (without the "+" prefix). */
+	canSendClientTag(client: Client | undefined, tag: string): boolean {
+		return (
+			Boolean(client?.caps.enabled.has("message-tags")) && irc.isClientTagAllowed(client!.isupport, tag)
+		);
+	}
+
+	canReact(serverID: number): boolean {
+		return Boolean(this.state.servers.get(serverID)?.features.reactions);
+	}
+
+	canReply(serverID: number): boolean {
+		return Boolean(this.state.servers.get(serverID)?.features.replies);
+	}
+
+	canRedact(serverID: number): boolean {
+		return Boolean(this.state.servers.get(serverID)?.features.redaction);
+	}
+
+	/** Toggle a reaction on a message. */
+	react(bufID: number, msg: Message, emoji: string): void {
+		const buf = S.getBuffer(this.state, bufID);
+		const client = buf ? this.clients.get(buf.server) : undefined;
+		const msgid = msg.tags.msgid;
+		if (!buf || !client || !msgid || !client.nick) {
+			return;
+		}
+		const nicks = buf.reactions.get(msgid)?.get(emoji) ?? [];
+		const remove = nicks.some((n) => client.isMyNick(n));
+		const tag = remove ? "+draft/unreact" : "+draft/react";
+		client.send({ command: "TAGMSG", params: [buf.name], tags: { [tag]: emoji, "+draft/reply": msgid } });
+		if (!client.caps.enabled.has("echo-message")) {
+			this.setBufferState(buf.id, (b) =>
+				S.applyReaction(b, msgid, emoji, client.nick!, !remove, client.cm),
+			);
+		}
+	}
+
+	startReply(bufID: number, msg: Message): void {
+		if (!msg.tags.msgid) {
+			return;
+		}
+		const text = irc.parseCTCP(msg)?.param ?? msg.params[1] ?? "";
+		this.update({
+			replyTo: {
+				buffer: bufID,
+				msgid: msg.tags.msgid,
+				nick: msg.prefix?.name ?? "*",
+				text: stripANSI(text),
+			},
+		});
+		this.ui.focusComposer?.();
+	}
+
+	cancelReply(): void {
+		this.update({ replyTo: null });
+	}
+
+	/** Delete a message (draft/message-redaction). */
+	redact(bufID: number, msg: Message, reason?: string): void {
+		const buf = S.getBuffer(this.state, bufID);
+		const client = buf ? this.clients.get(buf.server) : undefined;
+		if (!buf || !client || !msg.tags.msgid) {
+			return;
+		}
+		const params = [buf.name, msg.tags.msgid];
+		if (reason) {
+			params.push(reason);
+		}
+		client.send({ command: "REDACT", params });
+	}
+
+	typingState: { buffer: number | null; lastSent: number; status: string } = {
+		buffer: null,
+		lastSent: 0,
+		status: "done",
+	};
+
+	/** Notify the server of the composer state, throttled per the +typing spec. */
+	notifyTyping(text: string): void {
+		const buf = S.getBuffer(this.state, this.state.activeBuffer);
+		if (!buf || buf.type === BufferType.SERVER || text.startsWith("/")) {
+			return;
+		}
+		const client = this.clients.get(buf.server);
+		if (
+			!client ||
+			client.status !== ClientStatus.REGISTERED ||
+			!this.canSendClientTag(client, "typing")
+		) {
+			return;
+		}
+
+		const status = text ? "active" : "done";
+		const now = Date.now();
+		const prev = this.typingState;
+		if (
+			prev.buffer === buf.id &&
+			prev.status === status &&
+			(status === "done" || now - prev.lastSent < 3000)
+		) {
+			return;
+		}
+		if (status === "done" && (prev.buffer !== buf.id || prev.status === "done")) {
+			return;
+		}
+		this.typingState = { buffer: buf.id, lastSent: now, status };
+		client.send({ command: "TAGMSG", params: [buf.name], tags: { "+typing": status } });
+	}
+
 	/** Find the buffers a message should be displayed in. */
 	routeMessage(serverID: number, msg: Message): string[] {
 		const client = this.clients.get(serverID)!;
@@ -890,31 +1066,7 @@ export default class AppController {
 				return [SERVER_BUFFER];
 			case "NOTICE":
 			case "PRIVMSG": {
-				target = msg.params[0];
-				if (client.isMyNick(target)) {
-					if (client.cm(from) === client.cm(client.serverPrefix.name)) {
-						target = SERVER_BUFFER;
-					} else {
-						const context = msg.tags["+draft/channel-context"];
-						if (
-							context &&
-							client.isChannel(context) &&
-							S.getBuffer(this.state, { server: serverID, name: context })
-						) {
-							target = context;
-						} else {
-							target = from;
-						}
-					}
-				}
-
-				const allowedPrefixes = client.isupport.statusMsg();
-				if (allowedPrefixes) {
-					const parts = irc.parseTargetPrefix(target, allowedPrefixes);
-					if (client.isChannel(parts.name)) {
-						target = parts.name;
-					}
-				}
+				target = this.resolveMessageTarget(serverID, msg);
 
 				// Don't open a new buffer if this is just a NOTICE or a garbage
 				// CTCP message
@@ -1119,6 +1271,9 @@ export default class AppController {
 			}
 			case "MARKREAD":
 				this.handleMarkRead(serverID, client, msg);
+				break;
+			case "TAGMSG":
+				this.handleTagMessage(serverID, msg);
 				break;
 			default:
 				if (irc.isError(msg.command) && msg.command !== irc.ERR_NOMOTD && !msg.internal) {
@@ -1359,6 +1514,10 @@ export default class AppController {
 				}
 
 				for (const msg of result.messages) {
+					if (msg.command === "TAGMSG") {
+						this.handleTagMessage(serverID, msg);
+						continue;
+					}
 					const destBuffers = this.routeMessage(serverID, msg);
 					for (const bufName of destBuffers) {
 						this.handleChatMessage(serverID, bufName, msg);
@@ -1649,7 +1808,19 @@ export default class AppController {
 		}
 
 		const msg: Message = { tags: {}, prefix: null, command: "PRIVMSG", params: [target, text] };
+		const replyTo = this.state.replyTo;
+		const buf = S.getBuffer(this.state, { server: serverID, name: target });
+		if (replyTo && buf && replyTo.buffer === buf.id) {
+			if (this.canSendClientTag(client, "draft/reply")) {
+				msg.tags["+draft/reply"] = replyTo.msgid;
+			}
+			this.update({ replyTo: null });
+		}
 		client.send(msg);
+		if (this.typingState.buffer === buf?.id) {
+			// Sending a message implicitly ends typing
+			this.typingState = { buffer: null, lastSent: 0, status: "done" };
+		}
 
 		if (!client.caps.enabled.has("echo-message")) {
 			msg.prefix = { name: client.nick ?? "" };
@@ -1806,6 +1977,10 @@ export default class AppController {
 		}
 
 		for (const msg of result.messages) {
+			if (msg.command === "TAGMSG") {
+				this.handleTagMessage(buf.server, msg);
+				continue;
+			}
 			this.prepareChatMessage(buf.server, msg);
 			const destBuffers = this.routeMessage(buf.server, msg);
 			for (const bufName of destBuffers) {

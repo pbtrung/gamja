@@ -268,6 +268,26 @@ describe("handleMessage", () => {
 		expect(state2.servers.get(t.serverID)!.users.get("ghost")?.offline).toBe(true);
 	});
 
+	it("tracks our nick and server features", () => {
+		const t = setup();
+		t.handle(":srv 001 me_ :Welcome");
+		expect(t.state.servers.get(t.serverID)!.nick).toBe("me_");
+		t.client.caps.enabled.add("message-tags");
+		t.client.caps.enabled.add("draft/message-redaction");
+		t.handle(":srv CAP me ACK :message-tags draft/message-redaction");
+		expect(t.state.servers.get(t.serverID)!.features).toMatchObject({
+			reactions: true,
+			replies: true,
+			redaction: true,
+			search: false,
+		});
+		t.client.isupport.parse(["CLIENTTAGDENY=draft/react"]);
+		t.handle(":srv 005 me CLIENTTAGDENY=draft/react :ok");
+		expect(t.state.servers.get(t.serverID)!.features.reactions).toBe(false);
+		t.handle(":me!u@h NICK other");
+		expect(t.state.servers.get(t.serverID)!.nick).toBe("other");
+	});
+
 	it("tracks accounts, ISUPPORT and server info", () => {
 		const t = setup(["#c"]);
 		t.handle(":srv 900 me me!u@h acct :Logged in");
@@ -339,5 +359,33 @@ describe("bouncer networks", () => {
 		expect(state.bouncerNetworks.get("1")).toEqual({ name: "a", state: "connected" });
 		state = { ...state, ...S.deleteBouncerNetwork(state, "1") };
 		expect(state.bouncerNetworks.size).toBe(0);
+	});
+});
+
+describe("reactions and typing", () => {
+	const cm = irc.CaseMapping.RFC1459;
+	const base = () => ({ reactions: new Map(), typing: new Map() }) as unknown as S.Buffer;
+
+	it("adds and removes reactions", () => {
+		let buf = base();
+		buf = { ...buf, ...S.applyReaction(buf, "m1", "👍", "bob", true, cm) };
+		buf = { ...buf, ...S.applyReaction(buf, "m1", "👍", "Carol", true, cm) };
+		expect(S.applyReaction(buf, "m1", "👍", "BOB", true, cm)).toBeUndefined();
+		expect(buf.reactions.get("m1")!.get("👍")).toEqual(["bob", "Carol"]);
+		buf = { ...buf, ...S.applyReaction(buf, "m1", "👍", "carol", false, cm) };
+		buf = { ...buf, ...S.applyReaction(buf, "m1", "👍", "bob", false, cm) };
+		expect(buf.reactions.has("m1")).toBe(false);
+		expect(S.applyReaction(buf, "m1", "👍", "bob", false, cm)).toBeUndefined();
+	});
+
+	it("tracks typing with expiry", () => {
+		let buf = base();
+		buf = { ...buf, ...S.applyTyping(buf, "bob", "active", cm, 1000) };
+		buf = { ...buf, ...S.applyTyping(buf, "carol", "paused", cm, 1000) };
+		expect(S.getTypingNicks(buf, 2000)).toEqual(["bob"]);
+		expect(S.getTypingNicks(buf, 1000 + S.TYPING_TIMEOUT.active)).toEqual([]);
+		buf = { ...buf, ...S.applyTyping(buf, "BOB", "done", cm) };
+		expect(buf.typing.has("bob")).toBe(false);
+		expect(S.applyTyping(buf, "dave", "done", cm)).toBeUndefined();
 	});
 });
