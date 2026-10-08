@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
-import { CircleAlert, CirclePlus, MessageSquareText, Settings as SettingsIcon, Users, X } from "lucide-react";
+import { CircleAlert, MessageSquareText, Users, X } from "lucide-react";
 import { getNickColorIndex } from "../format";
 import * as irc from "../lib/irc";
 import { BufferType, ServerStatus, Unread, getServerName, unionUnread, type Buffer } from "../state";
@@ -353,26 +353,6 @@ function Chat({ state }: { state: AppState }) {
 										: "Not logged in"}
 								</span>
 							</div>
-							{activeServer.isBouncer && activeServer.status === ServerStatus.REGISTERED && (
-								<button
-									type="button"
-									className="icon-btn"
-									title="Add network"
-									aria-label="Add network"
-									onClick={() => app.openDialog({ kind: "network" })}
-								>
-									<CirclePlus aria-hidden="true" />
-								</button>
-							)}
-							<button
-								type="button"
-								className="icon-btn"
-								title="Settings"
-								aria-label="Open settings"
-								onClick={() => app.handleOpenSettingsClick()}
-							>
-								<SettingsIcon aria-hidden="true" />
-							</button>
 						</footer>
 					)}
 				</div>

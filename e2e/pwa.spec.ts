@@ -13,6 +13,6 @@ test("serves the service worker and web app manifest", async ({ request }) => {
 test("offers push notifications when the server supports them", async ({ page, connect, context }) => {
 	await context.grantPermissions(["notifications"]);
 	await connect(page);
-	await page.getByRole("button", { name: "Open settings" }).click();
+	await page.getByRole("button", { name: "Settings" }).click();
 	await expect(page.getByRole("checkbox", { name: /Push notifications/ })).toBeVisible();
 });

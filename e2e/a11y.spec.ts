@@ -32,7 +32,8 @@ test("chat and dialogs are accessible", async ({ page, connect, bot }) => {
 	await expect(page.locator("#buffer")).toContainText("hello tester");
 	await audit(page);
 
-	await page.getByRole("button", { name: "Open settings" }).click();
+	await page.getByRole("tab", { name: "FakeNet" }).click();
+	await page.getByRole("button", { name: "Settings" }).click();
 	await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 	await audit(page);
 	await page.keyboard.press("Escape");

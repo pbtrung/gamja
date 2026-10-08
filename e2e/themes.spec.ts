@@ -6,7 +6,7 @@ test("switches and remembers the theme", async ({ page, connect }) => {
 	const bodyBg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 	expect(await bodyBg()).toBe("rgb(255, 255, 255)");
 
-	await page.getByRole("button", { name: "Open settings" }).click();
+	await page.getByRole("button", { name: "Settings" }).click();
 	await page.locator("label.theme-option", { hasText: "Dracula" }).click();
 	await expect(page.getByRole("radio", { name: "Dracula" })).toBeChecked();
 	await expect(page.locator("html")).toHaveAttribute("data-theme", "dracula");
