@@ -114,6 +114,24 @@ describe("ConnectForm", () => {
 		expect(screen.getByRole("button", { name: /Connecting/ })).toBeDisabled();
 	});
 
+	it("shows the server and toggles password visibility", async () => {
+		render(
+			<ConnectForm
+				params={{ ...defaultConnectParams, url: "wss://irc.example.org/socket" }}
+				connecting={false}
+				error={null}
+				onSubmit={() => {}}
+			/>,
+		);
+		expect(screen.getByText("irc.example.org")).toBeInTheDocument();
+		const password = screen.getByLabelText("Password");
+		expect(password).toHaveAttribute("type", "password");
+		await userEvent.click(screen.getByRole("button", { name: "Show password" }));
+		expect(password).toHaveAttribute("type", "text");
+		await userEvent.click(screen.getByRole("button", { name: "Hide password" }));
+		expect(password).toHaveAttribute("type", "password");
+	});
+
 	it("hides the password with external auth", () => {
 		render(
 			<ConnectForm
