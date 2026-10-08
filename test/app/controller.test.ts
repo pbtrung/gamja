@@ -361,6 +361,8 @@ describe("AppController messaging", () => {
 		expect(app.state.servers.get(serverID)!.status).toBe("disconnected");
 		app.reconnect(serverID);
 		expect(app.state.servers.get(serverID)!.status).toBe("connecting");
+		// Reconnecting resumes reconnecting after drops
+		expect(app.clients.get(serverID)!.autoReconnect).toBe(true);
 	});
 
 	it("stops fetching history after an error until retried", async () => {

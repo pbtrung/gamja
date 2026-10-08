@@ -94,6 +94,40 @@ describe("commands", () => {
 		expect(sent()).toEqual(["MODE #c +b *!buser@bhost", "KICK #c bob"]);
 	});
 
+	it("collapses repeated and trailing spaces", async () => {
+		const { app, sent } = await inChannel();
+		app.handleComposerSubmit("/msg bob  hi there ");
+		app.handleComposerSubmit("/whowas bob ");
+		expect(sent()).toEqual(["PRIVMSG bob :hi there", "WHOWAS bob"]);
+	});
+
+	it("can't join channels on a connection without channels", async () => {
+		const { app, sent } = await connectedApp({ isupport: "CASEMAPPING=ascii CHANTYPES= BOT=B" });
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.handleComposerSubmit("/join #foo");
+		expect(app.state.error).toMatch(/switch to a network/);
+		expect(sent()).toEqual([]);
+	});
+
+	it("requires a nick for /kickban before banning", async () => {
+		const { app, sent } = await inChannel();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.handleComposerSubmit("/kickban");
+		await flush();
+		expect(app.state.error).toBe("Missing nick");
+		expect(sent()).toEqual([]);
+	});
+
+	it("shows /notice in the server buffer without echo-message", async () => {
+		const { app, sent } = await connectedApp({
+			caps: "batch server-time message-tags labeled-response draft/chathistory",
+		});
+		app.handleComposerSubmit("/notice bob hi");
+		expect(sent()).toContain("NOTICE bob hi");
+		expect(getBuffer(app.state, { name: "bob" })).toBeUndefined();
+		expect(getBuffer(app.state, { name: "*" })!.messages.at(-1)!.params).toEqual(["bob", "hi"]);
+	});
+
 	it("bans by host after a WHOIS", async () => {
 		const { app, sent, recv } = await inChannel();
 		app.handleComposerSubmit("/ban bob");

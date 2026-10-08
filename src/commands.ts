@@ -80,9 +80,14 @@ const join: Command = {
 	execute: (app, args) => {
 		let channel = requireArg(args, 0, "channel name");
 		const client = getActiveClient(app);
+		const chanTypes = client.isupport.chanTypes();
+		if (!chanTypes) {
+			// e.g. the soju bouncer connection itself
+			throw new Error("Channels can't be joined here, switch to a network first");
+		}
 		if (!client.isChannel(channel)) {
 			// "/join foo" means "#foo", not a query with foo
-			channel = (client.isupport.chanTypes()[0] ?? "#") + channel;
+			channel = chanTypes[0] + channel;
 		}
 		if (args.length > 1) {
 			app.open(channel, null, args[1]);
@@ -221,6 +226,7 @@ const commandList: Command[] = [
 		usage: "<target>",
 		description: "Ban a user and removes them from the channel",
 		execute: async (app, args) => {
+			requireArg(args, 0, "nick");
 			// Ban first: if looking up the user's host fails, don't kick either
 			await ban.execute(app, args);
 			kick.execute(app, args);

@@ -54,6 +54,14 @@ describe("keybindings", () => {
 		cleanup();
 	});
 
+	it("lets Alt type letters of other layouts", async () => {
+		const { cleanup, name } = await withBuffers();
+		// Polish layout: Alt+A types "ą", it mustn't jump to a buffer
+		expect(press("ą", { code: "KeyA", altKey: true }).defaultPrevented).toBe(false);
+		expect(name()).toBe("*");
+		cleanup();
+	});
+
 	it("opens the switcher and search, ignoring other modifiers", async () => {
 		const { app, cleanup } = await withBuffers();
 		expect(press("k", { ctrlKey: true, altKey: true }).defaultPrevented).toBe(false);

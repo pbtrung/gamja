@@ -114,7 +114,9 @@ export function setup(app: AppController, target: Window = window): () => void {
 		let candidates = byKey.get(event.key);
 		// On macOS, Alt+letter types another character (e.g. Alt+H is "˙"):
 		// fall back to the physical key
-		if (!candidates && event.altKey && /^Key[A-Z]$/.test(event.code)) {
+		// Only when Alt didn't type a letter: some layouts need Alt for letters
+		// (e.g. Polish "ą"), those must stay typeable
+		if (!candidates && event.altKey && /^Key[A-Z]$/.test(event.code) && !/^\p{L}$/u.test(event.key)) {
 			candidates = byKey.get(event.code.slice(3).toLowerCase());
 		}
 		if (!candidates) {

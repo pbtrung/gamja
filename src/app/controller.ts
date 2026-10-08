@@ -58,7 +58,7 @@ function getLatestReceipt(
 }
 
 interface MessageNotification extends Notification {
-	data: { bufferName: string; message: Message };
+	data: { server: number; bufferName: string; message: Message };
 }
 
 function showNotification(title: string, options: NotificationOptions): MessageNotification | null {
@@ -556,7 +556,10 @@ export default class AppController {
 		}
 
 		for (const notif of this.messageNotifications) {
-			if (client.cm(notif.data.bufferName) === client.cm(buf.name)) {
+			if (
+				notif.data.server === buf.server &&
+				client.cm(notif.data.bufferName) === client.cm(buf.name)
+			) {
 				notif.close();
 			}
 		}
@@ -684,7 +687,7 @@ export default class AppController {
 					body: stripANSI(text),
 					requireInteraction: true,
 					tag: "msg,server=" + serverID + ",from=" + from + ",to=" + bufName,
-					data: { bufferName: bufName, message: msg },
+					data: { server: serverID, bufferName: bufName, message: msg },
 				});
 				if (notif) {
 					notif.addEventListener("click", () => {
@@ -812,7 +815,8 @@ export default class AppController {
 			this.setServerState(serverID, { status: client.status });
 			switch (client.status) {
 				case ClientStatus.DISCONNECTED:
-					this.setServerState(serverID, { account: null });
+					// Features come back with the caps once registered again
+					this.setServerState(serverID, { account: null, features: S.noFeatures });
 					this.update((state) => {
 						const buffers = new Map(state.buffers);
 						state.buffers.forEach((buf) => {
@@ -880,6 +884,9 @@ export default class AppController {
 
 		const client = this.getClient(serverID);
 		if (client) {
+			// A manual reconnect also resumes reconnecting after drops, which
+			// /disconnect or a fatal error turned off
+			client.autoReconnect = true;
 			client.reconnect();
 		}
 	}
@@ -1311,6 +1318,7 @@ export default class AppController {
 				const switchTo = this.switchToChannel;
 				if (
 					switchTo &&
+					client.isMyNick(from) &&
 					(switchTo.server === null || switchTo.server === serverID) &&
 					client.cm(channel) === client.cm(switchTo.name)
 				) {
@@ -1570,7 +1578,7 @@ export default class AppController {
 			return;
 		}
 		for (const notif of this.messageNotifications) {
-			if (client.cm(notif.data.bufferName) !== client.cm(target)) {
+			if (notif.data.server !== serverID || client.cm(notif.data.bufferName) !== client.cm(target)) {
 				continue;
 			}
 			if (S.isMessageBeforeReceipt(notif.data.message, readReceipt)) {
@@ -1845,10 +1853,12 @@ export default class AppController {
 					return { buffers, activeBuffer };
 				});
 
+				// From the server state rather than the caps, which are gone
+				// while disconnected
 				const disconnectAll =
 					client &&
 					!client.params.bouncerNetwork &&
-					client.caps.enabled.has("soju.im/bouncer-networks");
+					Boolean(this.state.servers.get(buf.server)?.isBouncer);
 				const isFirstServer = this.state.servers.keys().next().value === buf.server;
 
 				this.disconnect(buf.server);
@@ -1925,7 +1935,8 @@ export default class AppController {
 	executeCommand(s: string): void {
 		// Extra spaces after the command name don't make empty arguments
 		const [, name, rest] = /^\/(\S*)\s*(.*)$/s.exec(s) ?? ["", "", ""];
-		const args = rest === "" ? [] : rest.split(" ");
+		// Repeated and trailing spaces don't make empty arguments
+		const args = rest.trim() === "" ? [] : rest.trim().split(/ +/);
 
 		const cmd = commands.get(name.toLowerCase());
 		if (!cmd) {
@@ -1980,8 +1991,11 @@ export default class AppController {
 		}
 
 		if (!client.caps.enabled.has("echo-message")) {
+			// Show it where the server's echo would have gone
 			msg.prefix = { name: client.nick ?? "" };
-			this.handleChatMessage(serverID, target, msg);
+			for (const bufName of this.routeMessage(serverID, msg)) {
+				this.handleChatMessage(serverID, bufName, msg);
+			}
 		}
 	}
 

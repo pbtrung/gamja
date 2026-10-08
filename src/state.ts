@@ -120,7 +120,7 @@ export interface Features {
 	webPush: boolean;
 }
 
-const noFeatures: Features = {
+export const noFeatures: Features = {
 	reactions: false,
 	replies: false,
 	typing: false,
@@ -129,7 +129,7 @@ const noFeatures: Features = {
 	webPush: false,
 };
 
-export function computeFeatures(client: Pick<Client, "caps" | "isupport">): Features {
+function computeFeatures(client: Pick<Client, "caps" | "isupport">): Features {
 	const tags = client.caps.enabled.has("message-tags");
 	return {
 		reactions: tags && irc.isClientTagAllowed(client.isupport, "draft/react"),
@@ -322,7 +322,7 @@ function getBouncerNetworkNameFromBuffer(state: State, buffer: Buffer): string |
 
 /* Returns a positive number if a should appear after b, a negative number if
  * a should appear before b, or 0 otherwise. */
-export function compareBuffers(state: State, a: Buffer, b: Buffer): number {
+function compareBuffers(state: State, a: Buffer, b: Buffer): number {
 	if (a.server !== b.server) {
 		const aServerName = getBouncerNetworkNameFromBuffer(state, a);
 		const bServerName = getBouncerNetworkNameFromBuffer(state, b);
