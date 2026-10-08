@@ -3,6 +3,7 @@
 // (soju.im/webpush). Each push payload is a single raw IRC message.
 import { parseMessage, parseCTCP, type Message } from "./lib/irc";
 import { strip as stripANSI } from "./lib/ansi";
+import { formatWindowHash } from "./app/config";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -105,7 +106,7 @@ if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWo
 				}
 				const url = new URL(self.registration.scope);
 				if (target) {
-					url.hash = "/" + target;
+					url.hash = formatWindowHash(null, target);
 				}
 				await self.clients.openWindow(url.toString());
 			})(),

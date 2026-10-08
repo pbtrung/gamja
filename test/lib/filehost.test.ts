@@ -8,7 +8,7 @@ function client(params: Partial<Client["params"]> = {}, filehost = "https://up.e
 	if (filehost) {
 		isupport.parse([`SOJU.IM/FILEHOST=${filehost}`]);
 	}
-	return { isupport, params } as unknown as Client;
+	return { isupport, params: { url: "wss://irc.example/socket", ...params } } as unknown as Client;
 }
 
 describe("filehost uploads", () => {
@@ -40,6 +40,28 @@ describe("filehost uploads", () => {
 			"Content-Disposition": 'attachment; filename="a.png"',
 			Authorization: "Bearer tok",
 		});
+	});
+
+	it("refuses insecure endpoints on secure connections", async () => {
+		const fetch = vi.fn();
+		vi.stubGlobal("fetch", fetch);
+		const c = client({ saslPlain: { username: "me", password: "pw" } }, "http://up.example/upload");
+		await expect(uploadFile(c, new File(["x"], "a.txt"))).rejects.toThrow("insecure endpoint");
+		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it("only sends cookies to the page's origin", async () => {
+		const fetch = vi
+			.fn()
+			.mockResolvedValue(new Response(null, { status: 201, headers: { Location: "/x" } }));
+		vi.stubGlobal("fetch", fetch);
+		await uploadFile(client(), new File(["x"], "a.txt"));
+		expect(fetch.mock.calls[0][1].credentials).toBe("omit");
+		await uploadFile(
+			client({ url: "ws://localhost/socket" }, location.origin + "/upload"),
+			new File(["x"], "a.txt"),
+		);
+		expect(fetch.mock.calls[1][1].credentials).toBe("include");
 	});
 
 	it("reports errors", async () => {

@@ -51,8 +51,6 @@ export const THEMES: Theme[] = [
 	{ id: "zenburn", name: "Zenburn", scheme: "dark", swatch: ["#3f3f3f", "#dcdccc", "#a3d9dc"] },
 ];
 
-export type ThemeID = string;
-
 export function getTheme(id: string | undefined | null): Theme {
 	return THEMES.find((t) => t.id === id) ?? THEMES[0];
 }

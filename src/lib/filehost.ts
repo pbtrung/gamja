@@ -14,9 +14,14 @@ function encodeContentDisposition(filename: string): string {
 
 /** Upload a file to the soju.im/FILEHOST endpoint. Returns the file URL. */
 export async function uploadFile(client: Client, file: File, signal?: AbortSignal): Promise<URL> {
-	const endpoint = client.isupport.filehost();
-	if (!endpoint) {
+	const endpointStr = client.isupport.filehost();
+	if (!endpointStr) {
 		throw new Error("Server doesn't support file uploads");
+	}
+	const endpoint = new URL(endpointStr, location.href);
+	// Don't leak credentials over plain HTTP when the IRC connection is secure
+	if (endpoint.protocol !== "https:" && client.params.url.startsWith("wss:")) {
+		throw new Error("Refusing to upload files to an insecure endpoint");
 	}
 
 	let auth: string | undefined;
@@ -37,11 +42,12 @@ export async function uploadFile(client: Client, file: File, signal?: AbortSigna
 		headers["Authorization"] = auth;
 	}
 
-	const resp = await fetch(endpoint, {
+	const resp = await fetch(endpoint.href, {
 		method: "POST",
 		body: file,
 		headers,
-		credentials: "include",
+		// Only send cookies to our own origin
+		credentials: endpoint.origin === location.origin ? "include" : "omit",
 		signal,
 	});
 

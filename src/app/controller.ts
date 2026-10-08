@@ -282,7 +282,9 @@ export default class AppController {
 
 			let saslOauthBearer;
 			try {
-				saslOauthBearer = await this.exchangeOauth2Code(queryParams.code);
+				const state = typeof queryParams.state === "string" ? queryParams.state : undefined;
+				const codeVerifier = oauth2.takePendingAuthorization(state);
+				saslOauthBearer = await this.exchangeOauth2Code(queryParams.code, codeVerifier);
 			} catch (err) {
 				this.showError(err);
 				return;
@@ -324,7 +326,7 @@ export default class AppController {
 			return;
 		}
 
-		oauth2.redirectAuthorize({
+		await oauth2.redirectAuthorize({
 			serverMetadata,
 			clientId: oauth2Config.client_id,
 			redirectUri: window.location.toString(),
@@ -332,7 +334,10 @@ export default class AppController {
 		});
 	}
 
-	async exchangeOauth2Code(code: string): Promise<{ token: string; username: string | null }> {
+	async exchangeOauth2Code(
+		code: string,
+		codeVerifier: string,
+	): Promise<{ token: string; username: string | null }> {
 		const oauth2Config = this.config.oauth2!;
 		const serverMetadata = await oauth2.fetchServerMetadata(oauth2Config.url);
 
@@ -344,6 +349,7 @@ export default class AppController {
 			serverMetadata,
 			redirectUri: redirectUri.toString(),
 			code,
+			codeVerifier,
 			clientId: oauth2Config.client_id,
 			clientSecret: oauth2Config.client_secret,
 		});

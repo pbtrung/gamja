@@ -68,12 +68,14 @@ describe("Client registration", () => {
 		expect(ws.sent).toEqual(["CAP REQ away-notify"]);
 	});
 
-	it("ends negotiation on NAK", () => {
+	it("ends negotiation once, even on NAK", () => {
 		const { ws } = connect();
+		ws.takeSent();
 		ws.receive(":srv CAP * LS :batch");
+		expect(ws.sent).toEqual(["CAP REQ batch", "CAP END"]);
 		ws.takeSent();
 		ws.receive(":srv CAP me NAK :batch");
-		expect(ws.sent).toEqual(["CAP END"]);
+		expect(ws.sent).toEqual([]);
 	});
 
 	it("tracks status, nick and ISUPPORT", () => {
@@ -157,13 +159,40 @@ describe("Client registration", () => {
 		expect(ws.closeCode).toBe(1003);
 	});
 
-	it("disconnects on unparsable data", () => {
+	it("skips unparsable lines and stays connected", () => {
 		const { client, ws } = register();
 		const errors: Error[] = [];
 		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
+		vi.spyOn(console, "error").mockImplementation(() => {});
 		ws.receive("@bad");
 		expect(errors).toHaveLength(1);
+		expect(ws.closeCode).toBeNull();
+		ws.receive(":srv NICK newme");
+		expect(client.status).toBe("registered");
+	});
+
+	it("ignores the old socket after reconnecting while connected", async () => {
+		const { client, ws } = register();
+		client.reconnect();
+		const ws2 = FakeWebSocket.last();
+		expect(ws2).not.toBe(ws);
 		expect(ws.closeCode).toBe(1000);
+		ws2.open();
+		// The old socket's close event comes later and must not reset anything
+		await Promise.resolve();
+		expect(client.ws).toBe(ws2);
+		expect(client.status).toBe("registering");
+		expect(client.reconnectTimeoutID).toBeNull();
+		ws.receive(":srv 001 stale :Welcome");
+		expect(client.nick).toBe("me");
+	});
+
+	it("resets pending lists on disconnect", () => {
+		const { client, ws } = register();
+		ws.receive(":srv 353 me = #c :ghost");
+		ws.serverClose();
+		expect(client.pendingLists.size).toBe(0);
+		client.disconnect();
 	});
 
 	it("throws when sending on a closed socket", () => {
@@ -178,12 +207,30 @@ describe("SASL", () => {
 		const { ws } = connect({ saslPlain: { username: "user", password: "pass" } });
 		ws.takeSent();
 		ws.receive(":srv CAP * LS :sasl=PLAIN");
-		expect(ws.sent).toEqual([
-			"CAP REQ sasl",
-			"AUTHENTICATE PLAIN",
-			"AUTHENTICATE AHVzZXIAcGFzcw==",
-			"CAP END",
-		]);
+		expect(ws.sent).toEqual(["CAP REQ sasl", "AUTHENTICATE PLAIN", "AUTHENTICATE AHVzZXIAcGFzcw=="]);
+		// Registration only ends once SASL succeeded
+		ws.takeSent();
+		ws.receive(":srv CAP me ACK :sasl", "AUTHENTICATE +", ":srv 903 me :SASL authentication successful");
+		await new Promise((r) => setTimeout(r, 0));
+		expect(ws.sent).toEqual(["CAP END"]);
+	});
+
+	it("tries SASL when the server doesn't list mechanisms", () => {
+		const { ws } = connect({ saslPlain: { username: "user", password: "pass" } });
+		ws.takeSent();
+		ws.receive(":srv CAP * LS :sasl");
+		expect(ws.sent).toContain("AUTHENTICATE PLAIN");
+	});
+
+	it("disconnects when SASL is configured but not offered", async () => {
+		const { client, ws } = connect({ saslPlain: { username: "a", password: "b" } });
+		const errors: Error[] = [];
+		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
+		ws.receive(":srv CAP * LS :batch");
+		await Promise.resolve();
+		expect(errors[0].message).toMatch(/doesn't support SASL/);
+		expect(ws.closeCode).toBe(1000);
+		expect(ws.sent).not.toContain("CAP END");
 	});
 
 	it("authenticates with EXTERNAL and OAUTHBEARER", () => {
@@ -222,11 +269,19 @@ describe("SASL", () => {
 		const errors: Error[] = [];
 		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
 		ws.receive(":srv 001 me :Welcome");
-		expect(errors[0].message).toMatch(/SASL PLAIN/);
+		expect(errors[0].message).toMatch(/doesn't support SASL/);
 	});
 });
 
 describe("roundtrip", () => {
+	it("rejects on a labeled ACK", async () => {
+		const { client, ws } = register("labeled-response batch");
+		const p = client.roundtrip({ command: "FOO" }, () => false);
+		const [req] = ws.takeSent();
+		ws.receive(`@label=${req.tags.label} :srv ACK`);
+		await expect(p).rejects.toThrow("No reply from the server to FOO");
+	});
+
 	it("uses labels when labeled-response is enabled and cleans up listeners", async () => {
 		const { client, ws } = register("labeled-response batch");
 		const p = client.ping();
@@ -358,7 +413,13 @@ describe("commands", () => {
 		);
 		const flush = () => new Promise((r) => setTimeout(r, 0));
 		await flush();
-		expect(ws.takeSent()[0].params).toEqual(["AFTER", "#c", "timestamp=2020-01-01T00:00:00.000Z", "2"]);
+		expect(ws.takeSent()[0].params).toEqual([
+			"BETWEEN",
+			"#c",
+			"timestamp=2020-01-01T00:00:00.000Z",
+			"timestamp=2021-01-01T00:00:00.000Z",
+			"2",
+		]);
 		ws.receive(
 			":srv BATCH +a chathistory #c",
 			"@batch=a;time=2020-01-02T00:00:00.000Z :x PRIVMSG #c :1",
@@ -404,15 +465,6 @@ describe("commands", () => {
 
 	it("manages bouncer networks", async () => {
 		const { client, ws } = register("batch soju.im/bouncer-networks");
-		const p = client.listBouncerNetworks();
-		ws.receive(
-			":srv BATCH +n soju.im/bouncer-networks",
-			"@batch=n :srv BOUNCER NETWORK 1 name=Libera;host=irc.libera.chat;state=connected",
-			":srv BATCH -n",
-		);
-		const networks = await p;
-		expect(networks.get("1")).toEqual({ name: "Libera", host: "irc.libera.chat", state: "connected" });
-
 		ws.takeSent();
 		const p2 = client.createBouncerNetwork({ host: "irc.oftc.net", tls: "1" });
 		expect(ws.sent).toEqual(["BOUNCER ADDNETWORK host=irc.oftc.net;tls=1"]);
@@ -435,6 +487,14 @@ describe("commands", () => {
 		const p2 = client.verifyAccount("me", "123");
 		ws.receive(":srv VERIFY SUCCESS me :Account verified");
 		await expect(p2).resolves.toEqual({ message: "Account verified" });
+	});
+
+	it("monitors up to the MONITOR limit", () => {
+		const { client, ws } = register("", "CASEMAPPING=rfc1459 CHANTYPES=# MONITOR=2");
+		client.monitor("a");
+		client.monitor("b");
+		client.monitor("c");
+		expect(ws.sent).toEqual(["MONITOR + a", "MONITOR + b"]);
 	});
 
 	it("monitors and unmonitors users", () => {
@@ -483,14 +543,8 @@ describe("soju extensions", () => {
 		expect(end.list).toHaveLength(1);
 	});
 
-	it("fetches the latest messages and messages around a msgid", async () => {
+	it("fetches messages around a msgid", async () => {
 		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
-		const p = client.fetchHistoryLatest("#c", 100);
-		await new Promise((r) => setTimeout(r, 0));
-		expect(ws.takeSent()[0].params).toEqual(["LATEST", "#c", "*", "50"]);
-		ws.receive(":srv BATCH +a chathistory #c", "@batch=a :x PRIVMSG #c :1", ":srv BATCH -a");
-		await expect(p).resolves.toMatchObject({ more: false });
-
 		const p2 = client.fetchHistoryAround("#c", { msgid: "abc" }, 20);
 		await new Promise((r) => setTimeout(r, 0));
 		expect(ws.takeSent()[0].params).toEqual(["AROUND", "#c", "msgid=abc", "20"]);
@@ -500,7 +554,6 @@ describe("soju extensions", () => {
 
 	it("searches messages", async () => {
 		const { client, ws } = register("batch soju.im/search");
-		expect(client.supportsSearch()).toBe(true);
 		const p = client.search({ text: "hello world", in: "#c", limit: 10, from: "" });
 		expect(ws.sent).toEqual(["SEARCH text=hello\\sworld;in=#c;limit=10"]);
 		ws.receive(

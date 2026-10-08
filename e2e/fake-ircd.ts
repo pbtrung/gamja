@@ -1057,6 +1057,12 @@ export class FakeServer {
 			case "AFTER":
 				entries = entries.filter((e) => e.time > resolve(bound!)).slice(0, limit);
 				break;
+			case "BETWEEN": {
+				// Both bounds are exclusive; only the ascending order is needed
+				const end = resolve(parseBound(msg.params[3])!);
+				entries = entries.filter((e) => e.time > resolve(bound!) && e.time < end).slice(0, limit);
+				break;
+			}
 			case "LATEST":
 				entries = (bound ? entries.filter((e) => e.time > resolve(bound)) : entries).slice(-limit);
 				break;

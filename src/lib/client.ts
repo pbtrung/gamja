@@ -285,18 +285,31 @@ export default class Client extends EventTarget {
 			return;
 		}
 		this.ws = ws;
-		ws.addEventListener("open", this.handleOpen.bind(this));
+		// Events of a socket we've already replaced or closed are ignored: its
+		// state was reset when it stopped being the current one
+		ws.addEventListener("open", () => {
+			if (this.ws === ws) {
+				this.handleOpen();
+			}
+		});
 
 		ws.addEventListener("message", (event) => {
+			if (this.ws !== ws) {
+				return;
+			}
 			try {
 				this.handleMessage(event);
 			} catch (err) {
+				// Skip the offending line instead of dropping the connection
+				console.error("Failed to handle message:", event.data, err);
 				this.dispatchError(err);
-				this.disconnect();
 			}
 		});
 
 		ws.addEventListener("close", (event) => {
+			if (this.ws !== ws) {
+				return;
+			}
 			console.log("Connection closed (code: " + event.code + ")");
 
 			if (
@@ -306,17 +319,7 @@ export default class Client extends EventTarget {
 				this.dispatchError(new WebSocketError(event.code));
 			}
 
-			this.ws = null;
-			this.setStatus(ClientStatus.DISCONNECTED);
-			this.nick = null;
-			this.serverPrefix = FALLBACK_SERVER_PREFIX;
-			this.caps = new irc.CapRegistry();
-			this.batches = new Map();
-			Object.keys(this.pendingCmds).forEach((k) => {
-				this.pendingCmds[k] = Promise.resolve(null);
-			});
-			this.isupport = new irc.Isupport();
-			this.monitored = new irc.CaseMapMap(null, irc.CaseMapping.RFC1459);
+			this.resetConnection();
 
 			if (this.autoReconnect) {
 				globalThis.addEventListener?.("online", this.handleOnline);
@@ -341,6 +344,25 @@ export default class Client extends EventTarget {
 		});
 	}
 
+	/** Forget the state of the current connection, once its socket is gone. */
+	resetConnection(): void {
+		this.ws = null;
+		this.setStatus(ClientStatus.DISCONNECTED);
+		this.nick = null;
+		this.serverPrefix = FALLBACK_SERVER_PREFIX;
+		this.supportsCap = false;
+		this.caps = new irc.CapRegistry();
+		this.batches = new Map();
+		Object.keys(this.pendingCmds).forEach((k) => {
+			this.pendingCmds[k] = Promise.resolve(null);
+		});
+		this.isupport = new irc.Isupport();
+		this.cm = irc.CaseMapping.RFC1459;
+		this.monitored = new irc.CaseMapMap(null, this.cm);
+		this.pendingLists = new irc.CaseMapMap(null, this.cm);
+		this.whoxQueries = new Map();
+	}
+
 	disconnect(): void {
 		this.autoReconnect = false;
 
@@ -353,8 +375,12 @@ export default class Client extends EventTarget {
 
 		this.setPingInterval(0);
 
-		if (this.ws) {
-			this.ws.close(WEBSOCKET_CLOSE_CODES.NORMAL_CLOSURE);
+		const ws = this.ws;
+		if (ws) {
+			// Reset now rather than on the close event, which comes later: a
+			// reconnect() may have started a new connection by then
+			this.resetConnection();
+			ws.close(WEBSOCKET_CLOSE_CODES.NORMAL_CLOSURE);
 		}
 	}
 
@@ -443,8 +469,8 @@ export default class Client extends EventTarget {
 		let deleteBatch: string | null = null;
 		switch (msg.command) {
 			case irc.RPL_WELCOME:
-				if (this.params.saslPlain && !this.supportsCap) {
-					this.dispatchError(new Error("Server doesn't support SASL PLAIN"));
+				if (this.wantsSASL() && !this.supportsCap) {
+					this.dispatchError(new Error("Server doesn't support SASL"));
 					this.disconnect();
 					return;
 				}
@@ -483,7 +509,8 @@ export default class Client extends EventTarget {
 				this.handleCap(msg);
 				break;
 			case "AUTHENTICATE": {
-				// Both PLAIN and EXTERNAL expect an empty challenge
+				// PLAIN, EXTERNAL and OAUTHBEARER expect an empty challenge. A
+				// non-empty one is an OAUTHBEARER error: aborting reports it.
 				const challengeStr = msg.params[0];
 				if (challengeStr !== "+") {
 					this.dispatchError(new Error("Expected an empty challenge, got: " + challengeStr));
@@ -596,6 +623,18 @@ export default class Client extends EventTarget {
 		}
 	}
 
+	authenticateFromParams(): Promise<void> {
+		if (!this.caps.available.has("sasl")) {
+			return Promise.reject(new Error("Server doesn't support SASL"));
+		}
+		if (this.params.saslPlain) {
+			return this.authenticate("PLAIN", this.params.saslPlain);
+		} else if (this.params.saslExternal) {
+			return this.authenticate("EXTERNAL");
+		}
+		return this.authenticate("OAUTHBEARER", this.params.saslOauthBearer!);
+	}
+
 	async authenticate(mechanism: string, params?: SASLPlain | SASLOAuthBearer): Promise<void> {
 		if (!this.supportsSASL(mechanism)) {
 			throw new Error(`${mechanism} authentication not supported by the server`);
@@ -683,7 +722,7 @@ export default class Client extends EventTarget {
 						l.push(this.parseWhoReply(msg));
 						break;
 					case irc.RPL_ENDOFWHO:
-						if (msg.params[1] === mask) {
+						if (this.cm(msg.params[1]) === this.cm(mask)) {
 							msg.internal = true;
 							return l;
 						}
@@ -770,7 +809,14 @@ export default class Client extends EventTarget {
 		if (saslCap === undefined) {
 			return false;
 		}
+		if (saslCap === "") {
+			return true; // The mechanism list is optional, try anyway
+		}
 		return saslCap.split(",").includes(mech);
+	}
+
+	wantsSASL(): boolean {
+		return Boolean(this.params.saslPlain || this.params.saslExternal || this.params.saslOauthBearer);
 	}
 
 	checkAccountRegistrationCap(k: string): boolean {
@@ -813,26 +859,28 @@ export default class Client extends EventTarget {
 				this.requestCaps();
 
 				if (this.status !== ClientStatus.REGISTERED) {
-					if (this.caps.available.has("sasl")) {
-						let promise: Promise<void> | undefined;
-						if (this.params.saslPlain) {
-							promise = this.authenticate("PLAIN", this.params.saslPlain);
-						} else if (this.params.saslExternal) {
-							promise = this.authenticate("EXTERNAL");
-						} else if (this.params.saslOauthBearer) {
-							promise = this.authenticate("OAUTHBEARER", this.params.saslOauthBearer);
-						}
-						(promise || Promise.resolve()).catch((err) => {
-							this.dispatchError(err);
-							this.disconnect();
-						});
-					}
-
 					if (this.caps.available.has("soju.im/bouncer-networks") && this.params.bouncerNetwork) {
 						this.send({ command: "BOUNCER", params: ["BIND", this.params.bouncerNetwork] });
 					}
 
-					this.send({ command: "CAP", params: ["END"] });
+					if (!this.wantsSASL()) {
+						this.send({ command: "CAP", params: ["END"] });
+						break;
+					}
+
+					// Only end registration once SASL is done: servers abort
+					// authentication still in progress on CAP END
+					this.authenticateFromParams().then(
+						() => {
+							if (this.ws) {
+								this.send({ command: "CAP", params: ["END"] });
+							}
+						},
+						(err) => {
+							this.dispatchError(err);
+							this.disconnect();
+						},
+					);
 				}
 				break;
 			case "NEW":
@@ -847,9 +895,6 @@ export default class Client extends EventTarget {
 				break;
 			case "NAK":
 				console.log("Server nak'ed caps:", args[0]);
-				if (this.status !== ClientStatus.REGISTERED) {
-					this.send({ command: "CAP", params: ["END"] });
-				}
 				break;
 		}
 	}
@@ -929,6 +974,10 @@ export default class Client extends EventTarget {
 
 				let isError = false;
 				switch (msg.command) {
+					case "ACK":
+						// labeled-response: the server had nothing to reply
+						isError = label !== undefined && msgLabel === label;
+						break;
 					case "FAIL":
 						isError = msg.params[0] === cmd;
 						break;
@@ -941,7 +990,11 @@ export default class Client extends EventTarget {
 				}
 				if (isError) {
 					removeEventListeners();
-					reject(new IRCError(msg));
+					reject(
+						msg.command === "ACK"
+							? new Error(`No reply from the server to ${cmd}`)
+							: new IRCError(msg),
+					);
 					return;
 				}
 
@@ -1001,6 +1054,9 @@ export default class Client extends EventTarget {
 				case irc.ERR_BANNEDFROMCHAN:
 				case irc.ERR_CHANNELISFULL:
 				case irc.ERR_INVITEONLYCHAN:
+				case irc.ERR_LINKCHANNEL:
+				case irc.ERR_BADCHANMASK:
+				case irc.ERR_NEEDREGGEDNICK:
 					if (this.cm(msg.params[1]) === this.cm(channel)) {
 						throw new IRCError(msg);
 					}
@@ -1085,7 +1141,7 @@ export default class Client extends EventTarget {
 		limit: number,
 	): Promise<{ messages: Message[] }> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		const params = ["AFTER", target, "timestamp=" + after.time, max];
+		const params = ["BETWEEN", target, "timestamp=" + after.time, "timestamp=" + before.time, max];
 		const messages = await this.roundtripChatHistory(params);
 		limit -= messages.length;
 		if (limit <= 0) {
@@ -1115,19 +1171,6 @@ export default class Client extends EventTarget {
 		});
 	}
 
-	async listBouncerNetworks(): Promise<Map<string, BouncerNetworkAttrs>> {
-		const req = { command: "BOUNCER", params: ["LISTNETWORKS"] };
-		const batch = await this.fetchBatch(req, "soju.im/bouncer-networks");
-		const networks = new Map<string, BouncerNetworkAttrs>();
-		for (const msg of batch.messages) {
-			console.assert(msg.command === "BOUNCER" && msg.params[0] === "NETWORK");
-			const id = msg.params[1];
-			const params = irc.parseTags(msg.params[2]);
-			networks.set(id, params);
-		}
-		return networks;
-	}
-
 	monitor(target: string): void {
 		if (this.monitored.has(target)) {
 			return;
@@ -1136,7 +1179,7 @@ export default class Client extends EventTarget {
 		this.monitored.set(target, true);
 
 		// TODO: add poll-based fallback when MONITOR is not supported
-		if (this.monitored.size + 1 > this.isupport.monitor()) {
+		if (this.monitored.size > this.isupport.monitor()) {
 			return;
 		}
 
@@ -1238,13 +1281,6 @@ export default class Client extends EventTarget {
 		});
 	}
 
-	/* Fetch the latest messages of a target, in ascending order. */
-	async fetchHistoryLatest(target: string, limit: number): Promise<{ messages: Message[]; more: boolean }> {
-		const max = Math.min(limit, this.isupport.chatHistory());
-		const messages = await this.roundtripChatHistory(["LATEST", target, "*", max]);
-		return { messages, more: max > 0 && messages.length >= max };
-	}
-
 	/* Fetch messages around a message ID or timestamp. */
 	async fetchHistoryAround(
 		target: string,
@@ -1254,10 +1290,6 @@ export default class Client extends EventTarget {
 		const max = Math.min(limit, this.isupport.chatHistory());
 		const ref = bound.msgid ? "msgid=" + bound.msgid : "timestamp=" + bound.time;
 		return this.roundtripChatHistory(["AROUND", target, ref, max]);
-	}
-
-	supportsSearch(): boolean {
-		return this.caps.enabled.has("soju.im/search");
 	}
 
 	/** Run a server-side message search (soju.im/search). */

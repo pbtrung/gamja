@@ -162,6 +162,12 @@ describe("Isupport", () => {
 		expect(is.chatHistory()).toBe(0);
 	});
 
+	it("ignores unpaired PREFIX modes", () => {
+		const is = new irc.Isupport();
+		is.parse(["PREFIX=(o)@+"]);
+		expect(is.membershipModes()).toEqual([{ mode: "o", prefix: "@" }]);
+	});
+
 	it("parses PREFIX and MONITOR without limit", () => {
 		const is = new irc.Isupport();
 		is.parse(["PREFIX=(qaohv)~&@%+", "MONITOR"]);
@@ -267,6 +273,7 @@ describe("URLs", () => {
 			entity: "emersion",
 		});
 		expect(irc.parseURL("https://example.org")).toBeNull();
+		expect(irc.parseURL("irc://host/%zz")).toBeNull();
 	});
 
 	it("formats irc:// URLs", () => {

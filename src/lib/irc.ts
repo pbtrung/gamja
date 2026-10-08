@@ -54,10 +54,13 @@ export const ERR_NEEDMOREPARAMS = "461";
 export const ERR_NOPERMFORHOST = "463";
 export const ERR_PASSWDMISMATCH = "464";
 export const ERR_YOUREBANNEDCREEP = "465";
+export const ERR_LINKCHANNEL = "470";
 export const ERR_CHANNELISFULL = "471";
 export const ERR_INVITEONLYCHAN = "473";
 export const ERR_BANNEDFROMCHAN = "474";
 export const ERR_BADCHANNELKEY = "475";
+export const ERR_BADCHANMASK = "476";
+export const ERR_NEEDREGGEDNICK = "477";
 export const ERR_CHANOPRIVSNEEDED = "482";
 // RFC 2812
 export const ERR_UNAVAILRESOURCE = "437";
@@ -583,10 +586,6 @@ export class Isupport {
 		return this.int("LINELEN", 512);
 	}
 
-	topicLen(): number {
-		return this.int("TOPICLEN", 390);
-	}
-
 	filehost(): string | undefined {
 		return this.raw.get("SOJU.IM/FILEHOST");
 	}
@@ -750,7 +749,8 @@ function parseMembershipModes(str: string): MembershipMode[] {
 		throw new Error("malformed ISUPPORT PREFIX value: expected closing parenthesis");
 	}
 
-	const n = str.length - sep - 1;
+	// Ignore unpaired modes or prefixes in a malformed value
+	const n = Math.min(sep - 1, str.length - sep - 1);
 	const memberships: MembershipMode[] = [];
 	for (let i = 0; i < n; i++) {
 		const mode = str[i + 1];
@@ -906,7 +906,12 @@ export function parseURL(str: string): IRCURL | null {
 		}
 	}
 
-	const entity = decodeURIComponent(str);
+	let entity;
+	try {
+		entity = decodeURIComponent(str);
+	} catch (_err) {
+		return null; // Invalid percent-encoding
+	}
 	if (!enttype) {
 		// TODO: technically we should use the PREFIX ISUPPORT here
 		enttype = entity.startsWith("#") ? "channel" : "user";
