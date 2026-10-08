@@ -1,4 +1,4 @@
-import { test } from "./fixtures.ts";
+import { test, expect } from "./fixtures.ts";
 
 // Not a real test: renders screenshots of the main screens for visual review.
 // Run with SCREENSHOTS=dir npx playwright test screenshots
@@ -94,5 +94,32 @@ test("settings screenshots", async ({ page, connect }) => {
 		await page.screenshot({ path: `${dir}/settings-${name}-light.png` });
 		await page.locator("label.theme-option", { hasText: "Dracula" }).click();
 		await page.keyboard.press("Escape");
+	}
+});
+
+test("compact layout screenshots", async ({ page, connect, bot }) => {
+	const dir = process.env.SCREENSHOTS!;
+	await page.addInitScript(() =>
+		localStorage.setItem("gamja_settings", JSON.stringify({ layout: "compact" })),
+	);
+	const bob = await bot("bob");
+	const longnick = await bot("averyveryverylongnick");
+	await bob.join("#compact");
+	await connect(page, "tester", { channels: ["#compact"] });
+	await longnick.join("#compact");
+	bob.privmsg("#compact", "hi everyone, nicks line up in a column like WeeChat");
+	longnick.privmsg("#compact", "long nicks are truncated");
+	bob.send("PRIVMSG #compact :\x01ACTION waves\x01");
+	bob.send("NOTICE #compact :a notice");
+	await page.getByRole("textbox", { name: "Type a message" }).fill("looks neat");
+	await page.keyboard.press("Enter");
+	await expect(page.locator("#buffer")).toContainText("looks neat");
+	for (const [width, height, name] of [
+		[1100, 520, "desktop"],
+		[390, 700, "mobile"],
+	] as const) {
+		await page.setViewportSize({ width, height });
+		await page.waitForTimeout(200);
+		await page.screenshot({ path: `${dir}/compact-${name}.png` });
 	}
 });

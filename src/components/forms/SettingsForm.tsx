@@ -89,7 +89,11 @@ const layouts: { value: MessageLayout; label: string; hint: string }[] = [
 		label: "Comfortable",
 		hint: "Messages grouped under the sender's name and avatar",
 	},
-	{ value: "compact", label: "Compact", hint: "Classic IRC, one line per message" },
+	{
+		value: "compact",
+		label: "Compact",
+		hint: "Classic IRC, one line per message with senders in a column",
+	},
 ];
 
 function LayoutPreview({ layout }: { layout: MessageLayout }) {

@@ -1624,6 +1624,68 @@ li.unread-highlight .unread-indicator,
 	color: var(--fg-subtle);
 }
 
+/* Compact layout: senders right-aligned in a column, like WeeChat */
+
+#buffer .logline.nick-column {
+	display: grid;
+	grid-template-columns: auto var(--nick-column-width) minmax(0, 1fr);
+	align-items: baseline;
+	column-gap: 0.5rem;
+}
+
+#buffer .logline.nick-column > .timestamp,
+#buffer .logline.nick-column > .logline-prefix,
+#buffer .logline.nick-column > .logline-content {
+	grid-row: 2;
+}
+
+#buffer .logline.nick-column > .reply-quote,
+#buffer .logline.nick-column > .reactions {
+	grid-column: 3;
+}
+
+#buffer .logline.nick-column > .reactions {
+	grid-row: 3;
+}
+
+#buffer .logline.nick-column .logline-prefix {
+	overflow: hidden;
+	padding-right: 0.5rem;
+	margin-right: 0.5rem;
+	border-right: 1px solid var(--border);
+	text-align: right;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Keep -nick- for notices so they stand out from messages */
+#buffer .logline.nick-column:not(.notice) .nick-caret {
+	display: none;
+}
+
+#buffer .logline.nick-column.event .logline-prefix,
+#buffer .logline.nick-column.me-tell .logline-prefix {
+	color: var(--fg-subtle);
+	font-style: normal;
+}
+
+/* Not enough room for a column on small screens: back to inline lines */
+@media (max-width: 640px) {
+	#buffer .logline.nick-column {
+		display: block;
+	}
+
+	#buffer .logline.nick-column .logline-prefix {
+		padding-right: 0;
+		margin-right: 0;
+		border-right: none;
+	}
+
+	#buffer .logline.nick-column .nick-caret {
+		display: inline;
+	}
+}
+
 a.nick {
 	color: var(--nick-color, var(--fg-emphasis));
 	font-weight: 600;
