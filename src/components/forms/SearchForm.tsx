@@ -61,10 +61,8 @@ export default function SearchForm({ buffer, initialQuery, onSearch, onSelect }:
 
 	return (
 		<form onSubmit={handleSubmit} className="search-form">
-			<div className="input-group field">
-				<span className="input-addon" aria-hidden="true">
-					<Search />
-				</span>
+			<div className="input-with-icon field">
+				<Search aria-hidden="true" />
 				<input
 					type="search"
 					name="text"

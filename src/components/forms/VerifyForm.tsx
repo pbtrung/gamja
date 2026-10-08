@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import { Linkified } from "../RichText";
 
 export default function VerifyForm({
@@ -24,26 +25,29 @@ export default function VerifyForm({
 				to complete the registration.
 			</p>
 
-			<p className="muted">
+			<p className="dialog-note">
 				<Linkified text={message} />
 			</p>
 
 			<div className="field">
 				<label htmlFor="verify-code">Verification code</label>
-				<input
-					type="text"
-					id="verify-code"
-					value={code}
-					onChange={(e) => setCode(e.target.value)}
-					required
-					autoFocus
-					autoComplete="one-time-code"
-				/>
+				<div className="input-with-icon">
+					<KeyRound aria-hidden="true" />
+					<input
+						type="text"
+						id="verify-code"
+						value={code}
+						onChange={(e) => setCode(e.target.value)}
+						required
+						autoFocus
+						autoComplete="one-time-code"
+					/>
+				</div>
 			</div>
 
 			<div className="dialog-actions">
 				<button type="submit" className="btn btn-primary">
-					Verify account
+					<ShieldCheck aria-hidden="true" /> Verify account
 				</button>
 			</div>
 		</form>

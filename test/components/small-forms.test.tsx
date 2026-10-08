@@ -21,7 +21,7 @@ describe("account forms", () => {
 		const { unmount } = render(<RegisterForm emailRequired={false} onSubmit={onSubmit} />);
 		expect(screen.getByLabelText("E-mail")).not.toBeRequired();
 		await userEvent.type(screen.getByLabelText("Password"), "pw");
-		await userEvent.click(screen.getByRole("button", { name: "Register" }));
+		await userEvent.click(screen.getByRole("button", { name: "Create account" }));
 		expect(onSubmit).toHaveBeenCalledWith("", "pw");
 		unmount();
 		render(<RegisterForm emailRequired onSubmit={onSubmit} />);

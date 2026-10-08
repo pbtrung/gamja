@@ -1,9 +1,13 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { X, type LucideIcon } from "lucide-react";
 import IconButton from "./IconButton";
 
 interface DialogProps {
 	title: ReactNode;
+	/** Shown in a badge next to the title */
+	icon?: LucideIcon;
+	/** A short line under the title, e.g. the server it applies to */
+	description?: ReactNode;
 	onDismiss?: () => void;
 	children: ReactNode;
 	size?: "sm" | "md" | "lg";
@@ -12,8 +16,16 @@ interface DialogProps {
 const FOCUSABLE =
 	'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export default function Dialog({ title, onDismiss, children, size = "md" }: DialogProps) {
+export default function Dialog({
+	title,
+	icon: Icon,
+	description,
+	onDismiss,
+	children,
+	size = "md",
+}: DialogProps) {
 	const titleID = useId();
+	const descriptionID = useId();
 	const ref = useRef<HTMLDivElement>(null);
 	// Captured on first render, before any autoFocus field steals focus
 	const [prevFocus] = useState(() => document.activeElement as HTMLElement | null);
@@ -72,10 +84,23 @@ export default function Dialog({ title, onDismiss, children, size = "md" }: Dial
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby={titleID}
+				aria-describedby={description ? descriptionID : undefined}
 				tabIndex={-1}
 			>
 				<header className="dialog-header">
-					<h2 id={titleID}>{title}</h2>
+					{Icon && (
+						<span className="dialog-icon" aria-hidden="true">
+							<Icon />
+						</span>
+					)}
+					<div className="dialog-heading">
+						<h2 id={titleID}>{title}</h2>
+						{description && (
+							<p className="dialog-description" id={descriptionID}>
+								{description}
+							</p>
+						)}
+					</div>
 					{onDismiss && <IconButton icon={X} label="Close" onClick={onDismiss} />}
 				</header>
 				<div className="dialog-body">{children}</div>

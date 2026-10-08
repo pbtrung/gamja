@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Hash } from "lucide-react";
+import { Hash, LogIn } from "lucide-react";
 
 export default function JoinForm({
 	channel,
@@ -19,10 +19,8 @@ export default function JoinForm({
 		<form onSubmit={handleSubmit}>
 			<div className="field">
 				<label htmlFor="join-channel">Channel</label>
-				<div className="input-group">
-					<span className="input-addon" aria-hidden="true">
-						<Hash />
-					</span>
+				<div className="input-with-icon">
+					<Hash aria-hidden="true" />
 					<input
 						type="text"
 						id="join-channel"
@@ -37,7 +35,7 @@ export default function JoinForm({
 
 			<div className="dialog-actions">
 				<button type="submit" className="btn btn-primary">
-					Join
+					<LogIn aria-hidden="true" /> Join
 				</button>
 			</div>
 		</form>

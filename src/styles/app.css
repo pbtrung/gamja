@@ -325,27 +325,6 @@ textarea::placeholder {
 	color: var(--fg-subtle);
 }
 
-.input-group {
-	display: flex;
-	align-items: stretch;
-}
-
-.input-addon {
-	display: flex;
-	align-items: center;
-	padding: 0 0.75rem;
-	border: 1px solid var(--border-strong);
-	border-right: none;
-	border-radius: var(--radius) 0 0 var(--radius);
-	background-color: var(--bg-subtle);
-	color: var(--fg-muted);
-}
-
-.input-group input {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-}
-
 .check {
 	display: flex;
 	align-items: flex-start;
@@ -766,17 +745,11 @@ input.switch:focus-visible {
 
 /* Settings have more content: a tighter body than other dialogs */
 .dialog:has(.settings-form) .dialog-body {
-	padding: 0.75rem;
+	--dialog-padding: 0.75rem;
 }
 
-/* Keep the actions reachable while the settings scroll */
-.settings-actions {
-	position: sticky;
-	bottom: -0.75rem;
-	margin: 0 -0.75rem -0.75rem;
-	padding: 0.5rem 0.75rem;
-	border-top: 1px solid var(--border);
-	background-color: var(--bg-elevated);
+.settings-form > .dialog-actions {
+	margin-top: 0;
 }
 
 @media (max-width: 640px) {
@@ -2172,7 +2145,12 @@ textarea.composer-input:focus {
 	margin: 0.25rem 0 1rem;
 }
 
-.connect-option {
+form > .switch-row {
+	margin-bottom: 1rem;
+}
+
+/* A label on the left and a switch on the right */
+.switch-row {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -2261,27 +2239,83 @@ textarea.composer-input:focus {
 .dialog-header {
 	display: flex;
 	align-items: center;
-	gap: 1rem;
-	padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+	gap: 0.75rem;
+	padding: 0.625rem 0.5rem 0.625rem 0.75rem;
 	border-bottom: 1px solid var(--border);
 }
 
-.dialog-header h2 {
+.dialog-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: var(--radius);
+	background-color: var(--accent-soft);
+	color: var(--accent);
+	font-size: 1.125rem;
+}
+
+.dialog-heading {
 	flex: 1;
-	font-size: 1.0625rem;
+	min-width: 0;
+}
+
+.dialog-header h2 {
+	overflow: hidden;
+	font-size: 1rem;
 	font-weight: 600;
+	line-height: 1.3;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dialog-description {
+	margin: 0.0625rem 0 0;
+	overflow: hidden;
+	color: var(--fg-muted);
+	font-size: 0.8125rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .dialog-body {
-	padding: 1.25rem;
+	/* Shared with the footer, which spans the full width */
+	--dialog-padding: 1rem;
+	padding: var(--dialog-padding);
 	overflow-y: auto;
 }
 
+/* Footer with the dialog's buttons, kept in view while the body scrolls */
 .dialog-actions {
+	position: sticky;
+	bottom: calc(-1 * var(--dialog-padding));
 	display: flex;
 	justify-content: flex-end;
 	gap: 0.5rem;
-	margin-top: 1.5rem;
+	margin: 1.25rem calc(-1 * var(--dialog-padding)) calc(-1 * var(--dialog-padding));
+	padding: 0.625rem var(--dialog-padding);
+	border-top: 1px solid var(--border);
+	border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+	background-color: var(--bg-elevated);
+}
+
+/* Explanations in dialogs */
+.dialog-text {
+	margin: 0 0 0.75rem;
+	color: var(--fg);
+	font-size: 0.9375rem;
+	line-height: 1.5;
+}
+
+.dialog-note {
+	margin: 0 0 1rem;
+	padding: 0.625rem 0.75rem;
+	border-radius: var(--radius);
+	background-color: var(--bg-subtle);
+	color: var(--fg-muted);
+	font-size: 0.875rem;
 }
 
 @keyframes fade-in {

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { KeyRound, Mail, UserPlus } from "lucide-react";
 
 export default function RegisterForm({
 	emailRequired,
@@ -19,33 +20,39 @@ export default function RegisterForm({
 		<form onSubmit={handleSubmit}>
 			<div className="field">
 				<label htmlFor="register-email">E-mail</label>
-				<input
-					type="email"
-					id="register-email"
-					autoComplete="email"
-					value={email}
-					onChange={(e) => setEmail(e.target.value)}
-					required={emailRequired}
-					placeholder={emailRequired ? undefined : "(optional)"}
-					autoFocus
-				/>
+				<div className="input-with-icon">
+					<Mail aria-hidden="true" />
+					<input
+						type="email"
+						id="register-email"
+						autoComplete="email"
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						required={emailRequired}
+						placeholder={emailRequired ? undefined : "Optional"}
+						autoFocus
+					/>
+				</div>
 			</div>
 
 			<div className="field">
 				<label htmlFor="register-password">Password</label>
-				<input
-					type="password"
-					id="register-password"
-					autoComplete="new-password"
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-					required
-				/>
+				<div className="input-with-icon">
+					<KeyRound aria-hidden="true" />
+					<input
+						type="password"
+						id="register-password"
+						autoComplete="new-password"
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						required
+					/>
+				</div>
 			</div>
 
 			<div className="dialog-actions">
 				<button type="submit" className="btn btn-primary">
-					Register
+					<UserPlus aria-hidden="true" /> Create account
 				</button>
 			</div>
 		</form>

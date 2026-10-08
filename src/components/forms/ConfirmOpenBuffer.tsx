@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { ExternalLink } from "lucide-react";
 
 export default function ConfirmOpenBuffer({
 	name,
@@ -18,13 +19,13 @@ export default function ConfirmOpenBuffer({
 
 	return (
 		<form onSubmit={handleSubmit}>
-			<p>
+			<p className="dialog-text">
 				Do you want to open a new buffer for {isChannel ? "channel" : "user"} <strong>{name}</strong>
 				{networkName ? ` on ${networkName}` : null}?
 			</p>
 			<div className="dialog-actions">
 				<button type="submit" className="btn btn-primary" autoFocus>
-					Open
+					<ExternalLink aria-hidden="true" /> Open
 				</button>
 			</div>
 		</form>

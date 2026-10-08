@@ -309,7 +309,7 @@ export default function SettingsForm({
 				</Section>
 			)}
 
-			<div className="dialog-actions settings-actions">
+			<div className="dialog-actions">
 				<button type="button" className="btn btn-danger-outline me-auto" onClick={onDisconnect}>
 					<LogOut aria-hidden="true" /> Disconnect
 				</button>

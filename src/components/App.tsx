@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
-import { CircleAlert, MessageSquareText, Users, X } from "lucide-react";
+import {
+	ArrowRightLeft,
+	CircleAlert,
+	CircleHelp,
+	ExternalLink,
+	LogIn,
+	MessageSquareText,
+	MessagesSquare,
+	Search,
+	Server,
+	Settings as SettingsIcon,
+	ShieldCheck,
+	UserPlus,
+	Users,
+	X,
+} from "lucide-react";
 import * as irc from "../lib/irc";
 import { BufferType, ServerStatus, Unread, getServerName, unionUnread, type Buffer } from "../state";
 import { setup as setupKeybindings } from "../keybindings";
@@ -65,7 +80,16 @@ function Dialogs({ state }: { state: AppState }) {
 		case "network": {
 			const isNew = !dialog.id;
 			return (
-				<Dialog title={isNew ? "Add network" : "Edit network"} onDismiss={dismiss}>
+				<Dialog
+					title={isNew ? "Add network" : "Edit network"}
+					icon={Server}
+					description={
+						isNew
+							? "Connect the bouncer to another IRC network"
+							: "Change how the bouncer connects to this network"
+					}
+					onDismiss={dismiss}
+				>
 					<NetworkForm
 						isNew={isNew}
 						params={dialog.params}
@@ -78,13 +102,25 @@ function Dialogs({ state }: { state: AppState }) {
 		}
 		case "help":
 			return (
-				<Dialog title="Help" onDismiss={dismiss} size="lg">
+				<Dialog
+					title="Help"
+					icon={CircleHelp}
+					description="Commands and keyboard shortcuts"
+					onDismiss={dismiss}
+					size="lg"
+				>
 					<Help />
 				</Dialog>
 			);
 		case "join":
 			return (
-				<Dialog title="Join channel" onDismiss={dismiss} size="sm">
+				<Dialog
+					title="Join channel"
+					icon={MessagesSquare}
+					description={`On ${serverTitle(dialog.server)}`}
+					onDismiss={dismiss}
+					size="sm"
+				>
 					<JoinForm
 						channel={dialog.channel}
 						onSubmit={(channel) => {
@@ -99,7 +135,7 @@ function Dialogs({ state }: { state: AppState }) {
 			const server = state.servers.get(dialog.server);
 			const bouncerNetwork = app.getBouncerNetwork(dialog.server);
 			return (
-				<Dialog title="Open buffer" onDismiss={dismiss} size="sm">
+				<Dialog title="Open buffer" icon={ExternalLink} onDismiss={dismiss} size="sm">
 					<ConfirmOpenBuffer
 						name={dialog.name}
 						isChannel={client?.isChannel(dialog.name) ?? false}
@@ -114,7 +150,13 @@ function Dialogs({ state }: { state: AppState }) {
 		}
 		case "auth":
 			return (
-				<Dialog title={`Login to ${serverTitle(dialog.server)}`} onDismiss={dismiss} size="sm">
+				<Dialog
+					title="Log in"
+					icon={LogIn}
+					description={`With your ${serverTitle(dialog.server)} account`}
+					onDismiss={dismiss}
+					size="sm"
+				>
 					{dialog.loading ? (
 						<LoadingText>Logging in…</LoadingText>
 					) : (
@@ -130,7 +172,9 @@ function Dialogs({ state }: { state: AppState }) {
 		case "register":
 			return (
 				<Dialog
-					title={`Register a new ${serverTitle(dialog.server)} account`}
+					title="Create an account"
+					icon={UserPlus}
+					description={`On ${serverTitle(dialog.server)}`}
 					onDismiss={dismiss}
 					size="sm"
 				>
@@ -148,7 +192,13 @@ function Dialogs({ state }: { state: AppState }) {
 			);
 		case "verify":
 			return (
-				<Dialog title={`Verify ${serverTitle(dialog.server)} account`} onDismiss={dismiss} size="sm">
+				<Dialog
+					title="Verify your account"
+					icon={ShieldCheck}
+					description={`On ${serverTitle(dialog.server)}`}
+					onDismiss={dismiss}
+					size="sm"
+				>
 					{dialog.loading ? (
 						<LoadingText>Verifying account…</LoadingText>
 					) : (
@@ -162,7 +212,13 @@ function Dialogs({ state }: { state: AppState }) {
 			);
 		case "settings":
 			return (
-				<Dialog title="Settings" onDismiss={dismiss} size="lg">
+				<Dialog
+					title="Settings"
+					icon={SettingsIcon}
+					description="Appearance, messages and notifications"
+					onDismiss={dismiss}
+					size="lg"
+				>
 					<SettingsForm
 						settings={state.settings}
 						showProtocolHandler={dialog.showProtocolHandler}
@@ -179,7 +235,13 @@ function Dialogs({ state }: { state: AppState }) {
 			);
 		case "search":
 			return (
-				<Dialog title={`Search ${serverTitle(dialog.server)}`} onDismiss={dismiss} size="lg">
+				<Dialog
+					title={`Search ${serverTitle(dialog.server)}`}
+					icon={Search}
+					description="Find messages in the chat history"
+					onDismiss={dismiss}
+					size="lg"
+				>
 					<SearchForm
 						buffer={dialog.buffer}
 						initialQuery={dialog.query}
@@ -195,7 +257,12 @@ function Dialogs({ state }: { state: AppState }) {
 			);
 		case "switch":
 			return (
-				<Dialog title="Switch to a channel or user" onDismiss={dismiss}>
+				<Dialog
+					title="Switch to a channel or user"
+					icon={ArrowRightLeft}
+					description="Type to filter, Enter to open"
+					onDismiss={dismiss}
+				>
 					<SwitcherForm
 						buffers={state.buffers}
 						servers={state.servers}

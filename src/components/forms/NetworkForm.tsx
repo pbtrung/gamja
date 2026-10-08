@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ChevronRight, Trash } from "lucide-react";
+import { Check, ChevronRight, Plus, Server, Trash } from "lucide-react";
 import type { BouncerNetwork } from "../../state";
 
 const defaultParams = {
@@ -53,38 +53,48 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 		onSubmit(attrs, doAutojoin && autojoin ? autojoin : null);
 	}
 
+	const input = (k: keyof Params, type: string, extra: Record<string, unknown>) => (
+		<input
+			type={type}
+			id={"network-" + k}
+			name={k}
+			value={form[k]}
+			onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
+			{...extra}
+		/>
+	);
 	const field = (k: keyof Params, label: string, type = "text", extra: Record<string, unknown> = {}) => (
 		<div className="field">
 			<label htmlFor={"network-" + k}>{label}</label>
-			<input
-				type={type}
-				id={"network-" + k}
-				name={k}
-				value={form[k]}
-				onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
-				{...extra}
-			/>
+			{input(k, type, extra)}
 		</div>
 	);
 
 	return (
 		<form onSubmit={handleSubmit}>
-			{field("host", "Hostname", "text", {
-				required: true,
-				autoFocus: true,
-				placeholder: "irc.libera.chat",
-			})}
+			<div className="field">
+				<label htmlFor="network-host">Hostname</label>
+				<div className="input-with-icon">
+					<Server aria-hidden="true" />
+					{input("host", "text", {
+						required: true,
+						autoFocus: true,
+						placeholder: "irc.libera.chat",
+					})}
+				</div>
+			</div>
 
 			{autojoin && (
-				<label className="check">
-					<input
-						type="checkbox"
-						checked={doAutojoin}
-						onChange={(e) => setDoAutojoin(e.target.checked)}
-					/>
+				<label className="switch-row">
 					<span>
 						Auto-join channel <strong>{autojoin}</strong>
 					</span>
+					<input
+						type="checkbox"
+						className="switch"
+						checked={doAutojoin}
+						onChange={(e) => setDoAutojoin(e.target.checked)}
+					/>
 				</label>
 			)}
 
@@ -110,6 +120,7 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 					</button>
 				)}
 				<button type="submit" className="btn btn-primary">
+					{isNew ? <Plus aria-hidden="true" /> : <Check aria-hidden="true" />}
 					{isNew ? "Add network" : "Save network"}
 				</button>
 			</div>

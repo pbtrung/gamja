@@ -47,10 +47,8 @@ export default function SwitcherForm({ buffers, servers, bouncerNetworks, onSubm
 
 	return (
 		<form onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
-			<div className="input-group field">
-				<span className="input-addon" aria-hidden="true">
-					<Search />
-				</span>
+			<div className="input-with-icon field">
+				<Search aria-hidden="true" />
 				<input
 					type="search"
 					name="query"

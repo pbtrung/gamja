@@ -202,7 +202,7 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 
 				<div className="connect-options">
 					{channels.length > 0 && (
-						<label className="connect-option">
+						<label className="switch-row">
 							<span>
 								Auto-join channel{channels.length > 1 ? "s" : ""}{" "}
 								<strong>{channels.join(", ")}</strong>
@@ -217,7 +217,7 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 						</label>
 					)}
 
-					<label className="connect-option">
+					<label className="switch-row">
 						<span>Remember me</span>
 						<input
 							type="checkbox"

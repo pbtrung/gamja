@@ -139,3 +139,49 @@ for (const layout of ["comfortable", "compact"] as const) {
 		await page.screenshot({ path: `${dir}/mobile-${layout}.png` });
 	});
 }
+
+test.describe("dialog screenshots", () => {
+	test.use({ serverOptions: { bouncer: true } });
+
+	test("dialogs", async ({ page, connect, bot }) => {
+		const dir = process.env.SCREENSHOTS!;
+		await page.setViewportSize({ width: 1100, height: 720 });
+		const bob = await bot("bob");
+		await bob.join("#dialogs");
+		await connect(page, "tester");
+		const shot = async (name: string) => {
+			await expect(page.getByRole("dialog")).toBeVisible();
+			await page.waitForTimeout(250);
+			await page.screenshot({ path: `${dir}/dialog-${name}.png` });
+			await page.keyboard.press("Escape");
+			await expect(page.getByRole("dialog")).toBeHidden();
+		};
+		const tabs = page.getByRole("tablist", { name: "Buffer list" });
+
+		await tabs.getByRole("tab", { name: "FakeNet" }).click();
+		await page.getByRole("textbox", { name: /Type a command/ }).fill("/join #dialogs");
+		await page.keyboard.press("Enter");
+		await expect(tabs.getByRole("tab", { name: "#dialogs" })).toBeVisible();
+		await tabs.getByRole("tab", { name: "FakeNet" }).click();
+		await page.getByRole("button", { name: "Join channel" }).click();
+		await shot("join");
+		await page.getByRole("button", { name: "Manage network" }).click();
+		await shot("network");
+		await page.locator("#buffer").click();
+		await page.keyboard.press("Control+k");
+		await shot("switcher");
+		await tabs.getByRole("tab", { name: "#dialogs" }).click();
+		await page.getByRole("button", { name: "Search" }).click();
+		await shot("search");
+		await page.getByRole("textbox", { name: "Type a message" }).fill("/help");
+		await page.keyboard.press("Enter");
+		await shot("help");
+		await tabs.getByRole("tab", { name: "bouncer" }).click();
+		await page.getByRole("button", { name: "Add network" }).first().click();
+		await shot("add-network");
+		await page.getByRole("link", { name: "login" }).click();
+		await shot("auth");
+		await page.getByRole("link", { name: "register", exact: true }).click();
+		await shot("register");
+	});
+});
