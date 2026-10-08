@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
-import { CircleAlert, MessageSquareText, Users, X } from "lucide-react";
+import { CircleAlert, CirclePlus, MessageSquareText, Settings as SettingsIcon, Users, X } from "lucide-react";
+import { getNickColorIndex } from "../format";
 import * as irc from "../lib/irc";
 import { BufferType, ServerStatus, Unread, getServerName, unionUnread, type Buffer } from "../state";
 import { setup as setupKeybindings } from "../keybindings";
@@ -336,6 +337,44 @@ function Chat({ state }: { state: AppState }) {
 						onBufferClick={handleBufferClick}
 						onBufferClose={handleBufferClose}
 					/>
+					{activeServer && (
+						<footer className="sidebar-footer">
+							<span
+								className={`avatar avatar-sm nick-${getNickColorIndex(activeServer.nick ?? "?")}`}
+								aria-hidden="true"
+							>
+								{(activeServer.nick ?? "?").charAt(0)}
+							</span>
+							<div className="sidebar-user">
+								<span className="sidebar-nick">{activeServer.nick ?? "Not connected"}</span>
+								<span className="sidebar-account">
+									{activeServer.account
+										? `Logged in as ${activeServer.account}`
+										: "Not logged in"}
+								</span>
+							</div>
+							{activeServer.isBouncer && activeServer.status === ServerStatus.REGISTERED && (
+								<button
+									type="button"
+									className="icon-btn"
+									title="Add network"
+									aria-label="Add network"
+									onClick={() => app.openDialog({ kind: "network" })}
+								>
+									<CirclePlus aria-hidden="true" />
+								</button>
+							)}
+							<button
+								type="button"
+								className="icon-btn"
+								title="Settings"
+								aria-label="Open settings"
+								onClick={() => app.handleOpenSettingsClick()}
+							>
+								<SettingsIcon aria-hidden="true" />
+							</button>
+						</footer>
+					)}
 				</div>
 			</nav>
 

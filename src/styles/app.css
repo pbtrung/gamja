@@ -657,6 +657,98 @@ li.unread-highlight .unread-indicator,
 	opacity: 0.55;
 }
 
+.member-items ul {
+	margin: 0 0 0.75rem;
+	padding: 0;
+	list-style: none;
+}
+
+.member-group-title {
+	margin: 0.5rem 0.625rem 0.25rem;
+	color: var(--fg-subtle);
+	font-size: 0.6875rem;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.member-avatar {
+	position: relative;
+}
+
+.presence {
+	position: absolute;
+	right: -0.125rem;
+	bottom: -0.125rem;
+	width: 0.6rem;
+	height: 0.6rem;
+	border: 2px solid var(--bg-sidebar);
+	border-radius: 50%;
+}
+
+.presence.away {
+	background-color: var(--warning);
+}
+
+.connection-status {
+	flex-shrink: 0;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: 50%;
+}
+
+.connection-status.status-connected {
+	background-color: var(--success);
+}
+
+.connection-status.status-connecting {
+	background-color: var(--warning);
+}
+
+.connection-status.status-disconnected {
+	background-color: var(--danger);
+}
+
+.sidebar-footer {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-shrink: 0;
+	padding: 0.625rem 0.5rem 0.625rem 0.875rem;
+	border-top: 1px solid var(--border);
+}
+
+.avatar-sm {
+	width: 2rem;
+	height: 2rem;
+	font-size: 0.875rem;
+}
+
+.sidebar-user {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+	line-height: 1.25;
+}
+
+.sidebar-nick {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--fg-emphasis);
+	font-size: 0.875rem;
+	font-weight: 600;
+}
+
+.sidebar-account {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--fg-muted);
+	font-size: 0.75rem;
+}
+
 .member-avatar {
 	display: inline-flex;
 	align-items: center;
@@ -858,6 +950,112 @@ li.unread-highlight .unread-indicator,
 	30% {
 		background-color: var(--accent-soft);
 	}
+}
+
+/* Comfortable layout: messages grouped under the sender */
+
+#buffer .logline.comfortable {
+	display: grid;
+	grid-template-columns: 3.25rem minmax(0, 1fr);
+	column-gap: 0.5rem;
+	padding: 0.0625rem 1rem 0.0625rem 0.75rem;
+	white-space: normal;
+}
+
+#buffer .logline.comfortable.group-first {
+	margin-top: 0.625rem;
+	padding-top: 0.25rem;
+}
+
+#buffer .logline.comfortable .logline-gutter {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: 0.15rem;
+}
+
+#buffer .logline.comfortable .logline-content {
+	white-space: pre-wrap;
+}
+
+#buffer .logline.comfortable .timestamp {
+	min-width: 0;
+	margin: 0;
+}
+
+#buffer .logline.comfortable.group-continuation .logline-gutter .timestamp,
+#buffer .logline.comfortable.event .logline-gutter .timestamp {
+	visibility: hidden;
+	padding-top: 0.15rem;
+}
+
+#buffer .logline.comfortable:hover .logline-gutter .timestamp,
+#buffer .logline.comfortable:focus-within .logline-gutter .timestamp {
+	visibility: visible;
+}
+
+#buffer .logline.comfortable.event {
+	color: var(--fg-muted);
+	font-size: 0.875em;
+}
+
+#buffer .logline.comfortable.event .logline-gutter .timestamp {
+	font-size: 0.9em;
+}
+
+#buffer .logline.comfortable.me-tell .logline-content {
+	font-style: italic;
+}
+
+#buffer .logline.comfortable.notice .logline-content {
+	color: var(--fg-muted);
+}
+
+#buffer .logline.comfortable.highlight a.nick {
+	background: none;
+	color: var(--nick-color, var(--fg-emphasis));
+}
+
+.logline-header {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	line-height: 1.4;
+}
+
+.logline-header .timestamp {
+	font-size: 0.75rem !important;
+}
+
+.avatar {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 50%;
+	background-color: var(--nick-color, var(--fg-subtle));
+	color: var(--avatar-fg);
+	font-size: 0.95rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	user-select: none;
+}
+
+.tag-badge {
+	padding: 0 0.35rem;
+	border-radius: var(--radius-sm);
+	background-color: var(--bg-subtle);
+	color: var(--fg-muted);
+	font-size: 0.6875rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+#buffer .logline.comfortable .reactions,
+#buffer .logline.comfortable .reply-quote {
+	margin-left: 0;
 }
 
 /* Message actions */

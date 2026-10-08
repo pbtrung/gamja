@@ -104,7 +104,7 @@ function renderList(
 			buffer={buffer(messages, opts.buffer)}
 			server={server(opts.server)}
 			bouncerNetwork={null}
-			settings={{ ...defaultSettings, ...opts.settings }}
+			settings={{ ...defaultSettings, layout: "compact", ...opts.settings }}
 			actions={opts.actions ? actions : undefined}
 			{...handlers}
 		/>,
@@ -146,7 +146,7 @@ describe("MessageList", () => {
 				buffer={buffer([msg(":bob PRIVMSG #c :x", t)])}
 				server={server()}
 				bouncerNetwork={null}
-				settings={{ ...defaultSettings, secondsInTimestamps: false }}
+				settings={{ ...defaultSettings, layout: "compact", secondsInTimestamps: false }}
 				onChannelClick={() => {}}
 				onNickClick={() => {}}
 				onAuthClick={() => {}}
@@ -404,4 +404,55 @@ it("offers to retry failed history fetches", async () => {
 	expect(screen.getByRole("alert")).toHaveTextContent("Failed to load older messages.");
 	await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 	expect(onRetryHistory).toHaveBeenCalled();
+});
+
+describe("comfortable layout", () => {
+	it("groups consecutive messages from the same sender", () => {
+		const { container } = renderList(
+			[
+				msg(":bob!u@h PRIVMSG #c :one", "2030-01-01T12:00:00.000Z"),
+				msg(":bob!u@h PRIVMSG #c :two", "2030-01-01T12:01:00.000Z"),
+				msg(":bob!u@h PRIVMSG #c :later", "2030-01-01T12:30:00.000Z"),
+				msg(":carol!u@h PRIVMSG #c :hi", "2030-01-01T12:31:00.000Z"),
+				msg(":carol!u@h JOIN #c", "2030-01-01T12:32:00.000Z"),
+				msg(":carol!u@h PRIVMSG #c :back", "2030-01-01T12:33:00.000Z"),
+				msg(":carol!u@h PRIVMSG #c :\x01ACTION waves\x01", "2030-01-01T12:33:30.000Z"),
+			],
+			{ settings: { layout: "comfortable", bufferEvents: "expand" } },
+		);
+		const rows = [...container.querySelectorAll(".logline")].map((el) => [
+			el.classList.contains("group-first")
+				? "first"
+				: el.classList.contains("group-continuation")
+					? "cont"
+					: "event",
+			el.querySelector(".logline-content")!.textContent,
+		]);
+		expect(rows).toEqual([
+			["first", "one"],
+			["cont", "two"],
+			["first", "later"],
+			["first", "hi"],
+			["event", "carol has joined"],
+			["first", "back"],
+			["cont", "waves"],
+		]);
+		const headers = [...container.querySelectorAll(".logline-header .nick")].map((el) => el.textContent);
+		expect(headers).toEqual(["bob", "bob", "carol", "carol"]);
+		expect(container.querySelectorAll(".avatar")).toHaveLength(4);
+	});
+
+	it("starts a new group for replies and folds events", () => {
+		const { container } = renderList(
+			[
+				msg("@msgid=a :bob!u@h PRIVMSG #c :question"),
+				msg("@msgid=b;+draft/reply=a :bob!u@h PRIVMSG #c :follow-up"),
+				msg(":x!u@h JOIN #c"),
+				msg(":y!u@h JOIN #c"),
+			],
+			{ settings: { layout: "comfortable" } },
+		);
+		expect(container.querySelectorAll(".group-first")).toHaveLength(2);
+		expect(container.querySelector(".fold-group")).toHaveTextContent("x and y have joined");
+	});
 });

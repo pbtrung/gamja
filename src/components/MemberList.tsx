@@ -63,6 +63,7 @@ const MemberItem = memo(function MemberItem({
 			<a href={url} className={classes.join(" ")} title={title} onClick={handleClick}>
 				<span className={`member-avatar nick-${getNickColorIndex(nick)}`} aria-hidden="true">
 					{nick.charAt(0)}
+					{user?.away && <span className="presence away" />}
 				</span>
 				<span className="member-nick">
 					<Membership value={membership} />
@@ -81,20 +82,58 @@ interface MemberListProps {
 	onNickClick: (nick: string) => void;
 }
 
+const ROLE_TITLES: Record<string, string> = {
+	owner: "Owners",
+	admin: "Admins",
+	operator: "Operators",
+	halfop: "Half-operators",
+	voice: "Voiced",
+};
+
+/** Split sorted members into sections by their highest membership. */
+function groupMembers(sorted: [string, string][]): { title: string; members: [string, string][] }[] {
+	const groups: { title: string; members: [string, string][] }[] = [];
+	for (const member of sorted) {
+		const role = irc.STD_MEMBERSHIP_NAMES[member[1][0]];
+		const title = (role && ROLE_TITLES[role]) || "Members";
+		let group = groups[groups.length - 1];
+		if (!group || group.title !== title) {
+			group = { title, members: [] };
+			groups.push(group);
+		}
+		group.members.push(member);
+	}
+	return groups;
+}
+
 function MemberList({ members, users, prefixes, bouncerNetwork, onNickClick }: MemberListProps) {
+	const groups = groupMembers(sortMembers(members, prefixes));
 	return (
-		<ul className="member-items" aria-label="Members">
-			{sortMembers(members, prefixes).map(([nick, membership]) => (
-				<MemberItem
-					key={nick}
-					nick={nick}
-					membership={membership}
-					user={users.get(nick)}
-					bouncerNetwork={bouncerNetwork}
-					onClick={onNickClick}
-				/>
+		<div className="member-items">
+			{groups.map((group) => (
+				<section
+					key={group.title}
+					className="member-group"
+					aria-label={`${group.title}, ${group.members.length}`}
+				>
+					<h3 className="member-group-title">
+						{group.title} — {group.members.length}
+					</h3>
+					<ul>
+						{group.members.map(([nick, membership]) => (
+							<MemberItem
+								key={nick}
+								nick={nick}
+								membership={membership}
+								user={users.get(nick)}
+								bouncerNetwork={bouncerNetwork}
+								onClick={onNickClick}
+							/>
+						))}
+					</ul>
+				</section>
 			))}
-		</ul>
+		</div>
 	);
 }
 

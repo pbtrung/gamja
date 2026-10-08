@@ -13,6 +13,32 @@ import {
 	type Server,
 } from "../state";
 
+type ConnectionStatus = "connected" | "connecting" | "disconnected";
+
+const connectionLabel: Record<ConnectionStatus, string> = {
+	connected: "Connected",
+	connecting: "Connecting",
+	disconnected: "Disconnected",
+};
+
+function connectionStatus(server: Server, bouncerNetwork: BouncerNetwork | null): ConnectionStatus {
+	if (server.status === ServerStatus.DISCONNECTED) {
+		return "disconnected";
+	}
+	if (server.status !== ServerStatus.REGISTERED) {
+		return "connecting";
+	}
+	if (bouncerNetwork) {
+		switch (bouncerNetwork.state) {
+			case "connecting":
+				return "connecting";
+			case "disconnected":
+				return "disconnected";
+		}
+	}
+	return "connected";
+}
+
 interface BufferItemProps {
 	buffer: Buffer;
 	server: Server;
@@ -95,11 +121,23 @@ const BufferItem = memo(function BufferItem({
 				role="tab"
 				aria-selected={active}
 				aria-current={active ? "page" : undefined}
+				aria-description={
+					buffer.type === BufferType.SERVER
+						? connectionLabel[connectionStatus(server, bouncerNetwork)]
+						: undefined
+				}
 				onClick={handleClick}
 				onMouseDown={handleMouseDown}
 			>
 				<Icon className="buffer-icon" aria-hidden="true" />
 				<span className="buffer-name">{name}</span>
+				{buffer.type === BufferType.SERVER && (
+					<span
+						className={`connection-status status-${connectionStatus(server, bouncerNetwork)}`}
+						aria-hidden="true"
+						title={connectionLabel[connectionStatus(server, bouncerNetwork)]}
+					/>
+				)}
 				{buffer.unread !== Unread.NONE ? (
 					<span
 						className="unread-indicator"

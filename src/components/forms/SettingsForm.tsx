@@ -55,6 +55,36 @@ export default function SettingsForm({
 	return (
 		<form onSubmit={handleSubmit}>
 			<fieldset className="settings-section">
+				<legend className="settings-heading">Message layout</legend>
+				<label className="check">
+					<input
+						type="radio"
+						name="layout"
+						value="comfortable"
+						checked={settings.layout === "comfortable"}
+						onChange={() => onChange({ layout: "comfortable" })}
+					/>
+					<span>
+						Comfortable
+						<span className="check-hint">Group messages under the sender's name and avatar</span>
+					</span>
+				</label>
+				<label className="check">
+					<input
+						type="radio"
+						name="layout"
+						value="compact"
+						checked={settings.layout === "compact"}
+						onChange={() => onChange({ layout: "compact" })}
+					/>
+					<span>
+						Compact
+						<span className="check-hint">Classic IRC, one line per message</span>
+					</span>
+				</label>
+			</fieldset>
+
+			<fieldset className="settings-section">
 				<legend className="settings-heading">Display</legend>
 				<label className="check">
 					<input

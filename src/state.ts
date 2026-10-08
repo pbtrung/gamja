@@ -53,7 +53,11 @@ export const BufferEventsDisplayMode = {
 } as const;
 export type BufferEventsDisplayMode = (typeof BufferEventsDisplayMode)[keyof typeof BufferEventsDisplayMode];
 
+export type MessageLayout = "comfortable" | "compact";
+
 export interface Settings {
+	/** Comfortable groups messages under the sender's name, compact is classic IRC */
+	layout: MessageLayout;
 	secondsInTimestamps: boolean;
 	bufferEvents: BufferEventsDisplayMode;
 	showMemberList: boolean;
@@ -62,6 +66,7 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
+	layout: "comfortable",
 	secondsInTimestamps: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
 	showMemberList: false,

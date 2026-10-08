@@ -176,7 +176,12 @@ interface LogLineProps {
 	reactions?: Map<string, string[]>;
 	/** Message this one replies to, null if unknown */
 	parent?: Message | null;
+	/** Position in a group of messages from the same sender (comfortable layout) */
+	group?: "first" | "continuation";
 }
+
+/** Messages from the same sender closer than this are grouped. */
+const GROUP_TIMEOUT = 5 * 60 * 1000;
 
 function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandlers | undefined): boolean {
 	if (!a || !b) {
@@ -187,6 +192,14 @@ function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandl
 		a.canReact === b.canReact &&
 		a.canReply === b.canReply &&
 		a.canRedact === b.canRedact
+	);
+}
+
+function Avatar({ nick }: { nick: string }) {
+	return (
+		<span className={`avatar nick-${getNickColorIndex(nick)}`} aria-hidden="true">
+			{nick.replace(/^[^\p{L}\p{N}]+/u, "").charAt(0) || nick.charAt(0)}
+		</span>
 	);
 }
 
@@ -230,7 +243,7 @@ function ReplyQuote({ parent, msgid, ctx }: { parent: Message | null; msgid: str
 }
 
 const LogLine = memo(
-	function LogLine({ message: msg, redacted, ctx, reactions, parent }: LogLineProps) {
+	function LogLine({ message: msg, redacted, ctx, reactions, parent, group }: LogLineProps) {
 		const { buffer: buf, server, bouncerNetwork, onChannelClick } = ctx;
 		const createNick = makeNick(ctx);
 		const from = msg.prefix?.name ?? "*";
@@ -246,6 +259,8 @@ const LogLine = memo(
 
 		let lineClass = "";
 		let content: ReactNode = null;
+		// Message text without the sender, for the comfortable layout
+		let chatBody: ReactNode = null;
 		switch (msg.command) {
 			case "NOTICE":
 			case "PRIVMSG": {
@@ -262,6 +277,7 @@ const LogLine = memo(
 								<RichText text={ctcp.param} onLinkClick={onChannelClick} />
 							</>
 						);
+						chatBody = <RichText text={ctcp.param} onLinkClick={onChannelClick} />;
 					} else {
 						content = (
 							<>
@@ -295,6 +311,7 @@ const LogLine = memo(
 							{body}
 						</>
 					);
+					chatBody = body;
 				}
 
 				const allowedPrefixes = server.statusMsg;
@@ -306,6 +323,11 @@ const LogLine = memo(
 								(<Membership value={parts.prefix} />) {content}
 							</>
 						);
+						chatBody = (
+							<>
+								(<Membership value={parts.prefix} />) {chatBody}
+							</>
+						);
 					}
 				}
 
@@ -313,6 +335,11 @@ const LogLine = memo(
 					content = (
 						<>
 							<em>(only visible to you)</em> {content}
+						</>
+					);
+					chatBody = (
+						<>
+							<em>(only visible to you)</em> {chatBody}
 						</>
 					);
 				}
@@ -507,6 +534,67 @@ const LogLine = memo(
 			Boolean(actions?.myNick) && server.cm(nick) === server.cm(actions!.myNick!);
 		const replyTo = msg.tags["+draft/reply"];
 
+		const date = new Date(msg.tags.time!);
+		const url = getMessageURL(buf, msg, bouncerNetwork);
+		const showSeconds = ctx.settings.secondsInTimestamps;
+		const quote =
+			isChat && replyTo && !redacted ? (
+				<ReplyQuote parent={parent ?? null} msgid={replyTo} ctx={ctx} />
+			) : null;
+		const reactionsEl =
+			isChat && reactions && reactions.size > 0 && !redacted ? (
+				<Reactions
+					reactions={reactions}
+					isMine={isMine}
+					canReact={Boolean(actions?.canReact)}
+					onToggle={(emoji) => actions?.onReact(msg, emoji)}
+				/>
+			) : null;
+		const actionsEl =
+			isChat && msgid && !redacted && actions ? (
+				<MessageActions
+					canReact={actions.canReact}
+					canReply={actions.canReply}
+					canRedact={actions.canRedact && isMine(from)}
+					onReact={(emoji) => actions.onReact(msg, emoji)}
+					onReply={() => actions.onReply(msg)}
+					onRedact={() => actions.onRedact(msg)}
+				/>
+			) : null;
+
+		if (ctx.settings.layout === "comfortable") {
+			const isGroupedChat = Boolean(group) && chatBody !== null;
+			return (
+				<div
+					className={`logline comfortable ${lineClass} ${isGroupedChat ? "group-" + group : "event"}`}
+					data-key={msg.key}
+					data-msgid={msgid ?? undefined}
+					role="listitem"
+				>
+					<div className="logline-gutter">
+						{isGroupedChat && group === "first" ? (
+							<Avatar nick={from} />
+						) : (
+							<Timestamp date={date} url={url} showSeconds={false} />
+						)}
+					</div>
+					<div className="logline-main">
+						{quote}
+						{isGroupedChat && group === "first" && (
+							<div className="logline-header">
+								{createNick(from)}
+								{ctx.server.users.get(from)?.bot && <span className="tag-badge">bot</span>}
+								<Timestamp date={date} url={url} showSeconds={showSeconds} />
+							</div>
+						)}
+						<div className="logline-content">{isGroupedChat ? chatBody : content}</div>
+						{reactionsEl}
+					</div>
+					{actionsEl}
+				</div>
+			);
+		}
+
 		return (
 			<div
 				className={`logline ${lineClass}`}
@@ -514,33 +602,11 @@ const LogLine = memo(
 				data-msgid={msgid ?? undefined}
 				role="listitem"
 			>
-				{isChat && replyTo && !redacted && (
-					<ReplyQuote parent={parent ?? null} msgid={replyTo} ctx={ctx} />
-				)}
-				<Timestamp
-					date={new Date(msg.tags.time!)}
-					url={getMessageURL(buf, msg, bouncerNetwork)}
-					showSeconds={ctx.settings.secondsInTimestamps}
-				/>{" "}
+				{quote}
+				<Timestamp date={date} url={url} showSeconds={showSeconds} />{" "}
 				<span className="logline-content">{content}</span>
-				{isChat && reactions && reactions.size > 0 && !redacted && (
-					<Reactions
-						reactions={reactions}
-						isMine={isMine}
-						canReact={Boolean(actions?.canReact)}
-						onToggle={(emoji) => actions?.onReact(msg, emoji)}
-					/>
-				)}
-				{isChat && msgid && !redacted && actions && (
-					<MessageActions
-						canReact={actions.canReact}
-						canReply={actions.canReply}
-						canRedact={actions.canRedact && isMine(from)}
-						onReact={(emoji) => actions.onReact(msg, emoji)}
-						onReply={() => actions.onReply(msg)}
-						onRedact={() => actions.onRedact(msg)}
-					/>
-				)}
+				{reactionsEl}
+				{actionsEl}
 			</div>
 		);
 	},
@@ -549,6 +615,7 @@ const LogLine = memo(
 		prev.redacted === next.redacted &&
 		prev.reactions === next.reactions &&
 		prev.parent === next.parent &&
+		prev.group === next.group &&
 		sameActions(prev.ctx.actions, next.ctx.actions) &&
 		prev.ctx.settings === next.ctx.settings &&
 		prev.ctx.server.users === next.ctx.server.users,
@@ -643,6 +710,23 @@ function FoldGroup({ messages: msgs, ctx }: { messages: Message[]; ctx: Context 
 					showSeconds={showSeconds}
 				/>
 			</>
+		);
+	}
+
+	if (ctx.settings.layout === "comfortable") {
+		return (
+			<div className="logline comfortable event fold-group" data-key={msgs[0].key} role="listitem">
+				<div className="logline-gutter">
+					<Timestamp
+						date={firstDate}
+						url={getMessageURL(ctx.buffer, msgs[0], ctx.bouncerNetwork)}
+						showSeconds={false}
+					/>
+				</div>
+				<div className="logline-main">
+					<div className="logline-content">{content}</div>
+				</div>
+			</div>
 		);
 	}
 
@@ -825,15 +909,17 @@ function MessageList(props: MessageListProps) {
 	} else if (buf.history === "end" && buf.type !== BufferType.SERVER) {
 		children.push(
 			<div key="history-end" className="history-status history-start">
-				{buf.type === BufferType.CHANNEL ? (
-					<>
-						This is the beginning of <strong>{buf.name}</strong>
-					</>
-				) : (
-					<>
-						This is the beginning of your conversation with <strong>{buf.name}</strong>
-					</>
-				)}
+				<span>
+					{buf.type === BufferType.CHANNEL ? (
+						<>
+							This is the beginning of <strong>{buf.name}</strong>
+						</>
+					) : (
+						<>
+							This is the beginning of your conversation with <strong>{buf.name}</strong>
+						</>
+					)}
+				</span>
 			</div>,
 		);
 	}
@@ -854,6 +940,32 @@ function MessageList(props: MessageListProps) {
 		children.push(<AccountNagger key="nag-account" ctx={ctx} />);
 	}
 
+	// Group consecutive messages from the same sender in the comfortable layout
+	let lastChat: Message | null = null;
+	const groupOf = (msg: Message): "first" | "continuation" | undefined => {
+		if (settings.layout !== "comfortable") {
+			return undefined;
+		}
+		const isChat = msg.command === "PRIVMSG" || msg.command === "NOTICE";
+		const ctcp = isChat ? irc.parseCTCP(msg) : null;
+		if (!isChat || (ctcp && ctcp.command !== "ACTION")) {
+			lastChat = null;
+			return undefined;
+		}
+		const prev = lastChat;
+		lastChat = msg;
+		if (
+			prev &&
+			prev.command === msg.command &&
+			prev.prefix?.name === msg.prefix?.name &&
+			!msg.tags["+draft/reply"] &&
+			new Date(msg.tags.time!).getTime() - new Date(prev.tags.time!).getTime() < GROUP_TIMEOUT
+		) {
+			return "continuation";
+		}
+		return "first";
+	};
+
 	const createLogLine = (msg: Message) => {
 		const msgid = msg.tags.msgid;
 		const replyTo = msg.tags["+draft/reply"];
@@ -864,6 +976,7 @@ function MessageList(props: MessageListProps) {
 				redacted={!!msgid && buf.redacted.has(msgid)}
 				reactions={msgid ? buf.reactions.get(msgid) : undefined}
 				parent={replyTo ? (byMsgid.get(replyTo) ?? null) : undefined}
+				group={groupOf(msg)}
 				ctx={ctx}
 			/>
 		);
@@ -922,11 +1035,13 @@ function MessageList(props: MessageListProps) {
 			children.push(createFoldGroup(foldMessages));
 			children.push(...sep);
 			foldMessages = [];
+			lastChat = null;
 		}
 
 		// TODO: consider checking the time difference too
 		if (settings.bufferEvents === BufferEventsDisplayMode.FOLD && canFoldMessage(msg)) {
 			foldMessages.push(msg);
+			lastChat = null;
 			continue;
 		}
 

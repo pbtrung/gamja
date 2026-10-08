@@ -23,6 +23,18 @@ for (const scheme of ["light", "dark"] as const) {
 		carol.privmsg("#gamja", "hey bob, check https://soju.im");
 		bob.privmsg("#gamja", "tester: what do you think of the new UI?");
 		carol.send("PRIVMSG #gamja :\x01ACTION waves\x01");
+		bob.privmsg("#gamja", "the reactions and replies work too");
+		await page.waitForTimeout(200);
+		const line = page.locator("#buffer .logline", { hasText: "reactions and replies" });
+		const msgid = await line.getAttribute("data-msgid");
+		carol.send(`@+draft/react=🎉;+draft/reply=${msgid} TAGMSG #gamja`);
+		bob.send(`@+draft/react=👍;+draft/reply=${msgid} TAGMSG #gamja`);
+		carol.privmsg("#gamja", "indeed!", { "+draft/reply": msgid! });
+		bob.send("@+typing=active TAGMSG #gamja");
+		await page
+			.getByRole("button", { name: "Open member list" })
+			.click()
+			.catch(() => {});
 		await page.waitForTimeout(300);
 		await page.getByRole("textbox", { name: "Type a message" }).fill("Looks great!");
 		await page.screenshot({ path: `${dir}/chat-${scheme}.png` });
