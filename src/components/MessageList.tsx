@@ -643,6 +643,9 @@ const LogLine = memo(
 		sameActions(prev.ctx.actions, next.ctx.actions) &&
 		prev.ctx.settings === next.ctx.settings &&
 		prev.ctx.bouncerNetwork === next.ctx.bouncerNetwork &&
+		// Used for message URLs and STATUSMSG prefixes
+		prev.ctx.buffer.name === next.ctx.buffer.name &&
+		prev.ctx.server.statusMsg === next.ctx.server.statusMsg &&
 		prev.ctx.server.users === next.ctx.server.users,
 );
 

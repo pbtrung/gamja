@@ -30,6 +30,21 @@ describe("Dialog", () => {
 		expect(screen.getByLabelText("only")).toHaveFocus();
 	});
 
+	it("brings focus back in when it escaped, e.g. after a button unmounted", async () => {
+		render(
+			<>
+				<button>outside</button>
+				<Dialog title="T" description="More details" onDismiss={() => {}}>
+					<input aria-label="only" autoFocus />
+				</Dialog>
+			</>,
+		);
+		expect(screen.getByRole("dialog", { name: "T" })).toHaveAccessibleDescription("More details");
+		(document.activeElement as HTMLElement).blur();
+		await userEvent.tab();
+		expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+	});
+
 	it("closes on backdrop click and close button", async () => {
 		const onDismiss = vi.fn();
 		const { container } = render(

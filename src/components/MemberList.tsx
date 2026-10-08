@@ -25,7 +25,7 @@ const MemberItem = memo(function MemberItem({
 	}
 
 	const lines: string[] = [];
-	const classes = ["nick"];
+	const classes: string[] = [];
 	if (user) {
 		const mask = user.username && user.hostname ? `${user.username}@${user.hostname}` : "";
 		const realname = meaningfulRealname(user, nick);
@@ -52,7 +52,7 @@ const MemberItem = memo(function MemberItem({
 
 	return (
 		<li>
-			<a href={url} className={classes.join(" ")} title={title} onClick={handleClick}>
+			<a href={url} className={classes.join(" ") || undefined} title={title} onClick={handleClick}>
 				<span className={`member-avatar nick-${getNickColorIndex(nick)}`} aria-hidden="true">
 					{nickInitial(nick)}
 					{user?.away && <span className="presence away" />}

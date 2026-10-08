@@ -20,7 +20,7 @@ export default function VerifyForm({
 
 	return (
 		<form onSubmit={handleSubmit}>
-			<p>
+			<p className="dialog-text">
 				Your account <strong>{account}</strong> has been created, but a verification code is required
 				to complete the registration.
 			</p>

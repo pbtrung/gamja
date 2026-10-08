@@ -92,7 +92,16 @@ export default function SwitcherForm({ buffers, servers, bouncerNetworks, onSubm
 						</li>
 					);
 				})}
-				{suggestions.length === 0 && <li className="muted switcher-empty">No matching buffers</li>}
+				{suggestions.length === 0 && (
+					<li
+						className="muted switcher-empty"
+						role="option"
+						aria-selected="false"
+						aria-disabled="true"
+					>
+						No matching buffers
+					</li>
+				)}
 			</ul>
 		</form>
 	);

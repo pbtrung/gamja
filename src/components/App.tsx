@@ -541,7 +541,7 @@ function Root() {
 		return (
 			<main id="connect">
 				{state.error ? (
-					<div className="alert alert-danger connect-card" role="alert">
+					<div className="alert alert-danger loading-error" role="alert">
 						<CircleAlert aria-hidden="true" />
 						<div>{state.error}</div>
 					</div>

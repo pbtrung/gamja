@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Reply, SmilePlus, Trash2 } from "lucide-react";
 import { QUICK_REACTIONS } from "../format";
+import IconButton from "./IconButton";
 
 interface ReactionPickerProps {
 	onPick: (emoji: string) => void;
@@ -93,38 +94,27 @@ export default function MessageActions({
 			aria-label="Message actions"
 		>
 			{canReact && (
-				<button
-					type="button"
-					className="icon-btn"
-					title="Add reaction"
-					aria-label="Add reaction"
-					aria-haspopup="menu"
-					aria-expanded={picking}
+				<IconButton
+					icon={SmilePlus}
+					label="Add reaction"
+					hasPopup="menu"
+					expanded={picking}
 					ref={toggleRef}
 					onClick={() => setPicking((p) => !p)}
-				>
-					<SmilePlus aria-hidden="true" />
-				</button>
+				/>
 			)}
-			{canReply && (
-				<button type="button" className="icon-btn" title="Reply" aria-label="Reply" onClick={onReply}>
-					<Reply aria-hidden="true" />
-				</button>
-			)}
+			{canReply && <IconButton icon={Reply} label="Reply" onClick={onReply} />}
 			{canRedact && (
-				<button
-					type="button"
-					className="icon-btn danger"
-					title="Delete message"
-					aria-label="Delete message"
+				<IconButton
+					icon={Trash2}
+					label="Delete message"
+					className="danger"
 					onClick={() => {
 						if (window.confirm("Delete this message for everyone?")) {
 							onRedact();
 						}
 					}}
-				>
-					<Trash2 aria-hidden="true" />
-				</button>
+				/>
 			)}
 			{picking && (
 				<ReactionPicker onPick={onReact} onClose={() => setPicking(false)} toggleRef={toggleRef} />

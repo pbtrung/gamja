@@ -34,8 +34,7 @@ export default function Dialog({
 		const el = ref.current!;
 		// React focuses autoFocus fields itself, keep that focus if any
 		if (!el.contains(document.activeElement)) {
-			const autofocus = el.querySelector<HTMLElement>("[data-autofocus]");
-			(autofocus ?? el.querySelector<HTMLElement>(FOCUSABLE) ?? el).focus();
+			(el.querySelector<HTMLElement>(FOCUSABLE) ?? el).focus();
 		}
 		return () => prevFocus?.focus?.();
 	}, [prevFocus]);
@@ -57,6 +56,13 @@ export default function Dialog({
 			}
 			const first = focusable[0];
 			const last = focusable[focusable.length - 1];
+			// Focus can end up outside, e.g. when the focused button unmounts
+			// while the dialog shows a spinner: bring it back in
+			if (!ref.current!.contains(document.activeElement)) {
+				event.preventDefault();
+				(event.shiftKey ? last : first).focus();
+				return;
+			}
 			if (event.shiftKey && document.activeElement === first) {
 				event.preventDefault();
 				last.focus();

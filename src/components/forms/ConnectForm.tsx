@@ -16,6 +16,7 @@ import {
 import type { ConnectParams } from "../../app/store";
 import { resolveServerURL } from "../../app/config";
 import { Linkified } from "../RichText";
+import IconButton from "../IconButton";
 
 interface ConnectFormProps {
 	params: ConnectParams;
@@ -163,16 +164,13 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 								placeholder={auth !== "mandatory" ? "Optional" : undefined}
 								onChange={(e) => set("password", e.target.value)}
 							/>
-							<button
-								type="button"
-								className="icon-btn input-action"
-								title={showPassword ? "Hide password" : "Show password"}
-								aria-label={showPassword ? "Hide password" : "Show password"}
-								aria-pressed={showPassword}
+							<IconButton
+								icon={showPassword ? EyeOff : Eye}
+								label={showPassword ? "Hide password" : "Show password"}
+								className="input-action"
+								pressed={showPassword}
 								onClick={() => setShowPassword((v) => !v)}
-							>
-								{showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-							</button>
+							/>
 						</div>
 					</div>
 				)}
@@ -189,6 +187,7 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 								className="switch"
 								name="autojoin"
 								checked={form.autojoin}
+								disabled={connecting}
 								onChange={(e) => set("autojoin", e.target.checked)}
 							/>
 						</label>

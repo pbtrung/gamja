@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 function supported(): boolean {
 	return typeof window !== "undefined" && typeof window.matchMedia === "function";
@@ -6,8 +6,9 @@ function supported(): boolean {
 
 /** Whether a CSS media query matches, updated when it changes. */
 export default function useMediaQuery(query: string): boolean {
-	return useSyncExternalStore(
-		(onChange) => {
+	// Stable, otherwise every render would subscribe again
+	const subscribe = useCallback(
+		(onChange: () => void) => {
 			if (!supported()) {
 				return () => {};
 			}
@@ -15,6 +16,10 @@ export default function useMediaQuery(query: string): boolean {
 			mql.addEventListener("change", onChange);
 			return () => mql.removeEventListener("change", onChange);
 		},
+		[query],
+	);
+	return useSyncExternalStore(
+		subscribe,
 		() => supported() && window.matchMedia(query).matches,
 		() => false,
 	);
