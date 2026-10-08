@@ -14,7 +14,6 @@ import {
 	type BufferID,
 	type Receipt,
 	type Settings,
-	type State,
 	type Updater,
 	type Server,
 } from "../state";
@@ -95,7 +94,8 @@ export default class AppController {
 	clients = new Map<number, Client>();
 	bufferStore = new store.BufferStore();
 	debug = !import.meta.env.PROD;
-	switchToChannel: string | null = null;
+	/** Channel to switch to once joined, on any server if server is null */
+	switchToChannel: { server: number | null; name: string } | null = null;
 	/**
 	 * Parsed irc:// URL to automatically open. The user will be prompted for
 	 * confirmation for security reasons.
@@ -781,7 +781,11 @@ export default class AppController {
 			[serverID, update] = S.createServer(state);
 			return update;
 		});
-		this.update({ connectParams: merged });
+		// Per-network connections reuse these params, they mustn't become the
+		// params of the next top-level connection
+		if (!params.bouncerNetwork) {
+			this.update({ connectParams: merged });
+		}
 
 		const client = new Client({
 			url: resolveServerURL(merged.url, window.location),
@@ -815,7 +819,15 @@ export default class AppController {
 							if (buf.server !== serverID) {
 								return;
 							}
-							buffers.set(buf.id, { ...buf, joined: false, hasInitialWho: false });
+							// Memberships are stale until the channels are joined again
+							buffers.set(buf.id, {
+								...buf,
+								joined: false,
+								hasInitialWho: false,
+								hasNames: false,
+								members: new irc.CaseMapMap(null, buf.members.caseMap),
+								typing: new Map(),
+							});
 						});
 						return { buffers };
 					});
@@ -843,7 +855,7 @@ export default class AppController {
 		}
 
 		if (merged.autojoin.length > 0) {
-			this.switchToChannel = merged.autojoin[0];
+			this.switchToChannel = { server: serverID, name: merged.autojoin[0] };
 		}
 
 		return serverID;
@@ -857,11 +869,8 @@ export default class AppController {
 			return;
 		}
 
-		const client = this.clients.get(serverID);
-		if (client) {
-			this.clients.delete(serverID);
-			client.disconnect();
-		}
+		// Keep the client around, so that the server can be reconnected
+		this.clients.get(serverID)?.disconnect();
 	}
 
 	reconnect(serverID?: number | null): void {
@@ -1299,7 +1308,12 @@ export default class AppController {
 						this.fetchNames(buf);
 					}
 				}
-				if (this.switchToChannel && client.cm(channel) === client.cm(this.switchToChannel)) {
+				const switchTo = this.switchToChannel;
+				if (
+					switchTo &&
+					(switchTo.server === null || switchTo.server === serverID) &&
+					client.cm(channel) === client.cm(switchTo.name)
+				) {
 					this.switchBuffer({ server: serverID, name: channel });
 					this.switchToChannel = null;
 				}
@@ -1666,16 +1680,17 @@ export default class AppController {
 	handleConnectSubmit(connectParams: Partial<ConnectParams>): void {
 		this.dismissError();
 
+		// Disconnect previous server, if any. This clears the stored
+		// autoconnect params, so store the new ones afterwards.
+		const activeBuffer = S.getBuffer(this.state, this.state.activeBuffer);
+		if (activeBuffer) {
+			this.close({ server: activeBuffer.server, name: SERVER_BUFFER });
+		}
+
 		if (connectParams.autoconnect) {
 			store.autoconnect.put(connectParams);
 		} else {
 			store.autoconnect.put(null);
-		}
-
-		// Disconnect previous server, if any
-		const activeBuffer = S.getBuffer(this.state, this.state.activeBuffer);
-		if (activeBuffer) {
-			this.close({ server: activeBuffer.server, name: SERVER_BUFFER });
 		}
 
 		this.connect(connectParams);
@@ -1794,7 +1809,7 @@ export default class AppController {
 				this.switchBuffer(buf.id);
 				return;
 			}
-			this.switchToChannel = target;
+			this.switchToChannel = { server: serverID, name: target };
 			client.join(target, password).catch((err) => {
 				this.showError(err);
 			});
@@ -1837,6 +1852,7 @@ export default class AppController {
 				const isFirstServer = this.state.servers.keys().next().value === buf.server;
 
 				this.disconnect(buf.server);
+				this.clients.delete(buf.server);
 
 				this.update((state) => {
 					const servers = new Map(state.servers);
@@ -1907,11 +1923,11 @@ export default class AppController {
 	}
 
 	executeCommand(s: string): void {
-		const parts = s.split(" ");
-		const name = parts[0].toLowerCase().slice(1);
-		const args = parts.slice(1);
+		// Extra spaces after the command name don't make empty arguments
+		const [, name, rest] = /^\/(\S*)\s*(.*)$/s.exec(s) ?? ["", "", ""];
+		const args = rest === "" ? [] : rest.split(" ");
 
-		const cmd = commands.get(name);
+		const cmd = commands.get(name.toLowerCase());
 		if (!cmd) {
 			this.showError(`Unknown command "${name}" (run "/help" to get a command list)`);
 			return;
@@ -1932,6 +1948,11 @@ export default class AppController {
 	}
 
 	privmsg(target: string, text: string): void {
+		this.sendChatMessage("PRIVMSG", target, text);
+	}
+
+	/** Send a PRIVMSG or NOTICE, and show it if the server won't echo it. */
+	sendChatMessage(command: "PRIVMSG" | "NOTICE", target: string, text: string): void {
 		if (target === SERVER_BUFFER) {
 			this.showError("Cannot send message in server buffer");
 			return;
@@ -1943,7 +1964,7 @@ export default class AppController {
 			return;
 		}
 
-		const msg: Message = { tags: {}, prefix: null, command: "PRIVMSG", params: [target, text] };
+		const msg: Message = { tags: {}, prefix: null, command, params: [target, text] };
 		const replyTo = this.state.replyTo;
 		const buf = S.getBuffer(this.state, { server: serverID, name: target });
 		if (replyTo && buf && replyTo.buffer === buf.id) {
@@ -2063,10 +2084,13 @@ export default class AppController {
 		) {
 			return;
 		}
-		// soju doesn't advertise CHATHISTORY on the bouncer connection (e.g.
-		// for BouncerServ), there is no history to load there
 		if (client.isupport.chatHistory() === 0) {
-			if (buf.history !== "end") {
+			// soju doesn't advertise CHATHISTORY on the bouncer connection (e.g.
+			// for BouncerServ), there is no history to load there. Elsewhere,
+			// ISUPPORT may just not have arrived yet.
+			const isBouncerConn =
+				client.caps.enabled.has("soju.im/bouncer-networks") && !client.params.bouncerNetwork;
+			if (isBouncerConn && buf.history !== "end") {
 				this.setBufferState(buf.id, { history: "end" });
 			}
 			return;
@@ -2305,7 +2329,7 @@ export default class AppController {
 				newClient.params.autojoin = [autojoin];
 			}
 
-			this.switchToChannel = autojoin;
+			this.switchToChannel = { server: serverID, name: autojoin };
 		}
 	}
 
@@ -2441,5 +2465,3 @@ export default class AppController {
 		this.clients.clear();
 	}
 }
-
-export type { State };

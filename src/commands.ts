@@ -78,7 +78,12 @@ const join: Command = {
 	usage: "<name> [password]",
 	description: "Join a channel",
 	execute: (app, args) => {
-		const channel = requireArg(args, 0, "channel name");
+		let channel = requireArg(args, 0, "channel name");
+		const client = getActiveClient(app);
+		if (!client.isChannel(channel)) {
+			// "/join foo" means "#foo", not a query with foo
+			channel = (client.isupport.chanTypes()[0] ?? "#") + channel;
+		}
 		if (args.length > 1) {
 			app.open(channel, null, args[1]);
 		} else {
@@ -216,8 +221,9 @@ const commandList: Command[] = [
 		usage: "<target>",
 		description: "Ban a user and removes them from the channel",
 		execute: async (app, args) => {
-			kick.execute(app, args);
+			// Ban first: if looking up the user's host fails, don't kick either
 			await ban.execute(app, args);
+			kick.execute(app, args);
 		},
 	},
 	{
@@ -268,8 +274,9 @@ const commandList: Command[] = [
 		description: "Send a message to a nickname or a channel",
 		execute: (app, args) => {
 			const target = requireArg(args, 0, "target");
-			const text = args.slice(1).join(" ");
-			getActiveClient(app).send({ command: "PRIVMSG", params: [target, text] });
+			requireArg(args, 1, "message");
+			getActiveClient(app);
+			app.sendChatMessage("PRIVMSG", target, args.slice(1).join(" "));
 		},
 	},
 	{
@@ -287,8 +294,9 @@ const commandList: Command[] = [
 		description: "Send a notice to a nickname or a channel",
 		execute: (app, args) => {
 			const target = requireArg(args, 0, "target");
-			const text = args.slice(1).join(" ");
-			getActiveClient(app).send({ command: "NOTICE", params: [target, text] });
+			requireArg(args, 1, "message");
+			getActiveClient(app);
+			app.sendChatMessage("NOTICE", target, args.slice(1).join(" "));
 		},
 	},
 	{

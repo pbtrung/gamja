@@ -383,12 +383,21 @@ function updateMembership(membership: string, letter: string, add: boolean, clie
 export function insertMessage(list: Message[], msg: Message): Message[] {
 	if (list.length === 0) {
 		return [msg];
-	} else if (list[list.length - 1].tags.time! <= msg.tags.time!) {
-		return list.concat(msg);
 	}
 
 	// Skip duplicates, e.g. when history overlaps with live messages
-	if (msg.tags.msgid && list.some((other) => other.tags.msgid === msg.tags.msgid)) {
+	const msgid = msg.tags.msgid;
+	const last = list[list.length - 1];
+	if (last.tags.time! <= msg.tags.time!) {
+		// Only messages with the same time can be duplicates here
+		for (let i = list.length - 1; msgid && i >= 0 && list[i].tags.time === msg.tags.time; i--) {
+			if (list[i].tags.msgid === msgid) {
+				return list;
+			}
+		}
+		return list.concat(msg);
+	}
+	if (msgid && list.some((other) => other.tags.msgid === msgid)) {
 		return list;
 	}
 

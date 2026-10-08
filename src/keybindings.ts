@@ -1,4 +1,4 @@
-import { ReceiptType, Unread, BufferType, compareUnread, receiptFromMessage, type Buffer } from "./state";
+import { Unread, BufferType, compareUnread, type Buffer } from "./state";
 import type AppController from "./app/controller";
 
 export interface KeyBinding {
@@ -25,30 +25,11 @@ export const keybindings: KeyBinding[] = [
 		altKey: true,
 		description: "Mark all messages as read",
 		execute: (app) => {
-			const buffers = new Map<number, Buffer>();
-			for (const buf of app.state.buffers.values()) {
-				buffers.set(buf.id, {
-					...buf,
-					unread: Unread.NONE,
-					prevReadReceipt: null,
-				});
-
-				const receipts: Partial<Record<ReceiptType, { time: string }>> = {};
-				if (buf.messages.length > 0) {
-					const lastMsg = buf.messages[buf.messages.length - 1];
-					receipts[ReceiptType.READ] = receiptFromMessage(lastMsg);
-				}
-
-				const client = app.clients.get(buf.server);
-				if (client) {
-					const stored = { name: buf.name, server: client.params, unread: Unread.NONE, receipts };
-					if (app.bufferStore.put(stored)) {
-						app.sendReadReceipt(client, stored);
-					}
-				}
+			for (const id of [...app.state.buffers.keys()]) {
+				app.markBufferAsRead(id);
+				// Also drop the "new messages" separator
+				app.setBufferState(id, { prevReadReceipt: null });
 			}
-			app.update({ buffers });
-			app.updateDocumentTitle();
 		},
 	},
 	{
@@ -131,6 +112,11 @@ export function setup(app: AppController, target: Window = window): () => void {
 
 	const handleKeyDown = (event: KeyboardEvent) => {
 		let candidates = byKey.get(event.key);
+		// On macOS, Alt+letter types another character (e.g. Alt+H is "˙"):
+		// fall back to the physical key
+		if (!candidates && event.altKey && /^Key[A-Z]$/.test(event.code)) {
+			candidates = byKey.get(event.code.slice(3).toLowerCase());
+		}
 		if (!candidates) {
 			return;
 		}

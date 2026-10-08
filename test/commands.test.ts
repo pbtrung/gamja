@@ -54,6 +54,46 @@ describe("commands", () => {
 		expect(sent()).toContain(expected);
 	});
 
+	it.each([
+		["/join  #spaced", "JOIN #spaced"],
+		["/join foo", "JOIN #foo"],
+		["/JOIN #upper", "JOIN #upper"],
+	])("parses %s as %s", async (input, expected) => {
+		const { app, sent } = await inChannel();
+		app.handleComposerSubmit(input);
+		expect(sent()).toContain(expected);
+	});
+
+	it("rejects /msg and /notice without a message", async () => {
+		const { app, sent } = await inChannel();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.handleComposerSubmit("/msg bob");
+		expect(app.state.error).toBe("Missing message");
+		app.handleComposerSubmit("/notice bob");
+		expect(sent()).toEqual([]);
+	});
+
+	it("shows /msg locally without echo-message", async () => {
+		const { app, recv, sent } = await connectedApp({
+			caps: "batch server-time message-tags labeled-response draft/chathistory",
+		});
+		recv(":bob!u@h PRIVMSG me :hey");
+		sent();
+		app.handleComposerSubmit("/msg bob hi there");
+		expect(sent()).toContain("PRIVMSG bob :hi there");
+		const bob = getBuffer(app.state, { name: "bob" })!;
+		expect(bob.messages.at(-1)!.params).toEqual(["bob", "hi there"]);
+	});
+
+	it("bans before kicking with /kickban", async () => {
+		const { app, sent, recv } = await inChannel();
+		app.handleComposerSubmit("/kickban bob");
+		expect(sent()).toEqual(["WHOIS bob"]);
+		recv(":srv 311 me bob buser bhost * :Bob", ":srv 318 me bob :End");
+		await flush();
+		expect(sent()).toEqual(["MODE #c +b *!buser@bhost", "KICK #c bob"]);
+	});
+
 	it("bans by host after a WHOIS", async () => {
 		const { app, sent, recv } = await inChannel();
 		app.handleComposerSubmit("/ban bob");

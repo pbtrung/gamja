@@ -273,13 +273,36 @@ describe("AppController messaging", () => {
 	});
 
 	it("doesn't fetch history without CHATHISTORY ISUPPORT (soju bouncer connection)", async () => {
-		const { app, recv, sent } = await connectedApp({ isupport: "CASEMAPPING=ascii CHANTYPES= BOT=B" });
+		const { app, recv, sent } = await connectedApp({
+			caps: "batch server-time message-tags labeled-response draft/chathistory soju.im/bouncer-networks",
+			isupport: "CASEMAPPING=ascii CHANTYPES= BOT=B",
+		});
 		recv(":BouncerServ!BouncerServ@BouncerServ PRIVMSG me :hi");
 		app.switchBuffer(buf(app, "BouncerServ")!.id);
 		sent();
 		await app.fetchOlderMessages();
 		expect(sent().filter((l) => l.startsWith("CHATHISTORY"))).toEqual([]);
 		expect(buf(app, "BouncerServ")!.history).toBe("end");
+	});
+
+	it("waits for CHATHISTORY ISUPPORT on other servers", async () => {
+		const { app, recv, sent } = await connectedApp({ isupport: "CASEMAPPING=rfc1459 CHANTYPES=#" });
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		await app.fetchOlderMessages();
+		expect(sent().filter((l) => l.startsWith("CHATHISTORY"))).toEqual([]);
+		// ISUPPORT may come later: don't give up on history
+		expect(buf(app, "#c")!.history).toBe("unknown");
+	});
+
+	it("keeps the client after /disconnect so that it can reconnect", async () => {
+		const { app, serverID } = await connectedApp();
+		app.disconnect(serverID);
+		expect(app.state.servers.get(serverID)!.status).toBe("disconnected");
+		app.reconnect(serverID);
+		expect(app.state.servers.get(serverID)!.status).toBe("connecting");
 	});
 
 	it("stops fetching history after an error until retried", async () => {

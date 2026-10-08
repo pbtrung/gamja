@@ -46,6 +46,14 @@ describe("keybindings", () => {
 		cleanup();
 	});
 
+	it("matches Alt bindings on the physical key (macOS)", async () => {
+		const { app, cleanup } = await withBuffers();
+		app.setBufferState({ name: "#a" }, { unread: Unread.MESSAGE });
+		expect(press("˙", { code: "KeyH", altKey: true }).defaultPrevented).toBe(true);
+		expect(getBuffer(app.state, { name: "#a" })!.unread).toBe(Unread.NONE);
+		cleanup();
+	});
+
 	it("opens the switcher and search, ignoring other modifiers", async () => {
 		const { app, cleanup } = await withBuffers();
 		expect(press("k", { ctrlKey: true, altKey: true }).defaultPrevented).toBe(false);

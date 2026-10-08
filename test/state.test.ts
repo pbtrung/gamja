@@ -140,6 +140,16 @@ describe("buffers", () => {
 		list = S.insertMessage(list, m("2020-01-03", "c"));
 		expect(list.map((x) => x.tags.msgid)).toEqual(["a", "b", "c", "d"]);
 		expect(S.insertMessage(list, m("2020-01-01", "a"))).toBe(list);
+		// The newest message again, e.g. from overlapping history
+		expect(S.insertMessage(list, m("2020-01-04", "d"))).toBe(list);
+		// Same time, different message
+		expect(S.insertMessage(list, m("2020-01-04", "e")).map((x) => x.tags.msgid)).toEqual([
+			"a",
+			"b",
+			"c",
+			"d",
+			"e",
+		]);
 	});
 
 	it("adds messages with unique keys", () => {
