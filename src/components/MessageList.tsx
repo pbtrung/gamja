@@ -38,6 +38,7 @@ export interface MessageListHandlers {
 	onAuthClick: () => void;
 	onRegisterClick: () => void;
 	onVerifyClick: (account: string, message: string) => void;
+	onRetryHistory?: () => void;
 }
 
 interface Context extends MessageListHandlers {
@@ -806,6 +807,36 @@ function MessageList(props: MessageListProps) {
 	}, [buf.messages]);
 
 	const children: ReactNode[] = [];
+	if (buf.history === "loading") {
+		children.push(
+			<div key="history-loading" className="history-status" role="status">
+				<span className="spinner" aria-hidden="true" /> Loading older messages…
+			</div>,
+		);
+	} else if (buf.history === "error") {
+		children.push(
+			<div key="history-error" className="history-status" role="alert">
+				Failed to load older messages.
+				<button type="button" className="btn btn-sm" onClick={props.onRetryHistory}>
+					Retry
+				</button>
+			</div>,
+		);
+	} else if (buf.history === "end" && buf.type !== BufferType.SERVER) {
+		children.push(
+			<div key="history-end" className="history-status history-start">
+				{buf.type === BufferType.CHANNEL ? (
+					<>
+						This is the beginning of <strong>{buf.name}</strong>
+					</>
+				) : (
+					<>
+						This is the beginning of your conversation with <strong>{buf.name}</strong>
+					</>
+				)}
+			</div>,
+		);
+	}
 	if (buf.type === BufferType.SERVER) {
 		children.push(<NotificationNagger key="nag-notif" showSeconds={showSeconds} />);
 	}

@@ -263,11 +263,32 @@ describe("AppController messaging", () => {
 			"@batch=h;time=2030-01-01T00:00:00.000Z;msgid=old :bob!u@h PRIVMSG #c :old",
 			":srv BATCH -h",
 		);
+		expect(buf(app, "#c")!.history).toBe("loading");
 		await p;
+		expect(buf(app, "#c")!.history).toBe("end");
 		expect(buf(app, "#c")!.messages.map((m) => m.params[1])).toEqual(["old", "new"]);
 		// No more history: further scrolls are no-ops
 		await app.fetchOlderMessages();
 		expect(sent()).toEqual([]);
+	});
+
+	it("stops fetching history after an error until retried", async () => {
+		const { app, recv, sent, sentRaw } = await connectedApp();
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		const p = app.fetchOlderMessages();
+		await flush();
+		const label = sentRaw()[0].match(/label=(\d+)/)![1];
+		recv(`@label=${label} FAIL CHATHISTORY MESSAGE_ERROR #c :Messages could not be retrieved`);
+		await expect(p).rejects.toThrow("Messages could not be retrieved");
+		expect(buf(app, "#c")!.history).toBe("error");
+		await app.fetchOlderMessages();
+		expect(sent()).toEqual([]);
+		void app.fetchOlderMessages(true);
+		await flush();
+		expect(sent()[0]).toMatch(/^CHATHISTORY BEFORE #c/);
 	});
 
 	it("shows reconnection status on disconnect", async () => {

@@ -94,7 +94,6 @@ export default class AppController {
 	clients = new Map<number, Client>();
 	bufferStore = new store.BufferStore();
 	debug = !import.meta.env.PROD;
-	endOfHistory = new Map<number, boolean>();
 	switchToChannel: string | null = null;
 	/**
 	 * Parsed irc:// URL to automatically open. The user will be prompted for
@@ -2039,7 +2038,8 @@ export default class AppController {
 		this.openDialog({ kind: "help" });
 	}
 
-	async fetchOlderMessages(): Promise<void> {
+	/** Load a page of older messages in the active buffer. */
+	async fetchOlderMessages(retry = false): Promise<void> {
 		const buf = S.getBuffer(this.state, this.state.activeBuffer);
 		if (!buf || buf.type === BufferType.SERVER) {
 			return;
@@ -2055,7 +2055,7 @@ export default class AppController {
 		) {
 			return;
 		}
-		if (this.endOfHistory.get(buf.id)) {
+		if (buf.history === "loading" || buf.history === "end" || (buf.history === "error" && !retry)) {
 			return;
 		}
 
@@ -2067,7 +2067,7 @@ export default class AppController {
 		}
 
 		// Avoids sending multiple CHATHISTORY commands in parallel
-		this.endOfHistory.set(buf.id, true);
+		this.setBufferState(buf.id, { history: "loading" });
 
 		let limit = 100;
 		if (client.caps.enabled.has("draft/event-playback")) {
@@ -2078,10 +2078,11 @@ export default class AppController {
 		try {
 			result = await client.fetchHistoryBefore(buf.name, before, limit);
 		} catch (err) {
-			this.endOfHistory.set(buf.id, false);
+			// Don't retry automatically, the user can retry from the UI
+			this.setBufferState(buf.id, { history: "error" });
 			throw err;
 		}
-		this.endOfHistory.set(buf.id, !result.more);
+		this.setBufferState(buf.id, { history: result.more ? "more" : "end" });
 
 		if (result.messages.length > 0) {
 			const msg = result.messages[result.messages.length - 1];

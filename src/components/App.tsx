@@ -400,6 +400,9 @@ function Chat({ state }: { state: AppState }) {
 							onAuthClick={() => app.handleAuthClick(activeBuffer.server)}
 							onRegisterClick={() => app.handleRegisterClick(activeBuffer.server)}
 							onVerifyClick={handlers.onVerifyClick}
+							onRetryHistory={() =>
+								app.fetchOlderMessages(true).catch((err) => app.showError(err))
+							}
 						/>
 					)}
 				</ErrorBoundary>

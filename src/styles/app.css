@@ -1123,6 +1123,23 @@ a.nick:hover {
 	border-color: var(--danger);
 }
 
+.history-status {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1rem;
+	color: var(--fg-muted);
+	font-size: 0.8125rem;
+}
+
+.history-start {
+	margin: 0.5rem 1rem 0.75rem;
+	padding: 1rem;
+	border-bottom: 1px solid var(--border);
+	font-size: 0.9375rem;
+}
+
 .inline-error {
 	margin: 1rem;
 }

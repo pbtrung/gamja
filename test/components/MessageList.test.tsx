@@ -67,6 +67,7 @@ function buffer(messages: irc.Message[], patch: Partial<Buffer> = {}): Buffer {
 		redacted: new Set(),
 		reactions: new Map(),
 		typing: new Map(),
+		history: "unknown",
 		unread: "",
 		prevReadReceipt: { time: "2099-01-01T00:00:00.000Z" },
 		...patch,
@@ -371,4 +372,36 @@ describe("MessageList interactions", () => {
 		expect(target).toHaveClass("flash");
 		expect(screen.getByText("Reply to an earlier message")).toBeInTheDocument();
 	});
+});
+
+describe("history status", () => {
+	it("shows loading and beginning of history", () => {
+		const { unmount } = renderList([], { buffer: { history: "loading" } });
+		expect(screen.getByRole("status")).toHaveTextContent("Loading older messages…");
+		unmount();
+		renderList([], { buffer: { history: "end" } });
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(screen.getByText(/This is the beginning of/)).toHaveTextContent("This is the beginning of #c");
+	});
+});
+
+it("offers to retry failed history fetches", async () => {
+	const onRetryHistory = vi.fn();
+	render(
+		<MessageList
+			buffer={buffer([], { history: "error" })}
+			server={server()}
+			bouncerNetwork={null}
+			settings={defaultSettings}
+			onChannelClick={() => {}}
+			onNickClick={() => {}}
+			onAuthClick={() => {}}
+			onRegisterClick={() => {}}
+			onVerifyClick={() => {}}
+			onRetryHistory={onRetryHistory}
+		/>,
+	);
+	expect(screen.getByRole("alert")).toHaveTextContent("Failed to load older messages.");
+	await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+	expect(onRetryHistory).toHaveBeenCalled();
 });

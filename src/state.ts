@@ -160,6 +160,8 @@ export interface Buffer {
 	reactions: Map<string, Map<string, string[]>>;
 	/** Users currently typing, by nick */
 	typing: Map<string, TypingState>;
+	/** Chat history status: unknown before the first fetch, end once all fetched */
+	history: "unknown" | "loading" | "more" | "end" | "error";
 	unread: Unread;
 	prevReadReceipt: Receipt | null;
 }
@@ -552,6 +554,7 @@ export function createBuffer(
 		redacted: new Set(),
 		reactions: new Map(),
 		typing: new Map(),
+		history: "unknown",
 		unread: Unread.NONE,
 		prevReadReceipt: null,
 	});
