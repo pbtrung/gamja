@@ -50,4 +50,10 @@ The `oauth2` object configures OAuth 2.0 authentication.
 - `client_secret` (string): OAuth 2.0 client secret.
 - `scope` (string): OAuth 2.0 scope.
 
+Set `server.auth` to `oauth2` to use it. gamja uses the authorization code flow
+with a `state` parameter and PKCE (S256, only in secure contexts: HTTPS or
+localhost). Register the gamja page URL as the client's redirect URI, with any
+query string but without the fragment. The login must finish in the same tab,
+since the pending request is kept in `sessionStorage`.
+
 [browser's web console]: https://firefox-source-docs.mozilla.org/devtools-user/web_console/index.html

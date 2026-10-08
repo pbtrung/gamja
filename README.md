@@ -30,7 +30,16 @@ end-to-end tests and point gamja at it:
     node e2e/fake-ircd.ts 8081
 
 and, with `npm run dev` running, open
-<http://localhost:8080/?server=ws://localhost:8081>.
+<http://localhost:8080/?server=ws://localhost:8081>. Log in as `alice` with
+password `secret` to try SASL, and set `FAKE_BOUNCER=1` to emulate a soju
+bouncer (which requires logging in).
+
+### With soju
+
+On top of chat history and read markers, gamja supports soju's bouncer
+networks, search, Web Push notifications, file uploads, detaching channels
+(`/detach`, joining reattaches) and pinning, muting and blocking (`/pin`,
+`/mute`, `/block` or the buffer header buttons), synced across clients.
 
 ### Checks
 
