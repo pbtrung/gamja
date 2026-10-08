@@ -39,8 +39,16 @@ export default class JoinForm extends Component {
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
 				<label class="form-label" for="join-channel">Channel</label>
 				<div class="input-group">
-					<span class="input-group-text"><${Icon} icon=${Hash}/></span>
-					<input type="text" class="form-control" id="join-channel" name="channel" value=${this.state.channel} autofocus required/>
+					<span class="input-group-text"><${Icon} icon=${Hash} /></span>
+					<input
+						type="text"
+						class="form-control"
+						id="join-channel"
+						name="channel"
+						value=${this.state.channel}
+						autofocus
+						required
+					/>
 				</div>
 
 				<div class="dialog-actions">

@@ -1,8 +1,15 @@
 import { html, Component } from "../lib/index.js";
 import linkify from "../lib/linkify.js";
-import * as irc from "../lib/irc.js";
-import { strip as stripANSI } from "../lib/ansi.js";
-import { BufferType, ServerStatus, BufferEventsDisplayMode, getMessageURL, isMessageBeforeReceipt, SettingsContext } from "../state.js";
+import * as irc from "../lib/irc";
+import { strip as stripANSI } from "../lib/ansi";
+import {
+	BufferType,
+	ServerStatus,
+	BufferEventsDisplayMode,
+	getMessageURL,
+	isMessageBeforeReceipt,
+	SettingsContext,
+} from "../state.js";
 import * as store from "../store.js";
 import Membership from "./membership.js";
 
@@ -16,7 +23,7 @@ function djb2(s) {
 }
 
 export function getNickColorIndex(nick) {
-	return djb2(nick) % 16 + 1;
+	return (djb2(nick) % 16) + 1;
 }
 
 function Nick(props) {
@@ -33,12 +40,7 @@ function Nick(props) {
 	let url = irc.formatURL({ host: props.bouncerNetwork?.host, entity: props.nick, enttype: "user" });
 	let colorIndex = getNickColorIndex(props.nick);
 	return html`
-		<a
-			href=${url}
-			title=${title}
-			class="nick nick-${colorIndex}"
-			onClick=${handleClick}
-		>${props.nick}</a>
+		<a href=${url} title=${title} class="nick nick-${colorIndex}" onClick=${handleClick}>${props.nick}</a>
 	`;
 }
 
@@ -73,9 +75,7 @@ function _Timestamp({ date, url, showSeconds }) {
 function Timestamp(props) {
 	return html`
 		<${SettingsContext.Consumer}>
-			${(settings) => html`
-				<${_Timestamp} ...${props} showSeconds=${settings.secondsInTimestamps}/>
-			`}
+			${(settings) => html` <${_Timestamp} ...${props} showSeconds=${settings.secondsInTimestamps} /> `}
 		</>
 	`;
 }
@@ -88,11 +88,11 @@ function Timestamp(props) {
  */
 function canFoldMessage(msg) {
 	switch (msg.command) {
-	case "JOIN":
-	case "PART":
-	case "QUIT":
-	case "NICK":
-		return true;
+		case "JOIN":
+		case "PART":
+		case "QUIT":
+		case "NICK":
+			return true;
 	}
 	return false;
 }
@@ -124,269 +124,263 @@ class LogLine extends Component {
 		}
 		function createChannel(channel) {
 			let url = irc.formatURL({ host: bouncerNetwork?.host, entity: channel });
-			return html`
-				<a href=${url} onClick=${onChannelClick}>
-					${channel}
-				</a>
-			`;
+			return html` <a href=${url} onClick=${onChannelClick}> ${channel} </a> `;
 		}
 
 		let lineClass = "";
 		let content;
 		let invitee, target, account;
 		switch (msg.command) {
-		case "NOTICE":
-		case "PRIVMSG":
-			target = msg.params[0];
-			let text = msg.params[1];
+			case "NOTICE":
+			case "PRIVMSG":
+				target = msg.params[0];
+				let text = msg.params[1];
 
-			let ctcp = irc.parseCTCP(msg);
-			if (ctcp) {
-				if (ctcp.command === "ACTION") {
-					lineClass = "me-tell";
-					content = html`* ${createNick(msg.prefix.name)} ${linkify(stripANSI(ctcp.param), onChannelClick)}`;
+				let ctcp = irc.parseCTCP(msg);
+				if (ctcp) {
+					if (ctcp.command === "ACTION") {
+						lineClass = "me-tell";
+						content = html`* ${createNick(msg.prefix.name)}
+						${linkify(stripANSI(ctcp.param), onChannelClick)}`;
+					} else {
+						content = html`
+							${createNick(msg.prefix.name)} has sent a CTCP command: ${ctcp.command}
+							${ctcp.param}
+						`;
+					}
 				} else {
+					let prefix = "<",
+						suffix = ">";
+					if (msg.command === "NOTICE") {
+						lineClass += " notice";
+						prefix = suffix = "-";
+					}
+					if (this.props.redacted) {
+						content = html`<i>This message has been deleted.</i>`;
+					} else {
+						content = html`${linkify(stripANSI(text), onChannelClick)}`;
+						lineClass += " talk";
+					}
 					content = html`
-						${createNick(msg.prefix.name)} has sent a CTCP command: ${ctcp.command} ${ctcp.param}
+						<span class="nick-caret" aria-hidden="true">${prefix}</span>
+						${createNick(msg.prefix.name)}
+						<span class="nick-caret" aria-hidden="true">${suffix}</span>
+						${" "} ${content}
 					`;
 				}
-			} else {
-				let prefix = "<", suffix = ">";
-				if (msg.command === "NOTICE") {
-					lineClass += " notice";
-					prefix = suffix = "-";
-				}
-				if (this.props.redacted) {
-					content = html`<i>This message has been deleted.</i>`;
-				} else {
-					content = html`${linkify(stripANSI(text), onChannelClick)}`;
-					lineClass += " talk";
-				}
-				content = html`
-					<span class="nick-caret" aria-hidden="true">${prefix}</span>
-					${createNick(msg.prefix.name)}
-					<span class="nick-caret" aria-hidden="true">${suffix}</span>
-					${" "}
-					${content}
-				`;
-			}
 
-			let allowedPrefixes = server.statusMsg;
-			if (target !== buf.name && allowedPrefixes) {
-				let parts = irc.parseTargetPrefix(target, allowedPrefixes);
-				if (parts.name === buf.name) {
-					content = [html`(<${Membership} value=${parts.prefix}/>)`, " ", content];
-				}
-			}
-
-			if (msg.tags["+draft/channel-context"]) {
-				content = html`<em>(only visible to you)</em> ${content}`;
-			}
-
-			if (msg.isHighlight) {
-				lineClass += " highlight";
-			}
-			break;
-		case "JOIN":
-			content = html`
-				${createNick(msg.prefix.name)} has joined
-			`;
-			break;
-		case "PART":
-			content = html`
-				${createNick(msg.prefix.name)} has left
-			`;
-			break;
-		case "QUIT":
-			content = html`
-				${createNick(msg.prefix.name)} has quit
-			`;
-			break;
-		case "NICK":
-			let newNick = msg.params[0];
-			content = html`
-				${createNick(msg.prefix.name)} is now known as ${createNick(newNick)}
-			`;
-			break;
-		case "KICK":
-			content = html`
-				${createNick(msg.params[1])} was kicked by ${createNick(msg.prefix.name)} (${msg.params.slice(2)})
-			`;
-			break;
-		case "MODE":
-			target = msg.params[0];
-			let modeStr = msg.params[1];
-
-			let user = html`${createNick(msg.prefix.name)}`;
-
-			// TODO: use irc.forEachChannelModeUpdate()
-			if (buf.type === BufferType.CHANNEL && modeStr.length === 2 && server.cm(buf.name) === server.cm(target)) {
-				let plusMinus = modeStr[0];
-				let mode = modeStr[1];
-				let arg = msg.params[2];
-
-				let verb;
-				switch (mode) {
-				case "b":
-					verb = plusMinus === "+" ? "added" : "removed";
-					content = html`${user} has ${verb} a ban on ${arg}`;
-					break;
-				case "e":
-					verb = plusMinus === "+" ? "added" : "removed";
-					content = html`${user} has ${verb} a ban exemption on ${arg}`;
-					break;
-				case "l":
-					if (plusMinus === "+") {
-						content = html`${user} has set the channel user limit to ${arg}`;
-					} else {
-						content = html`${user} has unset the channel user limit`;
+				let allowedPrefixes = server.statusMsg;
+				if (target !== buf.name && allowedPrefixes) {
+					let parts = irc.parseTargetPrefix(target, allowedPrefixes);
+					if (parts.name === buf.name) {
+						content = [html`(<${Membership} value=${parts.prefix} />)`, " ", content];
 					}
-					break;
-				case "i":
-					verb = plusMinus === "+" ? "marked": "unmarked";
-					content = html`${user} has ${verb} as invite-only`;
-					break;
-				case "m":
-					verb = plusMinus === "+" ? "marked": "unmarked";
-					content = html`${user} has ${verb} as moderated`;
-					break;
-				case "s":
-					verb = plusMinus === "+" ? "marked": "unmarked";
-					content = html`${user} has ${verb} as secret`;
-					break;
-				case "t":
-					verb = plusMinus === "+" ? "locked": "unlocked";
-					content = html`${user} has ${verb} the channel topic`;
-					break;
-				case "n":
-					verb = plusMinus === "+" ? "allowed": "denied";
-					content = html`${user} has ${verb} external messages to this channel`;
-					break;
-				}
-				if (content) {
-					break;
 				}
 
-				// Channel membership modes
-				let membershipName;
-				for (let membership of server.membershipModes) {
-					if (membership.mode === mode) {
-						membershipName = irc.STD_MEMBERSHIP_NAMES[membership.prefix];
+				if (msg.tags["+draft/channel-context"]) {
+					content = html`<em>(only visible to you)</em> ${content}`;
+				}
+
+				if (msg.isHighlight) {
+					lineClass += " highlight";
+				}
+				break;
+			case "JOIN":
+				content = html` ${createNick(msg.prefix.name)} has joined `;
+				break;
+			case "PART":
+				content = html` ${createNick(msg.prefix.name)} has left `;
+				break;
+			case "QUIT":
+				content = html` ${createNick(msg.prefix.name)} has quit `;
+				break;
+			case "NICK":
+				let newNick = msg.params[0];
+				content = html` ${createNick(msg.prefix.name)} is now known as ${createNick(newNick)} `;
+				break;
+			case "KICK":
+				content = html`
+					${createNick(msg.params[1])} was kicked by ${createNick(msg.prefix.name)}
+					(${msg.params.slice(2)})
+				`;
+				break;
+			case "MODE":
+				target = msg.params[0];
+				let modeStr = msg.params[1];
+
+				let user = html`${createNick(msg.prefix.name)}`;
+
+				// TODO: use irc.forEachChannelModeUpdate()
+				if (
+					buf.type === BufferType.CHANNEL &&
+					modeStr.length === 2 &&
+					server.cm(buf.name) === server.cm(target)
+				) {
+					let plusMinus = modeStr[0];
+					let mode = modeStr[1];
+					let arg = msg.params[2];
+
+					let verb;
+					switch (mode) {
+						case "b":
+							verb = plusMinus === "+" ? "added" : "removed";
+							content = html`${user} has ${verb} a ban on ${arg}`;
+							break;
+						case "e":
+							verb = plusMinus === "+" ? "added" : "removed";
+							content = html`${user} has ${verb} a ban exemption on ${arg}`;
+							break;
+						case "l":
+							if (plusMinus === "+") {
+								content = html`${user} has set the channel user limit to ${arg}`;
+							} else {
+								content = html`${user} has unset the channel user limit`;
+							}
+							break;
+						case "i":
+							verb = plusMinus === "+" ? "marked" : "unmarked";
+							content = html`${user} has ${verb} as invite-only`;
+							break;
+						case "m":
+							verb = plusMinus === "+" ? "marked" : "unmarked";
+							content = html`${user} has ${verb} as moderated`;
+							break;
+						case "s":
+							verb = plusMinus === "+" ? "marked" : "unmarked";
+							content = html`${user} has ${verb} as secret`;
+							break;
+						case "t":
+							verb = plusMinus === "+" ? "locked" : "unlocked";
+							content = html`${user} has ${verb} the channel topic`;
+							break;
+						case "n":
+							verb = plusMinus === "+" ? "allowed" : "denied";
+							content = html`${user} has ${verb} external messages to this channel`;
+							break;
+					}
+					if (content) {
+						break;
+					}
+
+					// Channel membership modes
+					let membershipName;
+					for (let membership of server.membershipModes) {
+						if (membership.mode === mode) {
+							membershipName = irc.STD_MEMBERSHIP_NAMES[membership.prefix];
+							break;
+						}
+					}
+					if (membershipName && arg) {
+						let verb = plusMinus === "+" ? "granted" : "revoked";
+						let preposition = plusMinus === "+" ? "to" : "from";
+						content = html`
+							${user} has ${verb} ${membershipName} privileges ${preposition} ${createNick(arg)}
+						`;
 						break;
 					}
 				}
-				if (membershipName && arg) {
-					let verb = plusMinus === "+" ? "granted" : "revoked";
-					let preposition = plusMinus === "+" ? "to" : "from";
-					content = html`
-						${user} has ${verb} ${membershipName} privileges ${preposition} ${createNick(arg)}
-					`;
-					break;
+
+				content = html` ${user} sets mode ${msg.params.slice(1).join(" ")} `;
+				if (server.cm(buf.name) !== server.cm(target)) {
+					content = html`${content} on ${target}`;
 				}
-			}
-
-			content = html`
-				${user} sets mode ${msg.params.slice(1).join(" ")}
-			`;
-			if (server.cm(buf.name) !== server.cm(target)) {
-				content = html`${content} on ${target}`;
-			}
-			break;
-		case "TOPIC":
-			let topic = msg.params[1];
-			if (topic) {
-				content = html`
-					${createNick(msg.prefix.name)} changed the topic to: ${linkify(stripANSI(topic), onChannelClick)}
-				`;
-			} else {
-				content = html`
-					${createNick(msg.prefix.name)} cleared the topic
-				`;
-			}
-			break;
-		case "INVITE":
-			invitee = msg.params[0];
-			let channel = msg.params[1];
-			// TODO: instead of checking buffer type, check if invitee is our nick
-			if (buf.type === BufferType.SERVER) {
-				lineClass = "talk";
-				content = html`
-					You have been invited to ${createChannel(channel)} by ${createNick(msg.prefix.name)}
-				`;
-			} else {
-				content = html`
-					${createNick(msg.prefix.name)} has invited ${createNick(invitee)} to the channel
-				`;
-			}
-			break;
-		case irc.RPL_WELCOME:
-			let nick = msg.params[0];
-			content = html`Connected to server, your nickname is ${nick}`;
-			break;
-		case irc.RPL_INVITING:
-			invitee = msg.params[1];
-			content = html`${createNick(invitee)} has been invited to the channel`;
-			break;
-		case irc.RPL_MOTD:
-			lineClass = "motd";
-			content = linkify(stripANSI(msg.params[1]), onChannelClick);
-			break;
-		case irc.RPL_LOGGEDIN:
-			account = msg.params[2];
-			content = html`You are now authenticated as ${account}`;
-			break;
-		case irc.RPL_LOGGEDOUT:
-			content = html`You are now unauthenticated`;
-			break;
-		case "REGISTER":
-			account = msg.params[1];
-			let reason = msg.params[2];
-
-			function handleVerifyClick(event) {
-				event.preventDefault();
-				onVerifyClick(account, reason);
-			}
-
-			switch (msg.params[0]) {
-			case "SUCCESS":
-				content = html`A new account has been created, you are now authenticated as ${account}`;
 				break;
-			case "VERIFICATION_REQUIRED":
-				content = html`A new account has been created, but you need to <a href="#" onClick=${handleVerifyClick}>verify it</a>: ${linkify(reason, onChannelClick)}`;
+			case "TOPIC":
+				let topic = msg.params[1];
+				if (topic) {
+					content = html`
+						${createNick(msg.prefix.name)} changed the topic to:
+						${linkify(stripANSI(topic), onChannelClick)}
+					`;
+				} else {
+					content = html` ${createNick(msg.prefix.name)} cleared the topic `;
+				}
 				break;
-			}
-			break;
-		case "VERIFY":
-			account = msg.params[1];
-			content = html`The new account has been verified, you are now authenticated as ${account}`;
-			break;
-		case irc.RPL_UMODEIS:
-			let mode = msg.params[1];
-			if (mode) {
-				content = html`Your user mode is ${mode}`;
-			} else {
-				content = html`You have no user mode`;
-			}
-			break;
-		case irc.RPL_CHANNELMODEIS:
-			content = html`Channel mode is ${msg.params.slice(2).join(" ")}`;
-			break;
-		case irc.RPL_CREATIONTIME:
-			let date = new Date(parseInt(msg.params[2], 10) * 1000);
-			content = html`Channel was created on ${date.toLocaleString()}`;
-			break;
-		// MONITOR messages are only displayed in user buffers
-		case irc.RPL_MONONLINE:
-			content = html`${createNick(buf.name)} is online`;
-			break;
-		case irc.RPL_MONOFFLINE:
-			content = html`${createNick(buf.name)} is offline`;
-			break;
-		default:
-			if (irc.isError(msg.command) && msg.command !== irc.ERR_NOMOTD) {
-				lineClass = "error";
-			}
-			content = html`${msg.command} ${linkify(msg.params.join(" "), onChannelClick)}`;
+			case "INVITE":
+				invitee = msg.params[0];
+				let channel = msg.params[1];
+				// TODO: instead of checking buffer type, check if invitee is our nick
+				if (buf.type === BufferType.SERVER) {
+					lineClass = "talk";
+					content = html`
+						You have been invited to ${createChannel(channel)} by ${createNick(msg.prefix.name)}
+					`;
+				} else {
+					content = html`
+						${createNick(msg.prefix.name)} has invited ${createNick(invitee)} to the channel
+					`;
+				}
+				break;
+			case irc.RPL_WELCOME:
+				let nick = msg.params[0];
+				content = html`Connected to server, your nickname is ${nick}`;
+				break;
+			case irc.RPL_INVITING:
+				invitee = msg.params[1];
+				content = html`${createNick(invitee)} has been invited to the channel`;
+				break;
+			case irc.RPL_MOTD:
+				lineClass = "motd";
+				content = linkify(stripANSI(msg.params[1]), onChannelClick);
+				break;
+			case irc.RPL_LOGGEDIN:
+				account = msg.params[2];
+				content = html`You are now authenticated as ${account}`;
+				break;
+			case irc.RPL_LOGGEDOUT:
+				content = html`You are now unauthenticated`;
+				break;
+			case "REGISTER":
+				account = msg.params[1];
+				let reason = msg.params[2];
+
+				function handleVerifyClick(event) {
+					event.preventDefault();
+					onVerifyClick(account, reason);
+				}
+
+				switch (msg.params[0]) {
+					case "SUCCESS":
+						content = html`A new account has been created, you are now authenticated as ${account}`;
+						break;
+					case "VERIFICATION_REQUIRED":
+						content = html`A new account has been created, but you need to
+							<a href="#" onClick=${handleVerifyClick}>verify it</a>:
+							${linkify(reason, onChannelClick)}`;
+						break;
+				}
+				break;
+			case "VERIFY":
+				account = msg.params[1];
+				content = html`The new account has been verified, you are now authenticated as ${account}`;
+				break;
+			case irc.RPL_UMODEIS:
+				let mode = msg.params[1];
+				if (mode) {
+					content = html`Your user mode is ${mode}`;
+				} else {
+					content = html`You have no user mode`;
+				}
+				break;
+			case irc.RPL_CHANNELMODEIS:
+				content = html`Channel mode is ${msg.params.slice(2).join(" ")}`;
+				break;
+			case irc.RPL_CREATIONTIME:
+				let date = new Date(parseInt(msg.params[2], 10) * 1000);
+				content = html`Channel was created on ${date.toLocaleString()}`;
+				break;
+			// MONITOR messages are only displayed in user buffers
+			case irc.RPL_MONONLINE:
+				content = html`${createNick(buf.name)} is online`;
+				break;
+			case irc.RPL_MONOFFLINE:
+				content = html`${createNick(buf.name)} is offline`;
+				break;
+			default:
+				if (irc.isError(msg.command) && msg.command !== irc.ERR_NOMOTD) {
+					lineClass = "error";
+				}
+				content = html`${msg.command} ${linkify(msg.params.join(" "), onChannelClick)}`;
 		}
 
 		if (!content) {
@@ -395,9 +389,11 @@ class LogLine extends Component {
 
 		return html`
 			<div class="logline ${lineClass}" data-key=${msg.key} role="listitem">
-				<${Timestamp} date=${new Date(msg.tags.time)} url=${getMessageURL(buf, msg, bouncerNetwork)}/>
-				${" "}
-				${content}
+				<${Timestamp}
+					date=${new Date(msg.tags.time)}
+					url=${getMessageURL(buf, msg, bouncerNetwork)}
+				/>
+				${" "} ${content}
 			</div>
 		`;
 	}
@@ -426,8 +422,11 @@ function createNickList(nicks, createNick) {
 
 class FoldGroup extends Component {
 	shouldComponentUpdate(nextProps) {
-		return this.props.messages[0] !== nextProps.messages[0] ||
-			this.props.messages[this.props.messages.length - 1] !== nextProps.messages[nextProps.messages.length - 1];
+		return (
+			this.props.messages[0] !== nextProps.messages[0] ||
+			this.props.messages[this.props.messages.length - 1] !==
+				nextProps.messages[nextProps.messages.length - 1]
+		);
 	}
 
 	render() {
@@ -449,10 +448,10 @@ class FoldGroup extends Component {
 		}
 
 		let byCommand = {
-			"JOIN": [],
-			"PART": [],
-			"QUIT": [],
-			"NICK": [],
+			JOIN: [],
+			PART: [],
+			QUIT: [],
+			NICK: [],
 		};
 		msgs.forEach((msg) => {
 			byCommand[msg.command].push(msg);
@@ -470,15 +469,15 @@ class FoldGroup extends Component {
 			let plural = nicks.size > 1;
 			let action;
 			switch (cmd) {
-			case "JOIN":
-				action = plural ? "have joined" : "has joined";
-				break;
-			case "PART":
-				action = plural ? "have left" : "has left";
-				break;
-			case "QUIT":
-				action = plural ? "have quit" : "has quit";
-				break;
+				case "JOIN":
+					action = plural ? "have joined" : "has joined";
+					break;
+				case "PART":
+					action = plural ? "have left" : "has left";
+					break;
+				case "QUIT":
+					action = plural ? "have quit" : "has quit";
+					break;
 			}
 
 			if (first) {
@@ -499,33 +498,25 @@ class FoldGroup extends Component {
 			}
 
 			let newNick = msg.params[0];
-			content.push(html`
-				${createNick(msg.prefix.name)} is now known as ${createNick(newNick)}
-			`);
+			content.push(html` ${createNick(msg.prefix.name)} is now known as ${createNick(newNick)} `);
 		});
 
 		let lastMsg = msgs[msgs.length - 1];
 		let firstDate = new Date(msgs[0].tags.time);
 		let lastDate = new Date(lastMsg.tags.time);
 		let timestamp = html`
-			<${Timestamp} date=${firstDate} url=${getMessageURL(buf, msgs[0], bouncerNetwork)}/>
+			<${Timestamp} date=${firstDate} url=${getMessageURL(buf, msgs[0], bouncerNetwork)} />
 		`;
 		if (lastDate - firstDate > 60 * 100) {
 			timestamp = [
 				timestamp,
 				" — ",
-				html`
-					<${Timestamp} date=${lastDate} url=${getMessageURL(buf, lastMsg, bouncerNetwork)}/>
-				`,
+				html` <${Timestamp} date=${lastDate} url=${getMessageURL(buf, lastMsg, bouncerNetwork)} /> `,
 			];
 		}
 
 		return html`
-			<div class="logline" data-key=${msgs[0].key} role="listitem">
-				${timestamp}
-				${" "}
-				${content}
-			</div>
+			<div class="logline" data-key=${msgs[0].key} role="listitem">${timestamp} ${" "} ${content}</div>
 		`;
 	}
 }
@@ -575,9 +566,10 @@ class NotificationNagger extends Component {
 
 		return html`
 			<div class="logline nag" role="listitem">
-				<${Timestamp}/>
+				<${Timestamp} />
 				${" "}
-				<a href="#" onClick=${this.handleClick}>Turn on desktop notifications</a> to get notified about new messages
+				<a href="#" onClick=${this.handleClick}>Turn on desktop notifications</a> to get notified
+				about new messages
 			</div>
 		`;
 	}
@@ -616,9 +608,10 @@ class ProtocolHandlerNagger extends Component {
 		let name = this.props.bouncerName || "this bouncer";
 		return html`
 			<div class="logline nag" role="listitem">
-				<${Timestamp}/>
+				<${Timestamp} />
 				${" "}
-				<a href="#" onClick=${this.handleClick}>Register our protocol handler</a> to open IRC links with ${name}
+				<a href="#" onClick=${this.handleClick}>Register our protocol handler</a> to open IRC links
+				with ${name}
 			</div>
 		`;
 	}
@@ -639,12 +632,13 @@ function AccountNagger({ server, onAuthClick, onRegisterClick }) {
 		onRegisterClick();
 	}
 
-	let msg = [html`
-		You are unauthenticated on this server,
-		${" "}
-		<a href="#" onClick=${handleAuthClick}>login</a>
-		${" "}
-	`];
+	let msg = [
+		html`
+			You are unauthenticated on this server, ${" "}
+			<a href="#" onClick=${handleAuthClick}>login</a>
+			${" "}
+		`,
+	];
 
 	if (server.supportsAccountRegistration) {
 		msg.push(html`or <a href="#" onClick=${handleRegisterClick}>register</a> ${accDesc}`);
@@ -652,11 +646,7 @@ function AccountNagger({ server, onAuthClick, onRegisterClick }) {
 		msg.push(html`if you have ${accDesc}`);
 	}
 
-	return html`
-		<div class="logline nag" role="listitem">
-			<${Timestamp}/> ${msg}
-		</div>
-	`;
+	return html` <div class="logline nag" role="listitem"><${Timestamp} /> ${msg}</div> `;
 }
 
 class DateSeparator extends Component {
@@ -671,11 +661,7 @@ class DateSeparator extends Component {
 	render() {
 		let date = this.props.date;
 		let text = date.toLocaleDateString([], { year: "numeric", month: "2-digit", day: "2-digit" });
-		return html`
-			<div class="separator date-separator" role="separator">
-				${text}
-			</div>
-		`;
+		return html` <div class="separator date-separator" role="separator">${text}</div> `;
 	}
 }
 
@@ -684,13 +670,16 @@ function UnreadSeparator(props) {
 }
 
 function sameDate(d1, d2) {
-	return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+	return (
+		d1.getFullYear() === d2.getFullYear() &&
+		d1.getMonth() === d2.getMonth() &&
+		d1.getDate() === d2.getDate()
+	);
 }
 
 export default class Buffer extends Component {
 	shouldComponentUpdate(nextProps) {
-		return this.props.buffer !== nextProps.buffer ||
-			this.props.settings !== nextProps.settings;
+		return this.props.buffer !== nextProps.buffer || this.props.settings !== nextProps.settings;
 	}
 
 	render() {
@@ -706,12 +695,17 @@ export default class Buffer extends Component {
 
 		let children = [];
 		if (buf.type === BufferType.SERVER) {
-			children.push(html`<${NotificationNagger}/>`);
+			children.push(html`<${NotificationNagger} />`);
 		}
 		if (buf.type === BufferType.SERVER && server.isBouncer && !server.bouncerNetID) {
-			children.push(html`<${ProtocolHandlerNagger} bouncerName=${serverName}/>`);
+			children.push(html`<${ProtocolHandlerNagger} bouncerName=${serverName} />`);
 		}
-		if (buf.type === BufferType.SERVER && server.status === ServerStatus.REGISTERED && server.supportsSASLPlain && !server.account) {
+		if (
+			buf.type === BufferType.SERVER &&
+			server.status === ServerStatus.REGISTERED &&
+			server.supportsSASLPlain &&
+			!server.account
+		) {
 			children.push(html`
 				<${AccountNagger}
 					server=${server}
@@ -747,24 +741,24 @@ export default class Buffer extends Component {
 			for (let msg of msgs) {
 				let keep = true;
 				switch (msg.command) {
-				case "PART":
-				case "QUIT":
-					nickChanges.delete(msg.prefix.name);
-					break;
-				case "NICK":
-					let prev = nickChanges.get(msg.prefix.name);
-					if (!prev) {
-						// Future NICK messages may mutate this one
-						msg = { ...msg };
-						nickChanges.set(msg.params[0], msg);
+					case "PART":
+					case "QUIT":
+						nickChanges.delete(msg.prefix.name);
 						break;
-					}
+					case "NICK":
+						let prev = nickChanges.get(msg.prefix.name);
+						if (!prev) {
+							// Future NICK messages may mutate this one
+							msg = { ...msg };
+							nickChanges.set(msg.params[0], msg);
+							break;
+						}
 
-					prev.params = msg.params;
-					nickChanges.delete(msg.prefix.name);
-					nickChanges.set(msg.params[0], prev);
-					keep = false;
-					break;
+						prev.params = msg.params;
+						nickChanges.delete(msg.prefix.name);
+						nickChanges.set(msg.params[0], prev);
+						keep = false;
+						break;
 				}
 				if (keep) {
 					mergedMsgs.push(msg);
@@ -827,14 +821,18 @@ export default class Buffer extends Component {
 				}
 			}
 
-			if (!hasUnreadSeparator && buf.type !== BufferType.SERVER && !isMessageBeforeReceipt(msg, buf.prevReadReceipt)) {
-				sep.push(html`<${UnreadSeparator} key="unread"/>`);
+			if (
+				!hasUnreadSeparator &&
+				buf.type !== BufferType.SERVER &&
+				!isMessageBeforeReceipt(msg, buf.prevReadReceipt)
+			) {
+				sep.push(html`<${UnreadSeparator} key="unread" />`);
 				hasUnreadSeparator = true;
 			}
 
 			let date = new Date(msg.tags.time);
 			if (!sameDate(prevDate, date)) {
-				sep.push(html`<${DateSeparator} key=${"date-" + date} date=${date}/>`);
+				sep.push(html`<${DateSeparator} key=${"date-" + date} date=${date} />`);
 			}
 			prevDate = date;
 
@@ -859,10 +857,6 @@ export default class Buffer extends Component {
 		});
 		children.push(createFoldGroup(foldMessages));
 
-		return html`
-			<div class="logline-list" role="list">
-				${children}
-			</div>
-		`;
+		return html` <div class="logline-list" role="list">${children}</div> `;
 	}
 }

@@ -1,5 +1,5 @@
-import * as irc from "../lib/irc.js";
-import { strip as stripANSI } from "../lib/ansi.js";
+import * as irc from "../lib/irc";
+import { strip as stripANSI } from "../lib/ansi";
 import { html } from "../lib/index.js";
 import Icon from "./icon.js";
 import { MessagesSquare, Server, User } from "../icons.js";
@@ -11,7 +11,8 @@ function BufferItem(props) {
 		props.onClick();
 	}
 	function handleMouseDown(event) {
-		if (event.button === 1) { // middle click
+		if (event.button === 1) {
+			// middle click
 			event.preventDefault();
 			props.onClose();
 		}
@@ -31,31 +32,31 @@ function BufferItem(props) {
 		classes.push("unread-" + props.buffer.unread);
 	}
 	switch (props.buffer.type) {
-	case BufferType.SERVER:
-		let isError = props.server.status === ServerStatus.DISCONNECTED;
-		if (props.bouncerNetwork && props.bouncerNetwork.error) {
-			isError = true;
-		}
-		if (isError) {
-			classes.push("error");
-		}
-		break;
-	case BufferType.NICK:
-		let user = props.server.users.get(name);
-		if (user && irc.isMeaningfulRealname(user.realname, name)) {
-			title = stripANSI(user.realname);
-		}
-		break;
+		case BufferType.SERVER:
+			let isError = props.server.status === ServerStatus.DISCONNECTED;
+			if (props.bouncerNetwork && props.bouncerNetwork.error) {
+				isError = true;
+			}
+			if (isError) {
+				classes.push("error");
+			}
+			break;
+		case BufferType.NICK:
+			let user = props.server.users.get(name);
+			if (user && irc.isMeaningfulRealname(user.realname, name)) {
+				title = stripANSI(user.realname);
+			}
+			break;
 	}
 
 	let icon = MessagesSquare;
 	switch (props.buffer.type) {
-	case BufferType.SERVER:
-		icon = Server;
-		break;
-	case BufferType.NICK:
-		icon = User;
-		break;
+		case BufferType.SERVER:
+			icon = Server;
+			break;
+		case BufferType.NICK:
+			icon = User;
+			break;
 	}
 
 	let unread = null;
@@ -71,7 +72,7 @@ function BufferItem(props) {
 				onClick=${handleClick}
 				onMouseDown=${handleMouseDown}
 			>
-				<${Icon} icon=${icon} class="buffer-icon"/>
+				<${Icon} icon=${icon} class="buffer-icon" />
 				<span class="buffer-name">${name}</span>
 				${unread}
 			</a>

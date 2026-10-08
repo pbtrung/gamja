@@ -107,14 +107,18 @@ export default class ConnectForm extends Component {
 		if (!this.props.connecting && this.props.error) {
 			status = html`
 				<div class="alert alert-danger d-flex gap-2 mt-3 mb-0" role="alert">
-					<${Icon} icon=${CircleAlert} class="flex-shrink-0 mt-1"/>
+					<${Icon} icon=${CircleAlert} class="flex-shrink-0 mt-1" />
 					<div class="text-break">${linkify(this.props.error)}</div>
 				</div>
 			`;
 		}
 
 		let auth = null;
-		if (this.props.auth !== "disabled" && this.props.auth !== "external" && this.props.auth !== "oauth2") {
+		if (
+			this.props.auth !== "disabled" &&
+			this.props.auth !== "external" &&
+			this.props.auth !== "oauth2"
+		) {
 			auth = html`
 				<div class="mb-3">
 					<label class="form-label" for="connect-password">Password</label>
@@ -152,7 +156,7 @@ export default class ConnectForm extends Component {
 			`;
 		}
 
-		let submitLabel = html`<${Icon} icon=${LogIn}/> Connect`;
+		let submitLabel = html`<${Icon} icon=${LogIn} /> Connect`;
 		if (this.props.connecting) {
 			submitLabel = html`
 				<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
@@ -161,11 +165,15 @@ export default class ConnectForm extends Component {
 		}
 
 		return html`
-			<form class="card connect-card shadow-sm" onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
+			<form
+				class="card connect-card shadow-sm"
+				onInput=${this.handleInput}
+				onSubmit=${this.handleSubmit}
+			>
 				<div class="card-body p-4">
 					<div class="text-center mb-4">
 						<div class="connect-logo mb-3">
-							<${Icon} icon=${MessageSquareText} size="2rem"/>
+							<${Icon} icon=${MessageSquareText} size="2rem" />
 						</div>
 						<h1 class="h4 mb-1">Connect to IRC</h1>
 						<p class="text-body-secondary small mb-0">Pick a nickname to get started</p>
@@ -186,9 +194,7 @@ export default class ConnectForm extends Component {
 						/>
 					</div>
 
-					${auth}
-
-					${autojoin}
+					${auth} ${autojoin}
 
 					<div class="form-check mb-3">
 						<input
@@ -204,7 +210,7 @@ export default class ConnectForm extends Component {
 
 					<details class="advanced-options mb-3">
 						<summary role="button">
-							<${Icon} icon=${ChevronRight} class="chevron"/> Advanced options
+							<${Icon} icon=${ChevronRight} class="chevron" /> Advanced options
 						</summary>
 
 						<div class="pt-3">
@@ -251,7 +257,10 @@ export default class ConnectForm extends Component {
 						</div>
 					</details>
 
-					<button class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2" disabled=${disabled}>
+					<button
+						class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2"
+						disabled=${disabled}
+					>
 						${submitLabel}
 					</button>
 

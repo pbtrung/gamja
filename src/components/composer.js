@@ -7,7 +7,7 @@ function encodeContentDisposition(filename) {
 	// encodeURIComponent will percent-encode a superset of attr-char.
 	let encodedFilename = encodeURIComponent(filename);
 	if (encodedFilename === filename) {
-		return "attachment; filename=\"" + filename + "\"";
+		return 'attachment; filename="' + filename + '"';
 	} else {
 		return "attachment; filename*=UTF-8''" + encodedFilename;
 	}
@@ -74,7 +74,11 @@ export default class Composer extends Component {
 		let carretPos = input.selectionStart;
 		let text = this.state.text;
 		let autocomplete;
-		if (this.lastAutocomplete && this.lastAutocomplete.text === text && this.lastAutocomplete.carretPos === carretPos) {
+		if (
+			this.lastAutocomplete &&
+			this.lastAutocomplete.text === text &&
+			this.lastAutocomplete.carretPos === carretPos
+		) {
 			autocomplete = this.lastAutocomplete;
 		} else {
 			this.lastAutocomplete = null;
@@ -304,11 +308,11 @@ export default class Composer extends Component {
 		// If an <input> or <button> is focused, ignore.
 		if (document.activeElement && document.activeElement !== document.body) {
 			switch (document.activeElement.tagName.toLowerCase()) {
-			case "section":
-			case "a":
-				break;
-			default:
-				return;
+				case "section":
+				case "a":
+					break;
+				default:
+					return;
 			}
 		}
 
@@ -412,18 +416,21 @@ export default class Composer extends Component {
 		let fileInput = null;
 		if (this.canUploadFiles()) {
 			uploadButtons = html`
-				${this.state.uploading && html`
-					<button
-						type="button"
-						id="composer-spinner"
-						title="Cancel upload"
-						aria-label="Cancel upload"
-						onClick=${this.handleCancelClick}
-					>
-						<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-						<${Icon} icon=${X} class="x-icon"/>
-					</button>
-				`}
+				${
+					this.state.uploading &&
+					html`
+						<button
+							type="button"
+							id="composer-spinner"
+							title="Cancel upload"
+							aria-label="Cancel upload"
+							onClick=${this.handleCancelClick}
+						>
+							<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+							<${Icon} icon=${X} class="x-icon" />
+						</button>
+					`
+				}
 				<button
 					type="button"
 					id="composer-upload"
@@ -431,7 +438,7 @@ export default class Composer extends Component {
 					aria-label="Upload file"
 					onClick=${this.handleUploadClick}
 				>
-					<${Icon} icon=${Paperclip}/>
+					<${Icon} icon=${Paperclip} />
 				</button>
 			`;
 			fileInput = html`
@@ -475,7 +482,7 @@ export default class Composer extends Component {
 					<div id="composer-buttons">
 						${uploadButtons}
 						<button type="submit" id="composer-send" title="Send" aria-label="Send">
-							<${Icon} icon=${SendHorizontal}/>
+							<${Icon} icon=${SendHorizontal} />
 						</button>
 					</div>
 				</div>

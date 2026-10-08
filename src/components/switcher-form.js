@@ -1,6 +1,6 @@
 import { html, Component } from "../lib/index.js";
 import { BufferType, getBufferURL, getServerName } from "../state.js";
-import * as irc from "../lib/irc.js";
+import * as irc from "../lib/irc";
 import Icon from "./icon.js";
 import { MessagesSquare, Search, User } from "../icons.js";
 
@@ -31,7 +31,7 @@ class SwitcherItem extends Component {
 				aria-current=${this.props.selected ? "true" : null}
 				onClick=${this.handleClick}
 			>
-				<${Icon} icon=${icon} class="flex-shrink-0 opacity-75"/>
+				<${Icon} icon=${icon} class="flex-shrink-0 opacity-75" />
 				<span class="text-truncate">${this.props.buffer.name}</span>
 				<span class="server ms-auto small text-truncate">
 					${getServerName(this.props.server, this.props.bouncerNetwork)}
@@ -48,15 +48,15 @@ function matchString(s, query) {
 function matchBuffer(buf, server, query) {
 	let score = 2 * matchString(buf.name, query);
 	switch (buf.type) {
-	case BufferType.CHANNEL:
-		score += matchString(buf.topic || "", query);
-		break;
-	case BufferType.NICK:
-		let user = server.users.get(buf.name);
-		if (user && user.realname && irc.isMeaningfulRealname(user.realname, buf.name)) {
-			score += matchString(user.realname, query);
-		}
-		break;
+		case BufferType.CHANNEL:
+			score += matchString(buf.topic || "", query);
+			break;
+		case BufferType.NICK:
+			let user = server.users.get(buf.name);
+			if (user && user.realname && irc.isMeaningfulRealname(user.realname, buf.name)) {
+				score += matchString(user.realname, query);
+			}
+			break;
 	}
 	return score;
 }
@@ -115,14 +115,14 @@ export default class SwitcherForm extends Component {
 
 	handleKeyDown(event) {
 		switch (event.key) {
-		case "ArrowUp":
-			event.stopPropagation();
-			this.move(-1);
-			break;
-		case "ArrowDown":
-			event.stopPropagation();
-			this.move(1);
-			break;
+			case "ArrowUp":
+				event.stopPropagation();
+				this.move(-1);
+				break;
+			case "ArrowDown":
+				event.stopPropagation();
+				this.move(1);
+				break;
 		}
 	}
 
@@ -156,13 +156,9 @@ export default class SwitcherForm extends Component {
 		});
 
 		return html`
-			<form
-				onInput=${this.handleInput}
-				onSubmit=${this.handleSubmit}
-				onKeyDown=${this.handleKeyDown}
-			>
+			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit} onKeyDown=${this.handleKeyDown}>
 				<div class="input-group mb-3">
-					<span class="input-group-text"><${Icon} icon=${Search}/></span>
+					<span class="input-group-text"><${Icon} icon=${Search} /></span>
 					<input
 						type="search"
 						class="form-control"
@@ -174,9 +170,7 @@ export default class SwitcherForm extends Component {
 						autofocus
 					/>
 				</div>
-				<div class="list-group switcher-list">
-					${items}
-				</div>
+				<div class="list-group switcher-list">${items}</div>
 			</form>
 		`;
 	}

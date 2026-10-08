@@ -16,33 +16,36 @@ export const keybindings = [
 		altKey: true,
 		description: "Mark all messages as read",
 		execute: (app) => {
-			app.setState((state) => {
-				let buffers = new Map();
-				state.buffers.forEach((buf) => {
-					buffers.set(buf.id, {
-						...buf,
-						unread: Unread.NONE,
-						prevReadReceipt: null,
-					});
+			app.setState(
+				(state) => {
+					let buffers = new Map();
+					state.buffers.forEach((buf) => {
+						buffers.set(buf.id, {
+							...buf,
+							unread: Unread.NONE,
+							prevReadReceipt: null,
+						});
 
-					let receipts = {};
-					if (buf.messages.length > 0) {
-						let lastMsg = buf.messages[buf.messages.length - 1];
-						receipts[ReceiptType.READ] = receiptFromMessage(lastMsg);
-					}
+						let receipts = {};
+						if (buf.messages.length > 0) {
+							let lastMsg = buf.messages[buf.messages.length - 1];
+							receipts[ReceiptType.READ] = receiptFromMessage(lastMsg);
+						}
 
-					let client = app.clients.get(buf.server);
-					app.bufferStore.put({
-						name: buf.name,
-						server: client.params,
-						unread: Unread.NONE,
-						receipts,
+						let client = app.clients.get(buf.server);
+						app.bufferStore.put({
+							name: buf.name,
+							server: client.params,
+							unread: Unread.NONE,
+							receipts,
+						});
 					});
-				});
-				return { buffers };
-			}, () => {
-				app.updateDocumentTitle();
-			});
+					return { buffers };
+				},
+				() => {
+					app.updateDocumentTitle();
+				},
+			);
 		},
 	},
 	{

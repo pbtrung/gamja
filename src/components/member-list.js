@@ -1,8 +1,8 @@
 import { html, Component } from "../lib/index.js";
-import { strip as stripANSI } from "../lib/ansi.js";
+import { strip as stripANSI } from "../lib/ansi";
 import Membership from "./membership.js";
 import { getNickColorIndex } from "./buffer.js";
-import * as irc from "../lib/irc.js";
+import * as irc from "../lib/irc";
 
 class MemberItem extends Component {
 	constructor(props) {
@@ -12,9 +12,11 @@ class MemberItem extends Component {
 	}
 
 	shouldComponentUpdate(nextProps) {
-		return this.props.nick !== nextProps.nick
-			|| this.props.membership !== nextProps.membership
-			|| this.props.user !== nextProps.user;
+		return (
+			this.props.nick !== nextProps.nick ||
+			this.props.membership !== nextProps.membership ||
+			this.props.user !== nextProps.user
+		);
 	}
 
 	handleClick(event) {
@@ -59,15 +61,12 @@ class MemberItem extends Component {
 
 		return html`
 			<li>
-				<a
-					href=${url}
-					class=${classes.join(" ")}
-					title=${title}
-					onClick=${this.handleClick}
-				>
-					<span class="member-avatar nick-${getNickColorIndex(this.props.nick)}" aria-hidden="true">${this.props.nick.charAt(0)}</span>
+				<a href=${url} class=${classes.join(" ")} title=${title} onClick=${this.handleClick}>
+					<span class="member-avatar nick-${getNickColorIndex(this.props.nick)}" aria-hidden="true"
+						>${this.props.nick.charAt(0)}</span
+					>
 					<span class="member-nick">
-						<${Membership} value=${this.props.membership}/>${this.props.nick}
+						<${Membership} value=${this.props.membership} />${this.props.nick}
 					</span>
 				</a>
 			</li>
@@ -76,10 +75,12 @@ class MemberItem extends Component {
 }
 
 function sortMembers(a, b) {
-	let [nickA, membA] = a, [nickB, membB] = b;
+	let [nickA, membA] = a,
+		[nickB, membB] = b;
 
 	const prefixPrivs = ["~", "&", "@", "%", "+"]; // TODO: grab it from ISUPPORT PREFIX
-	let i = prefixPrivs.indexOf(membA[0]), j = prefixPrivs.indexOf(membB[0]);
+	let i = prefixPrivs.indexOf(membA[0]),
+		j = prefixPrivs.indexOf(membB[0]);
 	if (i < 0) {
 		i = prefixPrivs.length;
 	}
@@ -95,23 +96,26 @@ function sortMembers(a, b) {
 
 export default class MemberList extends Component {
 	shouldComponentUpdate(nextProps) {
-		return this.props.members !== nextProps.members
-			|| this.props.users !== nextProps.users;
+		return this.props.members !== nextProps.members || this.props.users !== nextProps.users;
 	}
 
 	render() {
 		return html`
 			<ul class="member-items">
-				${Array.from(this.props.members).sort(sortMembers).map(([nick, membership]) => html`
-					<${MemberItem}
-						key=${nick}
-						nick=${nick}
-						membership=${membership}
-						user=${this.props.users.get(nick)}
-						bouncerNetwork=${this.props.bouncerNetwork}
-						onClick=${() => this.props.onNickClick(nick)}
-					/>
-				`)}
+				${Array.from(this.props.members)
+					.sort(sortMembers)
+					.map(
+						([nick, membership]) => html`
+							<${MemberItem}
+								key=${nick}
+								nick=${nick}
+								membership=${membership}
+								user=${this.props.users.get(nick)}
+								bouncerNetwork=${this.props.bouncerNetwork}
+								onClick=${() => this.props.onNickClick(nick)}
+							/>
+						`,
+					)}
 			</ul>
 		`;
 	}

@@ -44,7 +44,14 @@ export default class RegisterForm extends Component {
 
 				<div class="mb-3">
 					<label class="form-label" for="register-password">Password</label>
-					<input type="password" class="form-control" id="register-password" name="password" value=${this.state.password} required/>
+					<input
+						type="password"
+						class="form-control"
+						id="register-password"
+						name="password"
+						value=${this.state.password}
+						required
+					/>
 				</div>
 
 				<div class="dialog-actions">

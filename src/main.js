@@ -15,4 +15,4 @@ function updateTheme() {
 updateTheme();
 darkMode.addEventListener("change", updateTheme);
 
-render(html`<${App}/>`, document.body);
+render(html`<${App} />`, document.body);

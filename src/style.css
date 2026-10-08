@@ -20,11 +20,14 @@
 	--gamja-me-tell-color: var(--bs-warning-text-emphasis);
 	--gamja-chat-font-size: 0.9375rem;
 
-	--bs-font-sans-serif: "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	--bs-font-sans-serif:
+		"Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Use Inter for code and key names too, everything but the MOTD */
-code, kbd, samp {
+code,
+kbd,
+samp {
 	font-family: inherit;
 }
 
@@ -32,7 +35,8 @@ html {
 	scrollbar-color: rgba(var(--bs-emphasis-color-rgb), 0.25) transparent;
 }
 
-html, body {
+html,
+body {
 	height: 100%;
 	padding: 0;
 	margin: 0;
@@ -66,7 +70,8 @@ noscript {
 
 /* Sidebars */
 
-#buffer-list, #member-list {
+#buffer-list,
+#member-list {
 	display: flex;
 	flex-direction: row;
 	height: 100%;
@@ -85,7 +90,8 @@ noscript {
 	border-left: var(--bs-border-width) solid var(--bs-border-color);
 }
 
-.buffer-list-panel, .member-list-panel {
+.buffer-list-panel,
+.member-list-panel {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
@@ -100,7 +106,8 @@ noscript {
 	width: var(--gamja-member-list-width);
 }
 
-.sidebar-brand, #member-list-header {
+.sidebar-brand,
+#member-list-header {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -129,7 +136,8 @@ noscript {
 	color: var(--bs-emphasis-color);
 }
 
-.buffer-items, .member-items {
+.buffer-items,
+.member-items {
 	list-style-type: none;
 	margin: 0;
 	padding: 0.5rem;
@@ -140,7 +148,8 @@ noscript {
 	scrollbar-width: thin;
 }
 
-.buffer-items li a, .member-items li a {
+.buffer-items li a,
+.member-items li a {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -151,10 +160,13 @@ noscript {
 	text-decoration: none;
 	font-size: 0.9rem;
 	line-height: 1.4;
-	transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+	transition:
+		background-color 0.1s ease-in-out,
+		color 0.1s ease-in-out;
 }
 
-.buffer-items li a:hover, .member-items li a:hover {
+.buffer-items li a:hover,
+.member-items li a:hover {
 	background-color: var(--gamja-item-hover-bg);
 	color: var(--bs-emphasis-color);
 }
@@ -248,7 +260,8 @@ li.unread-highlight .unread-indicator {
 	white-space: nowrap;
 }
 
-.membership { /* fallback */
+.membership {
+	/* fallback */
 	color: var(--bs-purple);
 }
 .membership.owner {
@@ -445,7 +458,9 @@ li.unread-highlight .unread-indicator {
 	background-color: var(--gamja-item-hover-bg);
 }
 
-#buffer .talk, #buffer .motd, #buffer .nag {
+#buffer .talk,
+#buffer .motd,
+#buffer .nag {
 	color: var(--bs-body-color);
 }
 
@@ -489,7 +504,8 @@ a {
 	color: var(--bs-link-color);
 }
 
-a.timestamp, a.nick {
+a.timestamp,
+a.nick {
 	text-decoration: none;
 }
 
@@ -507,8 +523,10 @@ a.nick {
 	font-variant-numeric: tabular-nums;
 }
 
-a.timestamp:hover, a.timestamp:active,
-a.nick:hover, a.nick:active {
+a.timestamp:hover,
+a.timestamp:active,
+a.nick:hover,
+a.nick:active {
 	text-decoration: underline;
 }
 
@@ -524,7 +542,8 @@ a.nick:hover, a.nick:active {
 	letter-spacing: 0.04em;
 	user-select: none;
 }
-#buffer .separator::before, #buffer .separator::after {
+#buffer .separator::before,
+#buffer .separator::after {
 	content: "";
 	flex: 1;
 	border-bottom: var(--bs-border-width) solid var(--bs-border-color);
@@ -535,47 +554,112 @@ a.nick:hover, a.nick:active {
 #buffer .unread-separator {
 	color: var(--bs-danger);
 }
-#buffer .unread-separator::before, #buffer .unread-separator::after {
+#buffer .unread-separator::before,
+#buffer .unread-separator::after {
 	border-color: var(--bs-danger);
 }
 
 /* Nick colors, light theme */
 
-.nick-1 { --nick-color: #d9540b; }
-.nick-2 { --nick-color: #c92f0f; }
-.nick-3 { --nick-color: #c96d0a; }
-.nick-4 { --nick-color: #8a7f00; }
-.nick-5 { --nick-color: #5e8a1f; }
-.nick-6 { --nick-color: #3a8a34; }
-.nick-7 { --nick-color: #287e52; }
-.nick-8 { --nick-color: #117873; }
-.nick-9 { --nick-color: #0077a0; }
-.nick-10 { --nick-color: #2a6596; }
-.nick-11 { --nick-color: #385189; }
-.nick-12 { --nick-color: #4f4a8c; }
-.nick-13 { --nick-color: #6a4589; }
-.nick-14 { --nick-color: #8a3f8a; }
-.nick-15 { --nick-color: #d0226f; }
-.nick-16 { --nick-color: #d21f35; }
+.nick-1 {
+	--nick-color: #d9540b;
+}
+.nick-2 {
+	--nick-color: #c92f0f;
+}
+.nick-3 {
+	--nick-color: #c96d0a;
+}
+.nick-4 {
+	--nick-color: #8a7f00;
+}
+.nick-5 {
+	--nick-color: #5e8a1f;
+}
+.nick-6 {
+	--nick-color: #3a8a34;
+}
+.nick-7 {
+	--nick-color: #287e52;
+}
+.nick-8 {
+	--nick-color: #117873;
+}
+.nick-9 {
+	--nick-color: #0077a0;
+}
+.nick-10 {
+	--nick-color: #2a6596;
+}
+.nick-11 {
+	--nick-color: #385189;
+}
+.nick-12 {
+	--nick-color: #4f4a8c;
+}
+.nick-13 {
+	--nick-color: #6a4589;
+}
+.nick-14 {
+	--nick-color: #8a3f8a;
+}
+.nick-15 {
+	--nick-color: #d0226f;
+}
+.nick-16 {
+	--nick-color: #d21f35;
+}
 
 /* Nick colors, dark theme */
 
-[data-bs-theme="dark"] .nick-1 { --nick-color: #f6844a; }
-[data-bs-theme="dark"] .nick-2 { --nick-color: #f2694d; }
-[data-bs-theme="dark"] .nick-3 { --nick-color: #fbab4f; }
-[data-bs-theme="dark"] .nick-4 { --nick-color: #d6cb3c; }
-[data-bs-theme="dark"] .nick-5 { --nick-color: #a5d65e; }
-[data-bs-theme="dark"] .nick-6 { --nick-color: #78c871; }
-[data-bs-theme="dark"] .nick-7 { --nick-color: #5bc48d; }
-[data-bs-theme="dark"] .nick-8 { --nick-color: #6bccc7; }
-[data-bs-theme="dark"] .nick-9 { --nick-color: #4fc0e3; }
-[data-bs-theme="dark"] .nick-10 { --nick-color: #6fa6d6; }
-[data-bs-theme="dark"] .nick-11 { --nick-color: #9fb0e4; }
-[data-bs-theme="dark"] .nick-12 { --nick-color: #a9a5ef; }
-[data-bs-theme="dark"] .nick-13 { --nick-color: #bb8fe0; }
-[data-bs-theme="dark"] .nick-14 { --nick-color: #d98fd9; }
-[data-bs-theme="dark"] .nick-15 { --nick-color: #f067a6; }
-[data-bs-theme="dark"] .nick-16 { --nick-color: #f5667a; }
+[data-bs-theme="dark"] .nick-1 {
+	--nick-color: #f6844a;
+}
+[data-bs-theme="dark"] .nick-2 {
+	--nick-color: #f2694d;
+}
+[data-bs-theme="dark"] .nick-3 {
+	--nick-color: #fbab4f;
+}
+[data-bs-theme="dark"] .nick-4 {
+	--nick-color: #d6cb3c;
+}
+[data-bs-theme="dark"] .nick-5 {
+	--nick-color: #a5d65e;
+}
+[data-bs-theme="dark"] .nick-6 {
+	--nick-color: #78c871;
+}
+[data-bs-theme="dark"] .nick-7 {
+	--nick-color: #5bc48d;
+}
+[data-bs-theme="dark"] .nick-8 {
+	--nick-color: #6bccc7;
+}
+[data-bs-theme="dark"] .nick-9 {
+	--nick-color: #4fc0e3;
+}
+[data-bs-theme="dark"] .nick-10 {
+	--nick-color: #6fa6d6;
+}
+[data-bs-theme="dark"] .nick-11 {
+	--nick-color: #9fb0e4;
+}
+[data-bs-theme="dark"] .nick-12 {
+	--nick-color: #a9a5ef;
+}
+[data-bs-theme="dark"] .nick-13 {
+	--nick-color: #bb8fe0;
+}
+[data-bs-theme="dark"] .nick-14 {
+	--nick-color: #d98fd9;
+}
+[data-bs-theme="dark"] .nick-15 {
+	--nick-color: #f067a6;
+}
+[data-bs-theme="dark"] .nick-16 {
+	--nick-color: #f5667a;
+}
 
 #buffer a.nick[class*="nick-"] {
 	color: var(--nick-color);
@@ -616,7 +700,9 @@ a.nick:hover, a.nick:active {
 	border: var(--bs-border-width) solid var(--bs-border-color);
 	border-radius: var(--bs-border-radius-lg);
 	background-color: var(--bs-body-bg);
-	transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+	transition:
+		border-color 0.15s ease-in-out,
+		box-shadow 0.15s ease-in-out;
 }
 
 .composer-box:focus-within {
@@ -664,7 +750,9 @@ a.nick:hover, a.nick:active {
 	color: var(--bs-secondary-color);
 	font-size: 1.125rem;
 	cursor: pointer;
-	transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+	transition:
+		background-color 0.15s ease-in-out,
+		color 0.15s ease-in-out;
 }
 
 #composer-buttons button:hover {
@@ -846,7 +934,8 @@ kbd {
 
 @media (max-width: 640px) {
 	/* Side panes are opened from the buffer header instead */
-	#buffer-list:not(.expand), #member-list:not(.expand) {
+	#buffer-list:not(.expand),
+	#member-list:not(.expand) {
 		display: none;
 	}
 
@@ -870,13 +959,15 @@ kbd {
 		display: inline-flex;
 	}
 
-	#buffer-list.expand, #member-list.expand {
+	#buffer-list.expand,
+	#member-list.expand {
 		z-index: 999;
 		grid-column: 1 / 4;
 		box-shadow: var(--bs-box-shadow-lg);
 	}
 
-	#buffer-list.expand, #member-list.expand {
+	#buffer-list.expand,
+	#member-list.expand {
 		border: none;
 	}
 
@@ -896,7 +987,8 @@ kbd {
 }
 
 @media (pointer: none), (pointer: coarse) {
-	.buffer-items li a, .member-items li a {
+	.buffer-items li a,
+	.member-items li a {
 		padding-top: 0.5rem;
 		padding-bottom: 0.5rem;
 	}

@@ -68,9 +68,7 @@ export default class Dialog extends Component {
 								aria-label="Close"
 							></button>
 						</div>
-						<div class="modal-body">
-							${this.props.children}
-						</div>
+						<div class="modal-body">${this.props.children}</div>
 					</div>
 				</div>
 			</div>

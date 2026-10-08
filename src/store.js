@@ -1,5 +1,5 @@
 import { ReceiptType, Unread } from "./state.js";
-import debounce from "./lib/debounce.js";
+import debounce from "./lib/debounce";
 
 const PREFIX = "gamja_";
 

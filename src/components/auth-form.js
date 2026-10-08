@@ -34,12 +34,27 @@ export default class NetworkForm extends Component {
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
 				<div class="mb-3">
 					<label class="form-label" for="auth-username">Username</label>
-					<input type="username" class="form-control" id="auth-username" name="username" value=${this.state.username} required/>
+					<input
+						type="username"
+						class="form-control"
+						id="auth-username"
+						name="username"
+						value=${this.state.username}
+						required
+					/>
 				</div>
 
 				<div class="mb-3">
 					<label class="form-label" for="auth-password">Password</label>
-					<input type="password" class="form-control" id="auth-password" name="password" value=${this.state.password} required autofocus/>
+					<input
+						type="password"
+						class="form-control"
+						id="auth-password"
+						name="password"
+						value=${this.state.password}
+						required
+						autofocus
+					/>
 				</div>
 
 				<div class="dialog-actions">

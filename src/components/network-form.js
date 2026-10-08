@@ -65,8 +65,12 @@ export default class NetworkForm extends Component {
 		let removeNetwork = null;
 		if (!this.props.isNew) {
 			removeNetwork = html`
-				<button type="button" class="btn btn-outline-danger me-auto" onClick=${() => this.props.onRemove()}>
-					<${Icon} icon=${Trash}/> Remove network
+				<button
+					type="button"
+					class="btn btn-outline-danger me-auto"
+					onClick=${() => this.props.onRemove()}
+				>
+					<${Icon} icon=${Trash} /> Remove network
 				</button>
 			`;
 		}
@@ -93,40 +97,85 @@ export default class NetworkForm extends Component {
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
 				<div class="mb-3">
 					<label class="form-label" for="network-host">Hostname</label>
-					<input type="text" class="form-control" id="network-host" name="host" value=${this.state.host} autofocus required/>
+					<input
+						type="text"
+						class="form-control"
+						id="network-host"
+						name="host"
+						value=${this.state.host}
+						autofocus
+						required
+					/>
 				</div>
 
 				${autojoin}
 
 				<details class="advanced-options">
 					<summary role="button">
-						<${Icon} icon=${ChevronRight} class="chevron"/> Advanced options
+						<${Icon} icon=${ChevronRight} class="chevron" /> Advanced options
 					</summary>
 
 					<div class="pt-3">
 						<div class="mb-3">
 							<label class="form-label" for="network-port">Port</label>
-							<input type="number" class="form-control" id="network-port" name="port" value=${this.state.port}/>
+							<input
+								type="number"
+								class="form-control"
+								id="network-port"
+								name="port"
+								value=${this.state.port}
+							/>
 						</div>
 						<div class="mb-3">
 							<label class="form-label" for="network-name">Network name</label>
-							<input type="text" class="form-control" id="network-name" name="name" value=${this.state.name}/>
+							<input
+								type="text"
+								class="form-control"
+								id="network-name"
+								name="name"
+								value=${this.state.name}
+							/>
 						</div>
 						<div class="mb-3">
 							<label class="form-label" for="network-nickname">Nickname</label>
-							<input type="username" class="form-control" id="network-nickname" name="nickname" value=${this.state.nickname}/>
+							<input
+								type="username"
+								class="form-control"
+								id="network-nickname"
+								name="nickname"
+								value=${this.state.nickname}
+							/>
 						</div>
 						<div class="mb-3">
 							<label class="form-label" for="network-username">Username</label>
-							<input type="username" class="form-control" id="network-username" name="username" value=${this.state.username}/>
+							<input
+								type="username"
+								class="form-control"
+								id="network-username"
+								name="username"
+								value=${this.state.username}
+							/>
 						</div>
 						<div class="mb-3">
 							<label class="form-label" for="network-realname">Real name</label>
-							<input type="text" class="form-control" id="network-realname" name="realname" value=${this.state.realname}/>
+							<input
+								type="text"
+								class="form-control"
+								id="network-realname"
+								name="realname"
+								value=${this.state.realname}
+							/>
 						</div>
 						<div class="mb-3">
 							<label class="form-label" for="network-pass">Server password</label>
-							<input type="password" class="form-control" id="network-pass" name="pass" value=${this.state.pass} placeholder="None"/>
+							<input
+								type="password"
+								class="form-control"
+								id="network-pass"
+								name="pass"
+								value=${this.state.pass}
+								placeholder="None"
+							/>
 						</div>
 					</div>
 				</details>

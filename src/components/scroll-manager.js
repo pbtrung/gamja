@@ -1,5 +1,5 @@
 import { Component } from "../lib/index.js";
-import debounce from "../lib/debounce.js";
+import debounce from "../lib/debounce";
 
 let store = new Map();
 
@@ -47,7 +47,7 @@ export default class ScrollManager extends Component {
 		if (!stickToKey) {
 			target.firstChild.scrollIntoView({ block: "end" });
 		} else {
-			let stickTo = target.querySelector("[data-key=\"" + stickToKey + "\"]");
+			let stickTo = target.querySelector('[data-key="' + stickToKey + '"]');
 			if (stickTo) {
 				stickTo.scrollIntoView();
 			}

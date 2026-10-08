@@ -47,12 +47,9 @@ export default function linkify(text, onClick) {
 		children.push(prefix);
 
 		children.push(html`
-			<a
-				href=${match.href}
-				target="_blank"
-				rel="noreferrer noopener"
-				onClick=${onClick}
-			>${match.value}</a>
+			<a href=${match.href} target="_blank" rel="noreferrer noopener" onClick=${onClick}
+				>${match.value}</a
+			>
 		`);
 
 		last = match.end;

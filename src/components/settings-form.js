@@ -45,10 +45,14 @@ export default class SettingsForm extends Component {
 			protocolHandler = html`
 				<div class="protocol-handler card card-body bg-body-tertiary border-0 mb-3">
 					<div class="small">
-						Set gamja as your default IRC client for this browser.
-						IRC links will be automatically opened here.
+						Set gamja as your default IRC client for this browser. IRC links will be automatically
+						opened here.
 					</div>
-					<button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0" onClick=${() => this.registerProtocol()}>
+					<button
+						type="button"
+						class="btn btn-sm btn-outline-primary flex-shrink-0"
+						onClick=${() => this.registerProtocol()}
+					>
 						Enable
 					</button>
 				</div>
@@ -67,7 +71,9 @@ export default class SettingsForm extends Component {
 							name="secondsInTimestamps"
 							checked=${this.state.secondsInTimestamps}
 						/>
-						<label class="form-check-label" for="settings-seconds">Show seconds in time indicator</label>
+						<label class="form-check-label" for="settings-seconds"
+							>Show seconds in time indicator</label
+						>
 					</div>
 					<div class="form-check">
 						<input
@@ -92,7 +98,9 @@ export default class SettingsForm extends Component {
 							value="fold"
 							checked=${this.state.bufferEvents === "fold"}
 						/>
-						<label class="form-check-label" for="settings-events-fold">Show and fold chat events</label>
+						<label class="form-check-label" for="settings-events-fold"
+							>Show and fold chat events</label
+						>
 					</div>
 					<div class="form-check">
 						<input
@@ -103,7 +111,9 @@ export default class SettingsForm extends Component {
 							value="expand"
 							checked=${this.state.bufferEvents === "expand"}
 						/>
-						<label class="form-check-label" for="settings-events-expand">Show and expand chat events</label>
+						<label class="form-check-label" for="settings-events-expand"
+							>Show and expand chat events</label
+						>
 					</div>
 					<div class="form-check">
 						<input
@@ -121,12 +131,14 @@ export default class SettingsForm extends Component {
 				${protocolHandler}
 
 				<div class="dialog-actions">
-					<button type="button" class="btn btn-outline-danger me-auto" onClick=${() => this.props.onDisconnect()}>
-						<${Icon} icon=${LogOut}/> Disconnect
+					<button
+						type="button"
+						class="btn btn-outline-danger me-auto"
+						onClick=${() => this.props.onDisconnect()}
+					>
+						<${Icon} icon=${LogOut} /> Disconnect
 					</button>
-					<button class="btn btn-primary">
-						Close
-					</button>
+					<button class="btn btn-primary">Close</button>
 				</div>
 			</form>
 		`;

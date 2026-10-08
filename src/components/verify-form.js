@@ -28,13 +28,25 @@ export default class RegisterForm extends Component {
 	render() {
 		return html`
 			<form onInput=${this.handleInput} onSubmit=${this.handleSubmit}>
-				<p>Your account <strong>${this.props.account}</strong> has been created, but a verification code is required to complete the registration.</p>
+				<p>
+					Your account <strong>${this.props.account}</strong> has been created, but a verification
+					code is required to complete the registration.
+				</p>
 
 				<p class="text-body-secondary">${linkify(this.props.message)}</p>
 
 				<div class="mb-3">
 					<label class="form-label" for="verify-code">Verification code</label>
-					<input type="text" class="form-control" id="verify-code" name="code" value=${this.state.code} required autofocus autocomplete="off"/>
+					<input
+						type="text"
+						class="form-control"
+						id="verify-code"
+						name="code"
+						value=${this.state.code}
+						required
+						autofocus
+						autocomplete="off"
+					/>
 				</div>
 
 				<div class="dialog-actions">

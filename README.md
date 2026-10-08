@@ -23,6 +23,14 @@ Chat:
 
     GAMJA_IRC_SERVER=irc.libera.chat npm run dev
 
+### Checks
+
+    npm run typecheck   # TypeScript
+    npm run lint        # ESLint
+    npm run format      # Prettier
+    npm test            # Vitest
+    npm run check       # all of the above
+
 ## Configuration
 
 gamja can be configured via a [configuration file] and via [URL parameters].
