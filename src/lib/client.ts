@@ -1001,6 +1001,8 @@ export default class Client extends EventTarget {
 				}
 				if (isError) {
 					removeEventListeners();
+					// Reported by whoever made the request, not as a generic error
+					msg.internal = true;
 					reject(
 						msg.command === "ACK"
 							? new Error(`No reply from the server to ${cmd}`)
@@ -1228,6 +1230,25 @@ export default class Client extends EventTarget {
 				return msg.params[1];
 			}
 		});
+	}
+
+	/** Change a bouncer network's attributes, rejects with soju's error. */
+	changeBouncerNetwork(id: string, attrs: BouncerNetworkAttrs): Promise<void> {
+		const msg = { command: "BOUNCER", params: ["CHANGENETWORK", id, irc.formatTags(attrs)] };
+		return this.roundtrip(msg, (msg) => {
+			if (msg.command === "BOUNCER" && msg.params[0] === "CHANGENETWORK" && msg.params[1] === id) {
+				return true;
+			}
+		}).then(() => {});
+	}
+
+	deleteBouncerNetwork(id: string): Promise<void> {
+		const msg = { command: "BOUNCER", params: ["DELNETWORK", id] };
+		return this.roundtrip(msg, (msg) => {
+			if (msg.command === "BOUNCER" && msg.params[0] === "DELNETWORK" && msg.params[1] === id) {
+				return true;
+			}
+		}).then(() => {});
 	}
 
 	registerAccount(

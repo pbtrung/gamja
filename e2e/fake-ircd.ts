@@ -1140,6 +1140,15 @@ export class FakeServer {
 			}),
 		);
 		const tags: Record<string, string> = label && conn.caps.has("labeled-response") ? { label } : {};
+		// Like soju
+		if (this.opts.bouncer && !attrs.in) {
+			conn.send({
+				tags,
+				command: "FAIL",
+				params: ["SEARCH", "INVALID_PARAMS", "in", "The in parameter is mandatory"],
+			});
+			return;
+		}
 		const ref = "search" + ++msgidCounter;
 		const results: { target: string; e: HistoryEntry }[] = [];
 		for (const [key, entries] of this.history) {

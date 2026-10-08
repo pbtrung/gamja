@@ -100,10 +100,10 @@ describe("Composer", () => {
 });
 
 describe("Composer uploads", () => {
-	function uploadClient() {
+	function uploadClient(params: Record<string, unknown> = { saslPlain: { username: "u", password: "p" } }) {
 		const isupport = new irc.Isupport();
 		isupport.parse(["SOJU.IM/FILEHOST=https://up.example/"]);
-		return { isupport, params: {} } as unknown as Client;
+		return { isupport, params: { url: "wss://irc.example/socket", ...params } } as unknown as Client;
 	}
 
 	it("uploads files and appends their URL", async () => {
@@ -130,8 +130,12 @@ describe("Composer uploads", () => {
 		expect(onError.mock.calls[0][0].cause.message).toBe("HTTP request failed (500)");
 	});
 
-	it("has no upload button without a file host", () => {
-		setup();
+	it("has no upload button without a file host or credentials", () => {
+		const { unmount } = setup();
+		expect(screen.queryByRole("button", { name: "Upload file" })).toBeNull();
+		unmount();
+		// The file host would refuse anonymous uploads
+		setup({ client: uploadClient({}) });
 		expect(screen.queryByRole("button", { name: "Upload file" })).toBeNull();
 	});
 });

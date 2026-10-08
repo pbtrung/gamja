@@ -1,6 +1,6 @@
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
-import Client, { ClientStatus, type MessageEventDetail } from "../lib/client";
+import Client, { ClientStatus, IRCError, type MessageEventDetail } from "../lib/client";
 import * as oauth2 from "../lib/oauth2";
 import { strip as stripANSI } from "../lib/ansi";
 import * as S from "../state";
@@ -1094,15 +1094,38 @@ export default class AppController {
 		if (!client) {
 			throw new Error("Not connected to server");
 		}
-		const messages = await client.search({
-			text: query.text || undefined,
-			in: query.in || undefined,
-			from: query.from || undefined,
-			limit: 100,
-		});
+		const search = (target: string | undefined) =>
+			client.search({
+				text: query.text || undefined,
+				in: target,
+				from: query.from || undefined,
+				limit: 100,
+			});
+
+		let messages: Message[];
+		try {
+			messages = await search(query.in || undefined);
+		} catch (err) {
+			// soju requires a target: search each buffer of the server instead
+			const fail = err instanceof IRCError ? err.msg : null;
+			const needsTarget = !query.in && fail?.command === "FAIL" && fail.params[2] === "in";
+			if (!needsTarget) {
+				throw err;
+			}
+			const targets = [...this.state.buffers.values()]
+				.filter((buf) => buf.server === serverID && buf.type !== BufferType.SERVER)
+				.map((buf) => buf.name);
+			// One at a time: without labeled-response, concurrent batches of
+			// the same type can't be told apart
+			messages = [];
+			for (const target of targets) {
+				messages.push(...(await search(target)));
+			}
+		}
 		return messages
 			.map((message) => ({ buffer: this.resolveMessageTarget(serverID, message), message }))
-			.sort((a, b) => ((a.message.tags.time ?? "") < (b.message.tags.time ?? "") ? 1 : -1));
+			.sort((a, b) => ((a.message.tags.time ?? "") < (b.message.tags.time ?? "") ? 1 : -1))
+			.slice(0, 100);
 	}
 
 	/** Open a buffer and scroll to a message, loading history around it if needed. */
@@ -2311,26 +2334,27 @@ export default class AppController {
 			return;
 		}
 
-		this.dismissDialog();
-
+		// Keep the dialog open until the bouncer accepted the change, so that
+		// a rejected one can be fixed
 		if (id) {
-			if (Object.keys(attrs).length === 0) {
-				return;
+			if (Object.keys(attrs).length > 0) {
+				try {
+					await client.changeBouncerNetwork(id, attrs);
+				} catch (err) {
+					this.showError(err);
+					return;
+				}
 			}
-
-			client.send({
-				command: "BOUNCER",
-				params: ["CHANGENETWORK", id, irc.formatTags(attrs)],
-			});
+			this.dismissDialog();
 		} else {
-			attrs = { ...attrs, tls: "1" };
 			let netID;
 			try {
-				netID = await client.createBouncerNetwork(attrs);
+				netID = await client.createBouncerNetwork({ tls: "1", ...attrs });
 			} catch (err) {
 				this.showError(err);
 				return;
 			}
+			this.dismissDialog();
 			if (!autojoin) {
 				return;
 			}
@@ -2347,12 +2371,17 @@ export default class AppController {
 		}
 	}
 
-	handleNetworkRemove(id: string): void {
-		this.getBouncerClient()?.send({
-			command: "BOUNCER",
-			params: ["DELNETWORK", id],
-		});
-
+	async handleNetworkRemove(id: string): Promise<void> {
+		const client = this.getBouncerClient();
+		if (!client) {
+			return;
+		}
+		try {
+			await client.deleteBouncerNetwork(id);
+		} catch (err) {
+			this.showError(err);
+			return;
+		}
 		this.dismissDialog();
 	}
 

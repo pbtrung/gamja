@@ -366,6 +366,9 @@ describe("bouncer networks", () => {
 		let state = S.createState();
 		state = { ...state, ...S.storeBouncerNetwork(state, "1", { name: "a", state: "connecting" }) };
 		state = { ...state, ...S.storeBouncerNetwork(state, "1", { state: "connected" }) };
+		state = { ...state, ...S.storeBouncerNetwork(state, "1", { error: "Oops" }) };
+		state = { ...state, ...S.storeBouncerNetwork(state, "1", { error: "" }) };
+		expect(state.bouncerNetworks.get("1")).not.toHaveProperty("error");
 		expect(state.bouncerNetworks.get("1")).toEqual({ name: "a", state: "connected" });
 		state = { ...state, ...S.deleteBouncerNetwork(state, "1") };
 		expect(state.bouncerNetworks.size).toBe(0);

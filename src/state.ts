@@ -582,10 +582,14 @@ export function createBuffer(
 
 export function storeBouncerNetwork(state: State, id: string, attrs: BouncerNetwork): Partial<State> {
 	const bouncerNetworks = new Map(state.bouncerNetworks);
-	bouncerNetworks.set(id, {
-		...bouncerNetworks.get(id),
-		...attrs,
-	});
+	const merged: BouncerNetwork = { ...bouncerNetworks.get(id), ...attrs };
+	// An attribute without a value was cleared (e.g. an error went away)
+	for (const [k, v] of Object.entries(merged)) {
+		if (v === undefined || v === null || v === "") {
+			delete merged[k];
+		}
+	}
+	bouncerNetworks.set(id, merged);
 	return { bouncerNetworks };
 }
 

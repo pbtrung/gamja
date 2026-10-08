@@ -87,7 +87,10 @@ export default function Composer({
 	}, []);
 	useImperativeHandle(ref, () => ({ focus }), [focus]);
 
-	const canUploadFiles = Boolean(client?.isupport.filehost()) && !readOnly;
+	// Uploads are authenticated with the login's credentials (soju ignores
+	// cookies): without any, the server would refuse them
+	const hasCredentials = Boolean(client?.params.saslPlain || client?.params.saslOauthBearer);
+	const canUploadFiles = Boolean(client?.isupport.filehost()) && hasCredentials && !readOnly;
 
 	// Grow the textarea with its content
 	useEffect(() => {

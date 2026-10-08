@@ -548,6 +548,27 @@ describe("reactions, replies, redaction and typing", () => {
 	});
 });
 
+describe("bouncer networks", () => {
+	it("keeps the network dialog open when the bouncer rejects a change", async () => {
+		const { app, recv, sentRaw } = await connectedApp({
+			caps: "batch server-time message-tags labeled-response soju.im/bouncer-networks",
+		});
+		sentRaw();
+		app.openDialog({ kind: "network", id: "1" });
+		const p = app.handleNetworkSubmit("1", { host: "bad host" }, null);
+		await flush();
+		const req = sentRaw().find((l) => l.includes("CHANGENETWORK"))!;
+		expect(req).toMatch(/BOUNCER CHANGENETWORK 1 host=bad\\shost$/);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		recv(
+			`@label=${req.match(/label=(\d+)/)![1]} FAIL BOUNCER INVALID_ATTRIBUTE CHANGENETWORK 1 host :Invalid host`,
+		);
+		await p;
+		expect(app.state.dialog).toMatchObject({ kind: "network" });
+		expect(app.state.error).toBe("Invalid host");
+	});
+});
+
 describe("search", () => {
 	it("searches and jumps to results, loading context", async () => {
 		const { app, recv, sentRaw, serverID } = await connectedApp({
@@ -593,6 +614,38 @@ describe("search", () => {
 		await jump;
 		expect(buf(app, "#c")!.messages.some((m) => m.tags.msgid === "a")).toBe(true);
 		expect(app.state.jumpTo).toEqual({ buffer: buf(app, "#c")!.id, msgid: "a" });
+	});
+
+	it("searches each buffer when the server requires a target (soju)", async () => {
+		const { app, recv, sentRaw, serverID } = await connectedApp({
+			caps: "batch server-time echo-message message-tags labeled-response draft/chathistory soju.im/search",
+		});
+		recv(":me!u@h JOIN #a", ":me!u@h JOIN #b");
+		sentRaw();
+		const p = app.searchMessages(serverID, { text: "x" });
+		await flush();
+		const first = sentRaw().find((l) => l.includes("SEARCH"))!;
+		expect(first).toMatch(/SEARCH text=x;limit=100$/);
+		recv(
+			`@label=${first.match(/label=(\d+)/)![1]} FAIL SEARCH INVALID_PARAMS in :The in parameter is mandatory`,
+		);
+		for (const [target, msgid] of [
+			["#a", "m1"],
+			["#b", "m2"],
+		]) {
+			await flush();
+			const req = sentRaw().find((l) => l.includes("SEARCH"))!;
+			expect(req).toMatch(new RegExp(`SEARCH text=x;in=${target};limit=100$`));
+			recv(
+				`@label=${req.match(/label=(\d+)/)![1]} :srv BATCH +${msgid} soju.im/search`,
+				`@batch=${msgid};msgid=${msgid};time=2020-01-01T00:00:00.000Z :bob!u@h PRIVMSG ${target} :x`,
+				`:srv BATCH -${msgid}`,
+			);
+		}
+		const results = await p;
+		expect(results.map((r) => r.buffer).sort()).toEqual(["#a", "#b"]);
+		// Handled by the search: not shown as an error too
+		expect(app.state.error).toBeNull();
 	});
 
 	it("doesn't search without server support", async () => {

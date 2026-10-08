@@ -6,6 +6,7 @@ const defaultParams = {
 	name: "",
 	host: "",
 	port: "6697",
+	tls: "1",
 	nickname: "",
 	username: "",
 	realname: "",
@@ -105,6 +106,16 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 
 				<div className="advanced-body">
 					{field("port", "Port", "number", { min: 1, max: 65535 })}
+					<label className="switch-row">
+						<span>Use TLS (encrypted connection)</span>
+						<input
+							type="checkbox"
+							className="switch"
+							name="tls"
+							checked={form.tls !== "0"}
+							onChange={(e) => setForm((f) => ({ ...f, tls: e.target.checked ? "1" : "0" }))}
+						/>
+					</label>
 					{field("name", "Network name")}
 					{field("nickname", "Nickname")}
 					{field("username", "Username")}
