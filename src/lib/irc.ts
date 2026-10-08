@@ -604,10 +604,6 @@ export class Isupport {
 		return this.int("LINELEN", 512);
 	}
 
-	filehost(): string | undefined {
-		return this.raw.get("SOJU.IM/FILEHOST");
-	}
-
 	/** VAPID public key for soju.im/webpush */
 	vapid(): string | undefined {
 		return this.raw.get("VAPID");

@@ -4,17 +4,13 @@ import {
 	useImperativeHandle,
 	useRef,
 	useState,
-	type ClipboardEvent,
-	type DragEvent,
 	type FormEvent,
 	type KeyboardEvent,
 	type ReactNode,
 	type Ref,
 } from "react";
-import { CornerUpRight, Paperclip, SendHorizontal, X } from "lucide-react";
+import { CornerUpRight, SendHorizontal, X } from "lucide-react";
 import type { ReplyTo } from "../app/store";
-import type Client from "../lib/client";
-import { uploadFile } from "../lib/filehost";
 import IconButton from "./IconButton";
 import { computeAutocomplete, type Autocomplete } from "../lib/autocomplete";
 
@@ -24,12 +20,10 @@ export interface ComposerHandle {
 
 interface ComposerProps {
 	ref?: Ref<ComposerHandle>;
-	client: Client | null;
 	readOnly: boolean;
 	commandOnly: boolean;
 	maxLen?: number;
 	onSubmit: (text: string) => void;
-	onError: (err: unknown) => void;
 	autocomplete: (prefix: string) => string[];
 	replyTo?: ReplyTo | null;
 	onCancelReply?: () => void;
@@ -56,12 +50,10 @@ function isEditableFocused(): boolean {
 
 export default function Composer({
 	ref,
-	client,
 	readOnly,
 	commandOnly,
 	maxLen,
 	onSubmit,
-	onError,
 	autocomplete,
 	replyTo,
 	onCancelReply,
@@ -69,14 +61,8 @@ export default function Composer({
 	status,
 }: ComposerProps) {
 	const [text, setText] = useState("");
-	const [uploading, setUploading] = useState(false);
-	const [dragging, setDragging] = useState(false);
-	const formRef = useRef<HTMLFormElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
-	const fileInputRef = useRef<HTMLInputElement>(null);
 	const lastAutocomplete = useRef<Autocomplete | null>(null);
-	const uploadCount = useRef(0);
-	const uploadAbort = useRef<AbortController | null>(null);
 
 	const focus = useCallback(() => {
 		if (!inputRef.current) {
@@ -87,11 +73,6 @@ export default function Composer({
 	}, []);
 	useImperativeHandle(ref, () => ({ focus }), [focus]);
 
-	// Uploads are authenticated with the login's credentials (soju ignores
-	// cookies): without any, the server would refuse them
-	const hasCredentials = Boolean(client?.params.saslPlain || client?.params.saslOauthBearer);
-	const canUploadFiles = Boolean(client?.isupport.filehost()) && hasCredentials && !readOnly;
-
 	// Grow the textarea with its content
 	useEffect(() => {
 		const el = inputRef.current;
@@ -101,41 +82,6 @@ export default function Composer({
 		el.style.height = "auto";
 		el.style.height = Math.min(el.scrollHeight, 200) + "px";
 	}, [text]);
-
-	const uploadFileList = useCallback(
-		async (fileList: FileList | File[]) => {
-			if (!client) {
-				return;
-			}
-			if (!uploadAbort.current) {
-				uploadAbort.current = new AbortController();
-			}
-			const signal = uploadAbort.current.signal;
-			uploadCount.current++;
-			setUploading(true);
-
-			let urls: URL[];
-			try {
-				urls = await Promise.all(
-					Array.from(fileList).map((file) => uploadFile(client, file, signal)),
-				);
-			} catch (err) {
-				if (!signal.aborted) {
-					onError(new Error("Failed to upload files", { cause: err }));
-				}
-				return;
-			} finally {
-				uploadCount.current--;
-				if (uploadCount.current === 0) {
-					uploadAbort.current = null;
-					setUploading(false);
-				}
-			}
-
-			setText((text) => (text ? text + " " : "") + urls.join(" "));
-		},
-		[client, onError],
-	);
 
 	const onTextChangeRef = useRef(onTextChange);
 	useEffect(() => {
@@ -204,18 +150,6 @@ export default function Composer({
 		}
 	}
 
-	async function handlePaste(event: ClipboardEvent) {
-		if (event.clipboardData.files.length === 0 || !canUploadFiles) {
-			return;
-		}
-		event.preventDefault();
-		await uploadFileList(event.clipboardData.files);
-	}
-
-	function isDraggingFiles(event: DragEvent) {
-		return Array.from(event.dataTransfer.items).every((item) => item.kind === "file");
-	}
-
 	// Global listeners: start typing anywhere to focus the composer
 	useEffect(() => {
 		const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -255,10 +189,6 @@ export default function Composer({
 			}
 
 			if (event.clipboardData.files.length > 0) {
-				if (canUploadFiles) {
-					event.preventDefault();
-					uploadFileList(event.clipboardData.files);
-				}
 				return;
 			}
 
@@ -281,17 +211,11 @@ export default function Composer({
 			window.removeEventListener("keydown", handleWindowKeyDown);
 			window.removeEventListener("paste", handleWindowPaste);
 		};
-	}, [readOnly, commandOnly, canUploadFiles, focus, uploadFileList]);
+	}, [readOnly, commandOnly, focus]);
 
 	const classes: string[] = [];
 	if (readOnly && !text) {
 		classes.push("read-only");
-	}
-	if (uploading) {
-		classes.push("uploading");
-	}
-	if (dragging) {
-		classes.push("dragging");
 	}
 
 	const label = commandOnly ? "Type a command (see /help)" : "Type a message";
@@ -300,39 +224,7 @@ export default function Composer({
 	const tooLong = maxLen !== undefined && !isCommand && new TextEncoder().encode(text).length > maxLen;
 
 	return (
-		<form
-			id="composer"
-			className={classes.join(" ")}
-			ref={formRef}
-			onSubmit={handleSubmit}
-			onDragEnter={(event) => {
-				if (canUploadFiles && isDraggingFiles(event)) {
-					setDragging(true);
-				}
-			}}
-			onDragLeave={(event) => {
-				// ignore spurious dragleave events triggered by moving over child elements
-				if (formRef.current?.contains(event.relatedTarget as Node)) {
-					return;
-				}
-				setDragging(false);
-			}}
-			onDragOver={(event) => {
-				if (canUploadFiles && isDraggingFiles(event)) {
-					event.preventDefault();
-				}
-			}}
-			onDrop={async (event) => {
-				if (event.dataTransfer.files.length === 0 || !canUploadFiles) {
-					return;
-				}
-				event.preventDefault();
-				// dragleave does not fire after a drop, so reset manually.
-				setDragging(false);
-				inputRef.current?.focus();
-				await uploadFileList(event.dataTransfer.files);
-			}}
-		>
+		<form id="composer" className={classes.join(" ")} onSubmit={handleSubmit}>
 			{status}
 			{replyTo && (
 				<div className="composer-reply">
@@ -357,31 +249,8 @@ export default function Composer({
 					enterKeyHint="send"
 					onChange={(event) => handleChange(event.target.value)}
 					onKeyDown={handleKeyDown}
-					onPaste={handlePaste}
 				/>
 				<div className="composer-buttons">
-					{canUploadFiles && uploading && (
-						<button
-							type="button"
-							className="icon-btn composer-spinner"
-							title="Cancel upload"
-							aria-label="Cancel upload"
-							onClick={() => uploadAbort.current?.abort()}
-						>
-							<span className="spinner" aria-hidden="true" />
-							<X className="x-icon" aria-hidden="true" />
-						</button>
-					)}
-					{canUploadFiles && (
-						<IconButton
-							icon={Paperclip}
-							label="Upload file"
-							onClick={() => {
-								inputRef.current?.focus();
-								fileInputRef.current?.click();
-							}}
-						/>
-					)}
 					<IconButton
 						type="submit"
 						icon={SendHorizontal}
@@ -391,22 +260,6 @@ export default function Composer({
 					/>
 				</div>
 			</div>
-			{canUploadFiles && (
-				<input
-					type="file"
-					ref={fileInputRef}
-					multiple
-					hidden
-					onChange={async (event) => {
-						const files = event.target.files;
-						if (!files || files.length === 0) {
-							return;
-						}
-						await uploadFileList(files);
-						event.target.value = "";
-					}}
-				/>
-			)}
 		</form>
 	);
 }

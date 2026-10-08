@@ -146,4 +146,44 @@ describe("BufferHeader", () => {
 		setup({ unreadElsewhere: Unread.HIGHLIGHT });
 		expect(document.querySelector(".buffer-list-toggle .unread-highlight")).toBeInTheDocument();
 	});
+
+	it("puts actions in a menu on small screens", async () => {
+		vi.stubGlobal(
+			"matchMedia",
+			(query: string) =>
+				({
+					matches: query === "(max-width: 640px)",
+					addEventListener() {},
+					removeEventListener() {},
+				}) as unknown as MediaQueryList,
+		);
+		const props = setup({
+			buffer: { type: BufferType.CHANNEL, name: "#c", joined: true },
+			server: { bouncerNetID: "1" },
+			onSearch: vi.fn(),
+			onDetach: vi.fn(),
+		});
+		expect(buttons()).toEqual(["Open buffer list", "Open member list", "More actions"]);
+		const more = screen.getByRole("button", { name: "More actions" });
+		await userEvent.click(more);
+		expect(more).toHaveAttribute("aria-expanded", "true");
+		const items = screen.getAllByRole("menuitem");
+		expect(items.map((i) => i.textContent)).toEqual(["Search", "Detach", "Leave"]);
+		expect(items[0]).toHaveFocus();
+		await userEvent.keyboard("{ArrowDown}{Enter}");
+		expect(props.onDetach).toHaveBeenCalled();
+		expect(screen.queryByRole("menu")).toBeNull();
+		await userEvent.click(more);
+		await userEvent.keyboard("{Escape}");
+		expect(screen.queryByRole("menu")).toBeNull();
+		expect(more).toHaveFocus();
+	});
+
+	it("shows Detach and Join as icons only", () => {
+		setup({
+			buffer: { type: BufferType.CHANNEL, name: "#c", joined: true },
+			onDetach: vi.fn(),
+		});
+		expect(screen.getByRole("button", { name: "Detach" })).not.toHaveTextContent("Detach");
+	});
 });

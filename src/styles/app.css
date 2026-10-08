@@ -1180,9 +1180,59 @@ li.unread-highlight .unread-indicator,
 }
 
 #buffer-header .actions {
+	position: relative;
 	grid-row: 1 / 3;
 	grid-column: 2;
 	justify-self: end;
+}
+
+/* "More actions" menu, small screens */
+.action-menu {
+	position: fixed;
+	z-index: 1001;
+	display: flex;
+	flex-direction: column;
+	min-width: 12rem;
+	padding: 0.25rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background-color: var(--bg-elevated);
+	box-shadow: var(--shadow-lg);
+}
+
+.action-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	padding: 0.625rem 0.75rem;
+	border: none;
+	border-radius: var(--radius-sm);
+	background: none;
+	color: var(--fg);
+	font: inherit;
+	font-size: 0.9375rem;
+	text-align: left;
+	cursor: pointer;
+}
+
+.action-menu-item:hover,
+.action-menu-item:focus-visible {
+	outline: none;
+	background-color: var(--bg-hover);
+	color: var(--fg-emphasis);
+}
+
+.action-menu-item.danger {
+	color: var(--danger-fg);
+}
+
+.action-menu-item svg.lucide {
+	flex-shrink: 0;
+	color: var(--fg-muted);
+}
+
+.action-menu-item.danger svg.lucide {
+	color: inherit;
 }
 
 /* Panel toggles are part of the header button group, but only shown on
@@ -1803,12 +1853,6 @@ a.nick:hover {
 	border-color: var(--danger);
 }
 
-#composer.dragging .composer-box {
-	border-style: dashed;
-	border-color: var(--accent);
-	background-color: var(--accent-soft);
-}
-
 textarea.composer-input {
 	flex: 1;
 	min-width: 0;
@@ -1920,17 +1964,6 @@ textarea.composer-input:focus {
 
 .composer-send:not(:disabled) {
 	color: var(--accent);
-}
-
-.composer-spinner .x-icon {
-	display: none;
-}
-.composer-spinner:hover .spinner {
-	display: none;
-}
-.composer-spinner:hover .x-icon {
-	display: block;
-	color: var(--danger);
 }
 
 /* Connect screen */
@@ -2558,7 +2591,7 @@ mark {
 	}
 
 	/* The buttons span both header lines, so they can be bigger */
-	#buffer-header .actions > .btn {
+	#buffer-header .actions .btn-group > .btn {
 		padding: 0.45rem 0.75rem;
 		font-size: 1rem;
 	}

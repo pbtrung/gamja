@@ -90,7 +90,14 @@ test("settings screenshots", async ({ page, connect }) => {
 			await page.getByRole("button", { name: "Open buffer list" }).click();
 		}
 		await page.getByRole("tab", { name: "FakeNet" }).click();
-		await page.getByRole("button", { name: "Settings" }).click();
+		if (name === "mobile") {
+			// Small screens put header actions in a menu
+			await page.getByRole("button", { name: "More actions" }).click();
+			await page.screenshot({ path: `${dir()}/header-menu-mobile.png` });
+			await page.getByRole("menuitem", { name: "Settings" }).click();
+		} else {
+			await page.getByRole("button", { name: "Settings" }).click();
+		}
 		const body = page.locator(".dialog-body");
 		await expect(body).toBeVisible();
 		await page.screenshot({ path: `${dir()}/settings-${name}.png` });

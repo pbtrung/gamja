@@ -32,3 +32,17 @@ for (const layout of ["comfortable", "compact"] as const) {
 		await expect(page.locator("#buffer .logline.comfortable")).toHaveCount(0);
 	});
 }
+
+test("opens header actions from a menu on small screens", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#menu");
+	await connect(page, "tester", { channels: ["#menu"] });
+	await expect(page.locator("#buffer-header h1")).toHaveText("#menu");
+	const header = page.locator("#buffer-header");
+	await expect(header.getByRole("button")).toHaveCount(3);
+	await header.getByRole("button", { name: "More actions" }).click();
+	await page.getByRole("menuitem", { name: "Leave" }).click();
+	await expect(header.getByRole("button", { name: "More actions" })).toBeVisible();
+	await header.getByRole("button", { name: "More actions" }).click();
+	await expect(page.getByRole("menuitem", { name: "Join" })).toBeVisible();
+});

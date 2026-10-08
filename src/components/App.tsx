@@ -316,7 +316,6 @@ function Chat({ state }: { state: AppState }) {
 		app.fetchOlderMessages().catch((err) => app.showError(err));
 	}, [app]);
 	const handleComposerSubmit = useCallback((text: string) => app.handleComposerSubmit(text), [app]);
-	const handleError = useCallback((err: unknown) => app.showError(err), [app]);
 	const autocomplete = useCallback((prefix: string) => app.autocomplete(prefix), [app]);
 	const handleTextChange = useCallback((text: string) => app.notifyTyping(text), [app]);
 	const handleCancelReply = useCallback(() => app.cancelReply(), [app]);
@@ -528,10 +527,8 @@ function Chat({ state }: { state: AppState }) {
 				replyTo={state.replyTo?.buffer === activeBuffer?.id ? state.replyTo : null}
 				onCancelReply={handleCancelReply}
 				onTextChange={handleTextChange}
-				client={activeClient}
 				readOnly={composerReadOnly}
 				onSubmit={handleComposerSubmit}
-				onError={handleError}
 				autocomplete={autocomplete}
 				commandOnly={commandOnly}
 				maxLen={privmsgMaxLen}

@@ -37,7 +37,7 @@ bouncer (which requires logging in).
 ### With soju
 
 On top of chat history and read markers, gamja supports soju's bouncer
-networks, search, Web Push notifications, file uploads, detaching channels
+networks, search, Web Push notifications, detaching channels
 (`/detach`, joining reattaches) and pinning, muting and blocking (`/pin`,
 `/mute`, `/block` or the buffer header buttons), synced across clients.
 

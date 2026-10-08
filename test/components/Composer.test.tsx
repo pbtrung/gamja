@@ -3,18 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import Composer from "../../src/components/Composer";
 import { computeAutocomplete } from "../../src/lib/autocomplete";
-import * as irc from "../../src/lib/irc";
-import type Client from "../../src/lib/client";
 
 function setup(props: Partial<Parameters<typeof Composer>[0]> = {}) {
 	const onSubmit = vi.fn();
 	const utils = render(
 		<Composer
-			client={null}
 			readOnly={false}
 			commandOnly={false}
 			onSubmit={onSubmit}
-			onError={() => {}}
 			autocomplete={(prefix) => ["alice", "albert", "bob"].filter((n) => n.startsWith(prefix))}
 			{...props}
 		/>,
@@ -96,47 +92,6 @@ describe("Composer", () => {
 	it("hides when read-only and empty", () => {
 		const { container } = setup({ readOnly: true });
 		expect(container.querySelector("#composer")).toHaveClass("read-only");
-	});
-});
-
-describe("Composer uploads", () => {
-	function uploadClient(params: Record<string, unknown> = { saslPlain: { username: "u", password: "p" } }) {
-		const isupport = new irc.Isupport();
-		isupport.parse(["SOJU.IM/FILEHOST=https://up.example/"]);
-		return { isupport, params: { url: "wss://irc.example/socket", ...params } } as unknown as Client;
-	}
-
-	it("uploads files and appends their URL", async () => {
-		vi.stubGlobal(
-			"fetch",
-			vi.fn().mockResolvedValue(new Response(null, { status: 201, headers: { Location: "/f/1" } })),
-		);
-		const { input, container } = setup({ client: uploadClient() });
-		await userEvent.type(input, "look:");
-		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
-		await userEvent.upload(fileInput, new File(["x"], "cat.png", { type: "image/png" }));
-		await vi.waitFor(() => expect(input).toHaveValue("look: https://up.example/f/1"));
-	});
-
-	it("reports upload failures", async () => {
-		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
-		const onError = vi.fn();
-		const { container } = setup({ client: uploadClient(), onError });
-		await userEvent.upload(
-			container.querySelector<HTMLInputElement>('input[type="file"]')!,
-			new File(["x"], "a.txt"),
-		);
-		await vi.waitFor(() => expect(onError).toHaveBeenCalled());
-		expect(onError.mock.calls[0][0].cause.message).toBe("HTTP request failed (500)");
-	});
-
-	it("has no upload button without a file host or credentials", () => {
-		const { unmount } = setup();
-		expect(screen.queryByRole("button", { name: "Upload file" })).toBeNull();
-		unmount();
-		// The file host would refuse anonymous uploads
-		setup({ client: uploadClient({}) });
-		expect(screen.queryByRole("button", { name: "Upload file" })).toBeNull();
 	});
 });
 

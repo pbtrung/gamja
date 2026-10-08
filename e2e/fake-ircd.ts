@@ -110,8 +110,6 @@ export interface ServerOptions {
 	accounts?: Record<string, string>;
 	/** Advertise soju.im/bouncer-networks */
 	bouncer?: boolean;
-	/** Advertise soju.im/FILEHOST */
-	filehost?: string;
 }
 
 let msgidCounter = 0;
@@ -798,9 +796,6 @@ export class FakeServer {
 		];
 		if (conn.bouncerNetwork) {
 			isupport.push(`BOUNCER_NETID=${conn.bouncerNetwork}`);
-		}
-		if (this.opts.filehost) {
-			isupport.push(`SOJU.IM/FILEHOST=${this.opts.filehost}`);
 		}
 		conn.numeric("001", `Welcome to ${NETWORK}, ${conn.nick}`);
 		conn.numeric("002", `Your host is ${SERVER_NAME}`);

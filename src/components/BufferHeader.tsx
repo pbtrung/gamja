@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import useMediaQuery from "./useMediaQuery";
 import {
 	CirclePlus,
+	EllipsisVertical,
 	LogOut,
 	PanelLeft,
 	Plus,
@@ -71,6 +73,112 @@ interface ActionButtonProps {
 	children?: ReactNode;
 }
 
+/** Small screens only show the panel toggles and a menu with the rest */
+const SMALL_SCREEN = "(max-width: 640px)";
+
+/** A "more actions" button opening a menu, for small screens */
+function ActionMenu({ actions }: { actions: Action[] }) {
+	// Where to show the menu: fixed, the header clips its overflow
+	const [position, setPosition] = useState<{ top: number; right: number } | null>(null);
+	const open = position !== null;
+	const setOpen = (value: boolean | ((open: boolean) => boolean)) => {
+		const next = typeof value === "function" ? value(open) : value;
+		const rect = toggleRef.current?.getBoundingClientRect();
+		setPosition(next && rect ? { top: rect.bottom + 6, right: window.innerWidth - rect.right } : null);
+	};
+	const toggleRef = useRef<HTMLButtonElement>(null);
+	const menuRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+		const items = () =>
+			Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
+		items()[0]?.focus({ preventScroll: true });
+		const close = () => {
+			setPosition(null);
+			toggleRef.current?.focus();
+		};
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				event.stopPropagation();
+				close();
+			} else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+				event.preventDefault();
+				const l = items();
+				const i = l.indexOf(document.activeElement as HTMLElement);
+				const next = event.key === "ArrowDown" ? i + 1 : i - 1;
+				l[(next + l.length) % l.length]?.focus();
+			}
+		};
+		const handlePointer = (event: PointerEvent) => {
+			const target = event.target as Node;
+			if (!menuRef.current?.contains(target) && !toggleRef.current?.contains(target)) {
+				setPosition(null);
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown, true);
+		window.addEventListener("pointerdown", handlePointer, true);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown, true);
+			window.removeEventListener("pointerdown", handlePointer, true);
+		};
+	}, [open]);
+
+	return (
+		<>
+			<button
+				type="button"
+				ref={toggleRef}
+				className="btn btn-sm"
+				title="More actions"
+				aria-label="More actions"
+				aria-haspopup="menu"
+				aria-expanded={open}
+				onClick={() => setOpen((o) => !o)}
+			>
+				<EllipsisVertical aria-hidden="true" />
+			</button>
+			{open && (
+				<div
+					className="action-menu"
+					role="menu"
+					aria-label="Buffer actions"
+					ref={menuRef}
+					style={{ top: position.top, right: position.right }}
+				>
+					{actions.map(({ key, icon: Icon, label, danger, onClick }) => (
+						<button
+							key={key}
+							type="button"
+							role="menuitem"
+							className={"action-menu-item" + (danger ? " danger" : "")}
+							onClick={() => {
+								setOpen(false);
+								onClick();
+							}}
+						>
+							<Icon aria-hidden="true" />
+							{label}
+						</button>
+					))}
+				</div>
+			)}
+		</>
+	);
+}
+
+/** A header action: a button on wide screens, a menu item on small ones */
+interface Action {
+	key: string;
+	icon: LucideIcon;
+	label: string;
+	danger?: boolean;
+	iconOnly?: boolean;
+	onClick: () => void;
+}
+
 function ActionButton({
 	icon: Icon,
 	label,
@@ -123,6 +231,7 @@ export interface BufferHeaderProps {
 
 export default function BufferHeader(props: BufferHeaderProps) {
 	const { buffer, server, bouncerNetwork, user } = props;
+	const smallScreen = useMediaQuery(SMALL_SCREEN);
 
 	let fullyConnected = server.status === ServerStatus.REGISTERED;
 	if (bouncerNetwork) {
@@ -131,7 +240,7 @@ export default function BufferHeader(props: BufferHeaderProps) {
 
 	let description: ReactNode = null;
 	let descriptionTitle: string | undefined;
-	const actions: ReactNode[] = [];
+	const actions: Action[] = [];
 	switch (buffer.type) {
 		case BufferType.SERVER: {
 			switch (server.status) {
@@ -169,20 +278,25 @@ export default function BufferHeader(props: BufferHeaderProps) {
 					break;
 			}
 
-			const joinButton = (
-				<ActionButton key="join" icon={Plus} label="Join channel" onClick={props.onJoin} />
-			);
-			const reconnectButton = (
-				<ActionButton key="reconnect" icon={RotateCw} label="Reconnect" onClick={props.onReconnect} />
-			);
-			const settingsButton = (
-				<ActionButton
-					key="settings"
-					icon={Settings}
-					label="Settings"
-					onClick={props.onOpenSettings}
-				/>
-			);
+			const joinButton = {
+				key: "join",
+				icon: Plus,
+				label: "Join channel",
+				iconOnly: true,
+				onClick: props.onJoin,
+			};
+			const reconnectButton = {
+				key: "reconnect",
+				icon: RotateCw,
+				label: "Reconnect",
+				onClick: props.onReconnect,
+			};
+			const settingsButton = {
+				key: "settings",
+				icon: Settings,
+				label: "Settings",
+				onClick: props.onOpenSettings,
+			};
 
 			if (server.isBouncer) {
 				if (server.bouncerNetID) {
@@ -190,25 +304,21 @@ export default function BufferHeader(props: BufferHeaderProps) {
 						actions.push(joinButton);
 					}
 					if (server.status === ServerStatus.REGISTERED) {
-						actions.push(
-							<ActionButton
-								key="manage"
-								icon={SlidersHorizontal}
-								label="Manage network"
-								onClick={props.onManageNetwork}
-							/>,
-						);
+						actions.push({
+							key: "manage",
+							icon: SlidersHorizontal,
+							label: "Manage network",
+							onClick: props.onManageNetwork,
+						});
 					}
 				} else {
 					if (fullyConnected) {
-						actions.push(
-							<ActionButton
-								key="add"
-								icon={CirclePlus}
-								label="Add network"
-								onClick={props.onAddNetwork}
-							/>,
-						);
+						actions.push({
+							key: "add",
+							icon: CirclePlus,
+							label: "Add network",
+							onClick: props.onAddNetwork,
+						});
 					} else if (server.status === ServerStatus.DISCONNECTED) {
 						actions.push(reconnectButton);
 					}
@@ -231,20 +341,32 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			}
 			if (buffer.joined) {
 				if (props.onDetach) {
-					actions.push(
-						<ActionButton key="detach" icon={Unplug} label="Detach" onClick={props.onDetach} />,
-					);
+					actions.push({
+						key: "detach",
+						icon: Unplug,
+						label: "Detach",
+						iconOnly: true,
+						onClick: props.onDetach!,
+					});
 				}
-				actions.push(
-					<ActionButton key="part" icon={LogOut} label="Leave" danger onClick={props.onClose} />,
-				);
+				actions.push({
+					key: "part",
+					icon: LogOut,
+					label: "Leave",
+					danger: true,
+					onClick: props.onClose,
+				});
 			} else {
 				if (fullyConnected) {
-					actions.push(<ActionButton key="join" icon={Plus} label="Join" onClick={props.onJoin} />);
+					actions.push({
+						key: "join",
+						icon: Plus,
+						label: "Join",
+						iconOnly: true,
+						onClick: props.onJoin,
+					});
 				}
-				actions.push(
-					<ActionButton key="part" icon={X} label="Close" danger onClick={props.onClose} />,
-				);
+				actions.push({ key: "part", icon: X, label: "Close", danger: true, onClick: props.onClose });
 			}
 			break;
 		case BufferType.NICK: {
@@ -309,46 +431,48 @@ export default function BufferHeader(props: BufferHeaderProps) {
 				);
 			}
 
-			actions.push(<ActionButton key="close" icon={X} label="Close" danger onClick={props.onClose} />);
+			actions.push({ key: "close", icon: X, label: "Close", danger: true, onClick: props.onClose });
 			break;
 		}
 	}
 
 	if (props.onSearch && buffer.type !== BufferType.SERVER) {
-		actions.unshift(
-			<ActionButton key="search" icon={Search} label="Search" iconOnly onClick={props.onSearch} />,
-		);
+		actions.unshift({
+			key: "search",
+			icon: Search,
+			label: "Search",
+			iconOnly: true,
+			onClick: props.onSearch,
+		});
 	}
 
 	const setMetadata = props.onSetMetadata;
 	if (setMetadata && buffer.type !== BufferType.SERVER) {
 		const metadata = getTargetMetadata(server, buffer.name);
-		const toggles: ReactNode[] = [
-			<ActionButton
-				key="pin"
-				icon={metadata.pinned ? PinOff : Pin}
-				label={metadata.pinned ? "Unpin" : "Pin"}
-				iconOnly
-				onClick={() => setMetadata("pinned", !metadata.pinned)}
-			/>,
-			<ActionButton
-				key="mute"
-				icon={metadata.muted ? Bell : BellOff}
-				label={metadata.muted ? "Unmute" : "Mute"}
-				iconOnly
-				onClick={() => setMetadata("muted", !metadata.muted)}
-			/>,
+		const toggles: Action[] = [
+			{
+				key: "pin",
+				icon: metadata.pinned ? PinOff : Pin,
+				label: metadata.pinned ? "Unpin" : "Pin",
+				iconOnly: true,
+				onClick: () => setMetadata("pinned", !metadata.pinned),
+			},
+			{
+				key: "mute",
+				icon: metadata.muted ? Bell : BellOff,
+				label: metadata.muted ? "Unmute" : "Mute",
+				iconOnly: true,
+				onClick: () => setMetadata("muted", !metadata.muted),
+			},
 		];
 		if (buffer.type === BufferType.NICK) {
-			toggles.push(
-				<ActionButton
-					key="block"
-					icon={Ban}
-					label={metadata.blocked ? "Unblock" : "Block"}
-					iconOnly
-					onClick={() => setMetadata("blocked", !metadata.blocked)}
-				/>,
-			);
+			toggles.push({
+				key: "block",
+				icon: Ban,
+				label: metadata.blocked ? "Unblock" : "Block",
+				iconOnly: true,
+				onClick: () => setMetadata("blocked", !metadata.blocked),
+			});
 		}
 		actions.unshift(...toggles);
 	}
@@ -405,9 +529,13 @@ export default function BufferHeader(props: BufferHeaderProps) {
 					{description}
 				</div>
 			) : null}
-			<div className="actions btn-group" role="group" aria-label="Buffer actions">
-				{toggles}
-				{actions}
+			<div className="actions">
+				<div className="btn-group" role="group" aria-label="Buffer actions">
+					{toggles}
+					{smallScreen
+						? actions.length > 0 && <ActionMenu actions={actions} />
+						: actions.map(({ key, ...action }) => <ActionButton key={key} {...action} />)}
+				</div>
 			</div>
 		</>
 	);
