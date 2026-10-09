@@ -787,4 +787,68 @@ describe("AppController presence", () => {
 			vi.useRealTimers();
 		}
 	});
+
+	it("follows the auto-away delay setting", async () => {
+		const { app, sent } = await connectedApp({ caps: "batch draft/pre-away" });
+		const detach = app.attach();
+		vi.useFakeTimers();
+		try {
+			app.handleSettingsChange({ autoAwayMinutes: 0 });
+			setVisibility("hidden");
+			vi.advanceTimersByTime(60 * 60 * 1000);
+			expect(sent()).toEqual([]);
+			app.handleSettingsChange({ autoAwayMinutes: 5 });
+			vi.advanceTimersByTime(5 * 60 * 1000);
+			expect(sent()).toEqual(["AWAY *"]);
+			app.handleSettingsChange({ autoAwayMinutes: 0 });
+			expect(sent()).toEqual(["AWAY"]);
+		} finally {
+			app.handleSettingsChange({ autoAwayMinutes: 1 });
+			setVisibility("visible");
+			detach();
+			vi.useRealTimers();
+		}
+	});
+});
+
+describe("AppController notifications", () => {
+	function stubNotifications() {
+		const shown: string[] = [];
+		class FakeNotification extends EventTarget {
+			static permission = "granted";
+			constructor(title: string) {
+				super();
+				shown.push(title);
+			}
+		}
+		vi.stubGlobal("Notification", FakeNotification);
+		return shown;
+	}
+
+	it("notifies of mentions, all messages or nothing", async () => {
+		const shown = stubNotifications();
+		let t = Date.UTC(2040, 0, 1);
+		const at = (line: string) => `@time=${new Date(t++).toISOString()} ${line}`;
+		try {
+			const { app, recv } = await connectedApp({ caps: "batch server-time message-tags" });
+			recv(":me!u@h JOIN #c");
+			recv(at(":bob!u@h PRIVMSG #c :hello all"), at(":bob!u@h PRIVMSG #c :hi me"));
+			expect(shown).toEqual(["New highlight from bob in #c"]);
+
+			app.handleSettingsChange({ notifications: "all" });
+			recv(at(":bob!u@h PRIVMSG #c :hello again"));
+			expect(shown.at(-1)).toBe("New message from bob in #c");
+
+			app.handleSettingsChange({ notifications: "none" });
+			recv(
+				at(":bob!u@h PRIVMSG #c :me?"),
+				at(":bob!u@h PRIVMSG me :psst"),
+				at(":bob!u@h INVITE me #secret"),
+			);
+			expect(shown).toHaveLength(2);
+		} finally {
+			localStorage.clear();
+			vi.unstubAllGlobals();
+		}
+	});
 });

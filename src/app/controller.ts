@@ -34,8 +34,6 @@ import {
 } from "./config";
 
 const CHATHISTORY_MAX_SIZE = 4000;
-// How long the page stays hidden before marking the user away
-const AUTO_AWAY_DELAY_MSEC = 60 * 1000;
 
 function getReceipt(stored: store.StoredBuffer | undefined, type: ReceiptType): Receipt | null {
 	return stored?.receipts?.[type] ?? null;
@@ -124,6 +122,9 @@ export default class AppController {
 			this.update((state) => ({ settings: { ...state.settings, ...settings } }));
 		}
 		applyTheme(this.state.settings.theme);
+		if (this.state.settings.autoAwayMinutes <= 0) {
+			this.present = true;
+		}
 	}
 
 	/** Called by the UI to let the controller focus the composer. Returns a cleanup function. */
@@ -697,8 +698,10 @@ export default class AppController {
 				msgUnread = Unread.MESSAGE;
 			}
 
-			if (msgUnread === Unread.HIGHLIGHT && !isDelivered && !irc.parseCTCP(msg)) {
-				let title = "New " + kind + " from " + from;
+			const level = this.state.settings.notifications;
+			const notify = level === "all" ? !muted : level === "mentions" && msgUnread === Unread.HIGHLIGHT;
+			if (notify && !isDelivered && !irc.parseCTCP(msg)) {
+				let title = "New " + (kind ?? "message") + " from " + from;
 				if (client.isChannel(bufName)) {
 					title += " in " + bufName;
 				}
@@ -724,11 +727,14 @@ export default class AppController {
 			msgUnread = Unread.HIGHLIGHT;
 
 			const channel = msg.params[1];
-			const notif = showNotification("Invitation to " + channel, {
-				body: from + " has invited you to " + channel,
-				requireInteraction: true,
-				tag: "invite,server=" + serverID + ",from=" + from + ",channel=" + channel,
-			});
+			const notif =
+				this.state.settings.notifications === "none"
+					? null
+					: showNotification("Invitation to " + channel, {
+							body: from + " has invited you to " + channel,
+							requireInteraction: true,
+							tag: "invite,server=" + serverID + ",from=" + from + ",channel=" + channel,
+						});
 			notif?.addEventListener("click", () => {
 				window.focus();
 				this.switchBuffer({ server: serverID, name: bufName });
@@ -2508,6 +2514,9 @@ export default class AppController {
 		if (settings.theme !== undefined) {
 			applyTheme(updated.theme);
 		}
+		if (settings.autoAwayMinutes !== undefined && typeof document !== "undefined") {
+			this.handleVisibilityChange();
+		}
 	}
 
 	handleWindowFocus(): void {
@@ -2596,11 +2605,12 @@ export default class AppController {
 	 */
 	handleVisibilityChange(): void {
 		clearTimeout(this.awayTimeoutID);
-		if (document.visibilityState !== "hidden") {
+		const minutes = this.state.settings.autoAwayMinutes;
+		if (document.visibilityState !== "hidden" || minutes <= 0) {
 			this.setPresent(true);
 			return;
 		}
-		this.awayTimeoutID = setTimeout(() => this.setPresent(false), AUTO_AWAY_DELAY_MSEC);
+		this.awayTimeoutID = setTimeout(() => this.setPresent(false), minutes * 60 * 1000);
 	}
 
 	/** Set or clear (with null or "") the away message on all connections. */

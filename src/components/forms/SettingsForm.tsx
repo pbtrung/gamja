@@ -1,6 +1,11 @@
 import { useId, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { Bell, Check, LogOut, MessagesSquare, Palette } from "lucide-react";
-import { BufferEventsDisplayMode, type MessageLayout, type Settings } from "../../state";
+import {
+	BufferEventsDisplayMode,
+	type MessageLayout,
+	type NotificationLevel,
+	type Settings,
+} from "../../state";
 import { registerProtocolHandler } from "../../format";
 import { THEMES, type Theme } from "../../themes";
 
@@ -60,6 +65,59 @@ function ToggleRow({ name, label, hint, checked, disabled, onChange }: ToggleRow
 				aria-describedby={hint ? id + "-hint" : undefined}
 				onChange={(e) => onChange(e.target.checked)}
 			/>
+		</div>
+	);
+}
+
+interface SegmentedRowProps<T> {
+	name: string;
+	label: string;
+	hint: string;
+	options: { value: T; label: string }[];
+	value: T;
+	onChange: (value: T) => void;
+}
+
+/** A setting with a label and a hint on the left and a few choices on the right */
+function SegmentedRow<T extends string | number>({
+	name,
+	label,
+	hint,
+	options,
+	value,
+	onChange,
+}: SegmentedRowProps<T>) {
+	const id = useId();
+	return (
+		<div className="settings-row">
+			<div className="settings-row-text">
+				<span id={id + "-label"}>{label}</span>
+				<span className="settings-row-hint" id={id + "-hint"}>
+					{hint}
+				</span>
+			</div>
+			<div
+				className="segmented"
+				role="radiogroup"
+				aria-labelledby={id + "-label"}
+				aria-describedby={id + "-hint"}
+			>
+				{options.map((option) => (
+					<label
+						key={option.value}
+						className={"segmented-option" + (value === option.value ? " selected" : "")}
+					>
+						<input
+							type="radio"
+							name={name}
+							value={option.value}
+							checked={value === option.value}
+							onChange={() => onChange(option.value)}
+						/>
+						{option.label}
+					</label>
+				))}
+			</div>
 		</div>
 	);
 }
@@ -131,6 +189,19 @@ const eventModes: { value: BufferEventsDisplayMode; label: string }[] = [
 	{ value: BufferEventsDisplayMode.HIDE, label: "Hide" },
 ];
 
+const notificationLevels: { value: NotificationLevel; label: string }[] = [
+	{ value: "mentions", label: "Mentions" },
+	{ value: "all", label: "All" },
+	{ value: "none", label: "Off" },
+];
+
+const autoAwayDelays: { value: number; label: string }[] = [
+	{ value: 0, label: "Never" },
+	{ value: 1, label: "1 min" },
+	{ value: 5, label: "5 min" },
+	{ value: 15, label: "15 min" },
+];
+
 export default function SettingsForm({
 	settings,
 	showProtocolHandler,
@@ -142,7 +213,6 @@ export default function SettingsForm({
 }: SettingsFormProps) {
 	const [pushBusy, setPushBusy] = useState(false);
 	const [pushError, setPushError] = useState<string | null>(null);
-	const eventsID = useId();
 
 	async function handlePushChange(enabled: boolean) {
 		if (!onPushChange) {
@@ -234,80 +304,65 @@ export default function SettingsForm({
 						checked={settings.showMemberList}
 						onChange={(checked) => onChange({ showMemberList: checked })}
 					/>
-					<div className="settings-row">
-						<div className="settings-row-text">
-							<span id={eventsID + "-label"}>Chat events</span>
-							<span className="settings-row-hint" id={eventsID + "-hint"}>
-								Joins, parts, quits and nick changes
-							</span>
-						</div>
-						<div
-							className="segmented"
-							role="radiogroup"
-							aria-labelledby={eventsID + "-label"}
-							aria-describedby={eventsID + "-hint"}
-						>
-							{eventModes.map(({ value, label }) => (
-								<label
-									key={value}
-									className={
-										"segmented-option" +
-										(settings.bufferEvents === value ? " selected" : "")
-									}
-								>
-									<input
-										type="radio"
-										name="bufferEvents"
-										value={value}
-										checked={settings.bufferEvents === value}
-										onChange={() => onChange({ bufferEvents: value })}
-									/>
-									{label}
-								</label>
-							))}
-						</div>
-					</div>
+					<SegmentedRow
+						name="bufferEvents"
+						label="Chat events"
+						hint="Joins, parts, quits and nick changes"
+						options={eventModes}
+						value={settings.bufferEvents}
+						onChange={(bufferEvents) => onChange({ bufferEvents })}
+					/>
 				</div>
 			</Section>
 
-			{(pushAvailable || showProtocolHandler) && (
-				<Section icon={<Bell aria-hidden="true" />} title="Notifications and links">
-					<div className="settings-card">
-						{pushAvailable && (
-							<ToggleRow
-								name="pushNotifications"
-								label="Push notifications"
-								hint="Get notified of mentions and messages while gamja is closed"
-								checked={settings.pushNotifications}
-								disabled={pushBusy}
-								onChange={handlePushChange}
-							/>
-						)}
-						{pushError && (
-							<div className="settings-row">
-								<div className="alert alert-danger" role="alert">
-									{pushError}
-								</div>
+			<Section icon={<Bell aria-hidden="true" />} title="Notifications and presence">
+				<div className="settings-card">
+					<SegmentedRow
+						name="notifications"
+						label="Desktop notifications"
+						hint="Messages that show a notification while gamja is open"
+						options={notificationLevels}
+						value={settings.notifications}
+						onChange={(notifications) => onChange({ notifications })}
+					/>
+					<SegmentedRow
+						name="autoAwayMinutes"
+						label="Away in the background"
+						hint="Appear away while gamja stays hidden"
+						options={autoAwayDelays}
+						value={settings.autoAwayMinutes}
+						onChange={(autoAwayMinutes) => onChange({ autoAwayMinutes })}
+					/>
+					{pushAvailable && (
+						<ToggleRow
+							name="pushNotifications"
+							label="Push notifications"
+							hint="Get notified of mentions and messages while gamja is closed"
+							checked={settings.pushNotifications}
+							disabled={pushBusy}
+							onChange={handlePushChange}
+						/>
+					)}
+					{pushError && (
+						<div className="settings-row">
+							<div className="alert alert-danger" role="alert">
+								{pushError}
 							</div>
-						)}
-						{showProtocolHandler && (
-							<div className="settings-row">
-								<div className="settings-row-text">
-									<span>Default IRC client</span>
-									<span className="settings-row-hint">Open irc:// links in gamja</span>
-								</div>
-								<button
-									type="button"
-									className="btn btn-sm"
-									onClick={registerProtocolHandler}
-								>
-									Enable
-								</button>
+						</div>
+					)}
+					{showProtocolHandler && (
+						<div className="settings-row">
+							<div className="settings-row-text">
+								<span>Default IRC client</span>
+								<span className="settings-row-hint">Open irc:// links in gamja</span>
 							</div>
-						)}
-					</div>
-				</Section>
-			)}
+							<button type="button" className="btn btn-sm" onClick={registerProtocolHandler}>
+								Enable
+							</button>
+						</div>
+					)}
+				</div>
+			</Section>
 
 			<div className="dialog-actions">
 				<button type="button" className="btn btn-danger-outline me-auto" onClick={onDisconnect}>

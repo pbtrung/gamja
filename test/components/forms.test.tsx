@@ -191,6 +191,10 @@ describe("SettingsForm", () => {
 		expect(onChange).toHaveBeenCalledWith({ secondsInTimestamps: false });
 		await userEvent.click(screen.getByRole("radio", { name: "Hide" }));
 		expect(onChange).toHaveBeenCalledWith({ bufferEvents: "hide" });
+		await userEvent.click(screen.getByRole("radio", { name: "All" }));
+		expect(onChange).toHaveBeenCalledWith({ notifications: "all" });
+		await userEvent.click(screen.getByRole("radio", { name: "5 min" }));
+		expect(onChange).toHaveBeenCalledWith({ autoAwayMinutes: 5 });
 		await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
 		expect(onDisconnect).toHaveBeenCalled();
 	});

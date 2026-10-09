@@ -65,7 +65,13 @@ export interface Settings {
 	showMemberList: boolean;
 	/** Receive Web Push notifications when gamja is closed */
 	pushNotifications: boolean;
+	/** Which messages show a desktop notification */
+	notifications: NotificationLevel;
+	/** Mark the user away after the page stays hidden this long, 0 to never */
+	autoAwayMinutes: number;
 }
+
+export type NotificationLevel = "mentions" | "all" | "none";
 
 export const defaultSettings: Settings = {
 	theme: "dracula",
@@ -74,6 +80,8 @@ export const defaultSettings: Settings = {
 	bufferEvents: BufferEventsDisplayMode.FOLD,
 	showMemberList: false,
 	pushNotifications: false,
+	notifications: "mentions",
+	autoAwayMinutes: 1,
 };
 
 /** Actions on channel members, from the member list */
