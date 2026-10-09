@@ -430,6 +430,11 @@ function Chat({ state }: { state: AppState }) {
 					<header className="sidebar-brand">
 						<MessageSquareText aria-hidden="true" />
 						<span>gamja</span>
+						{import.meta.env.GAMJA_VERSION && (
+							<span className="sidebar-version" title="gamja version">
+								{import.meta.env.GAMJA_VERSION}
+							</span>
+						)}
 						<IconButton
 							icon={X}
 							label="Close buffer list"

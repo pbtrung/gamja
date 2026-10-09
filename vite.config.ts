@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
@@ -19,8 +20,23 @@ function devCSP(): Plugin {
 	};
 }
 
+/** The version shown in the UI: GAMJA_VERSION, else from git, e.g. v1.2-3-gabcdef */
+function version(): string {
+	if (process.env.GAMJA_VERSION) {
+		return process.env.GAMJA_VERSION;
+	}
+	try {
+		return execFileSync("git", ["describe", "--tags", "--always"], { encoding: "utf8" }).trim();
+	} catch {
+		return "dev";
+	}
+}
+
 export default defineConfig({
 	root: r("./src"),
+	define: {
+		"import.meta.env.GAMJA_VERSION": JSON.stringify(version()),
+	},
 	base: "./",
 	publicDir: r("./public"),
 	plugins: [react(), devCSP(), ircProxy(process.env.GAMJA_IRC_SERVER)],

@@ -156,6 +156,17 @@ describe("App", () => {
 		]);
 	});
 
+	it("shows the version next to the title", async () => {
+		vi.stubEnv("GAMJA_VERSION", "v1.2.3");
+		try {
+			const app = await renderApp();
+			await login(app);
+			expect(screen.getByTitle("gamja version")).toHaveTextContent("v1.2.3");
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
 	it("shows and dismisses errors", async () => {
 		const app = await renderApp();
 		await login(app);

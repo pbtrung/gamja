@@ -2821,3 +2821,15 @@ mark {
 	background-color: var(--bg-elevated);
 	box-shadow: var(--shadow-lg);
 }
+
+.sidebar-version {
+	/* Roughly on the title's baseline */
+	padding-top: 0.3rem;
+	overflow: hidden;
+	color: var(--fg-subtle);
+	font-size: 0.6875rem;
+	font-weight: 500;
+	letter-spacing: 0;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
