@@ -250,6 +250,22 @@ describe("AppController messaging", () => {
 		expect(app.autocomplete("bo")).toEqual(["bob", "bobby"]);
 	});
 
+	it("completes recent speakers first and our own nick last", async () => {
+		const { app, recv } = await connectedApp({ nick: "mel" });
+		recv(
+			":mel!u@h JOIN #chan",
+			":melissa!u@h JOIN #chan",
+			":melvin!u@h JOIN #chan",
+			":mo!u@h JOIN #chan",
+			":melvin!u@h PRIVMSG #chan :first",
+			":mo!u@h PRIVMSG #chan :later",
+			":melissa!u@h PRIVMSG #chan :last",
+		);
+		app.switchBuffer(buf(app, "#chan")!.id);
+		expect(app.autocomplete("me")).toEqual(["melissa", "melvin", "mel"]);
+		expect(app.autocomplete("m")).toEqual(["melissa", "mo", "melvin", "mel"]);
+	});
+
 	it("opens irc:// URLs", async () => {
 		const { app, recv } = await connectedApp();
 		recv(":me!u@h JOIN #c");

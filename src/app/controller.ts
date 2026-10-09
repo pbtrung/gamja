@@ -2180,7 +2180,28 @@ export default class AppController {
 		if (buf.type === BufferType.NICK) {
 			return fromList([buf.name], prefix);
 		}
-		return fromList(buf.members.keys(), prefix);
+
+		// Whoever spoke last is likely who the user is answering, and the
+		// user rarely wants their own nick
+		const cm = client?.cm ?? irc.CaseMapping.RFC1459;
+		const rank = new Map<string, number>();
+		for (let i = buf.messages.length - 1; i >= 0 && rank.size < 100; i--) {
+			const msg = buf.messages[i];
+			if ((msg.command === "PRIVMSG" || msg.command === "NOTICE") && msg.prefix) {
+				const key = cm(msg.prefix.name);
+				if (!rank.has(key)) {
+					rank.set(key, rank.size);
+				}
+			}
+		}
+		const rankOf = (nick: string) => {
+			if (client?.isMyNick(nick)) {
+				return Number.MAX_SAFE_INTEGER;
+			}
+			return rank.get(cm(nick)) ?? rank.size;
+		};
+		// Array.prototype.sort is stable: other nicks keep their order
+		return fromList(buf.members.keys(), prefix).sort((a, b) => rankOf(a) - rankOf(b));
 	}
 
 	openHelp(): void {
