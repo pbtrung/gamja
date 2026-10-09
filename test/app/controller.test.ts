@@ -812,6 +812,22 @@ describe("AppController presence", () => {
 	});
 });
 
+describe("AppController buffer list", () => {
+	it("collapses networks and remembers it", async () => {
+		const { app, serverID } = await connectedApp();
+		try {
+			app.toggleCollapsed(serverID);
+			expect(app.state.collapsedNetworks).toEqual(new Set([""]));
+			expect(store.collapsedNetworks.load()).toEqual([""]);
+			expect(new AppController().state.collapsedNetworks).toEqual(new Set([""]));
+			app.toggleCollapsed(serverID, true);
+			expect(app.state.collapsedNetworks).toEqual(new Set());
+		} finally {
+			localStorage.clear();
+		}
+	});
+});
+
 describe("AppController notifications", () => {
 	function stubNotifications() {
 		const shown: string[] = [];

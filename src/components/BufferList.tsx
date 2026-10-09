@@ -1,5 +1,5 @@
-import { memo, type MouseEvent } from "react";
-import { BellOff, Pin } from "lucide-react";
+import { memo, type KeyboardEvent, type MouseEvent } from "react";
+import { BellOff, ChevronDown, ChevronRight, Pin } from "lucide-react";
 import { meaningfulRealname, unreadLabel } from "../format";
 import BufferTypeIcon from "./BufferTypeIcon";
 import {
@@ -7,6 +7,7 @@ import {
 	Unread,
 	ServerStatus,
 	getBufferURL,
+	getServerKey,
 	getServerName,
 	getTargetMetadata,
 	type Buffer,
@@ -45,8 +46,14 @@ interface BufferItemProps {
 	server: Server;
 	bouncerNetwork: BouncerNetwork | null;
 	active: boolean;
+	/** For server buffers: whether the network's buffers are collapsed */
+	collapsed?: boolean;
+	/** For collapsed server buffers: how many hidden buffers are unread */
+	hiddenUnread?: number;
 	onClick: (buf: Buffer) => void;
 	onClose: (buf: Buffer) => void;
+	/** For server buffers: collapse or expand, all networks with all */
+	onToggleCollapse?: (buf: Buffer, all: boolean) => void;
 }
 
 const BufferItem = memo(function BufferItem({
@@ -54,12 +61,31 @@ const BufferItem = memo(function BufferItem({
 	server,
 	bouncerNetwork,
 	active,
+	collapsed,
+	hiddenUnread,
 	onClick,
 	onClose,
+	onToggleCollapse,
 }: BufferItemProps) {
 	function handleClick(event: MouseEvent) {
 		event.preventDefault();
 		onClick(buffer);
+	}
+	function handleToggleClick(event: MouseEvent) {
+		// Part of the tab, but doesn't switch to the buffer
+		event.preventDefault();
+		event.stopPropagation();
+		onToggleCollapse?.(buffer, event.altKey);
+	}
+	function handleKeyDown(event: KeyboardEvent) {
+		// Like a tree: left collapses, right expands
+		if (
+			onToggleCollapse &&
+			((event.key === "ArrowLeft" && !collapsed) || (event.key === "ArrowRight" && collapsed))
+		) {
+			event.preventDefault();
+			onToggleCollapse(buffer, event.altKey);
+		}
 	}
 	function handleMouseDown(event: MouseEvent) {
 		if (event.button === 1) {
@@ -116,6 +142,7 @@ const BufferItem = memo(function BufferItem({
 				title={title}
 				role="tab"
 				aria-selected={active}
+				aria-expanded={onToggleCollapse ? !collapsed : undefined}
 				aria-current={active ? "page" : undefined}
 				aria-description={
 					[
@@ -123,6 +150,9 @@ const BufferItem = memo(function BufferItem({
 							? connectionLabel[connectionStatus(server, bouncerNetwork)]
 							: null,
 						unreadLabel(buffer.unread),
+						hiddenUnread
+							? `${hiddenUnread} more unread ${hiddenUnread === 1 ? "buffer" : "buffers"}`
+							: null,
 						metadata.pinned ? "Pinned" : null,
 						metadata.muted ? "Muted" : null,
 					]
@@ -131,8 +161,24 @@ const BufferItem = memo(function BufferItem({
 				}
 				onClick={handleClick}
 				onMouseDown={handleMouseDown}
+				onKeyDown={handleKeyDown}
 			>
-				<BufferTypeIcon type={buffer.type} className="buffer-icon" aria-hidden="true" />
+				{onToggleCollapse ? (
+					<span
+						className="buffer-collapse"
+						title={
+							collapsed
+								? "Expand (Alt-click: all networks)"
+								: "Collapse (Alt-click: all networks)"
+						}
+						aria-hidden="true"
+						onClick={handleToggleClick}
+					>
+						{collapsed ? <ChevronRight /> : <ChevronDown />}
+					</span>
+				) : (
+					<BufferTypeIcon type={buffer.type} className="buffer-icon" aria-hidden="true" />
+				)}
 				<span className="buffer-name">{name}</span>
 				{metadata.muted && <BellOff className="buffer-flag" aria-hidden="true" />}
 				{metadata.pinned && <Pin className="buffer-flag" aria-hidden="true" />}
@@ -143,6 +189,11 @@ const BufferItem = memo(function BufferItem({
 						title={connectionLabel[connectionStatus(server, bouncerNetwork)]}
 					/>
 				)}
+				{hiddenUnread ? (
+					<span className="buffer-count" aria-hidden="true">
+						{hiddenUnread}
+					</span>
+				) : null}
 				{buffer.unread !== Unread.NONE ? (
 					<span className="unread-indicator" aria-hidden="true" />
 				) : null}
@@ -156,52 +207,95 @@ interface BufferListProps {
 	servers: Map<number, Server>;
 	bouncerNetworks: Map<string, BouncerNetwork>;
 	activeBuffer: number | null;
+	/** Keys of the networks whose buffers are collapsed, see getServerKey() */
+	collapsed?: ReadonlySet<string>;
 	onBufferClick: (buf: Buffer) => void;
 	onBufferClose: (buf: Buffer) => void;
+	onToggleCollapse?: (buf: Buffer, all: boolean) => void;
+}
+
+interface Group {
+	server: Buffer[];
+	/** Buffers shown */
+	shown: Buffer[];
+	/** How many buffers hidden by collapsing have unread messages */
+	hiddenUnread: number;
 }
 
 /**
- * Buffers in display order: pinned ones right after their server's buffer,
- * keeping the order of the others.
+ * Buffers in display order, by server: pinned ones right after their
+ * server's buffer, keeping the order of the others. Collapsed servers only
+ * show pinned buffers, the active one and those with highlights: hidden
+ * ones never have highlights.
  */
-function displayOrder(buffers: Map<number, Buffer>, servers: Map<number, Server>): Buffer[] {
+function displayGroups(
+	buffers: Map<number, Buffer>,
+	servers: Map<number, Server>,
+	collapsed: ReadonlySet<string>,
+	activeBuffer: number | null,
+): Group[] {
 	const pinned = (buf: Buffer) =>
 		buf.type !== BufferType.SERVER &&
 		Boolean(getTargetMetadata(servers.get(buf.server), buf.name).pinned);
-	const groups = new Map<number, Buffer[]>();
+	const byServer = new Map<number, Buffer[]>();
 	for (const buf of buffers.values()) {
-		groups.set(buf.server, [...(groups.get(buf.server) ?? []), buf]);
+		byServer.set(buf.server, [...(byServer.get(buf.server) ?? []), buf]);
 	}
-	return [...groups.values()].flatMap((group) => [
-		...group.filter((buf) => buf.type === BufferType.SERVER),
-		...group.filter(pinned),
-		...group.filter((buf) => buf.type !== BufferType.SERVER && !pinned(buf)),
-	]);
+	return [...byServer].map(([serverID, group]) => {
+		const server = servers.get(serverID);
+		const children = [
+			...group.filter(pinned),
+			...group.filter((buf) => buf.type !== BufferType.SERVER && !pinned(buf)),
+		];
+		const isCollapsed = server !== undefined && collapsed.has(getServerKey(server));
+		const visible = (buf: Buffer) =>
+			!isCollapsed || pinned(buf) || buf.id === activeBuffer || buf.unread === Unread.HIGHLIGHT;
+		return {
+			server: group.filter((buf) => buf.type === BufferType.SERVER),
+			shown: children.filter(visible),
+			hiddenUnread: children.filter(
+				(buf) =>
+					!visible(buf) && buf.unread !== Unread.NONE && !getTargetMetadata(server, buf.name).muted,
+			).length,
+		};
+	});
 }
 
+const noneCollapsed: ReadonlySet<string> = new Set();
+
 export default function BufferList(props: BufferListProps) {
-	const items = displayOrder(props.buffers, props.servers).map((buf) => {
-		const server = props.servers.get(buf.server);
-		if (!server) {
-			return null;
-		}
+	const collapsed = props.collapsed ?? noneCollapsed;
+	const groups = displayGroups(props.buffers, props.servers, collapsed, props.activeBuffer);
+	const items = groups.flatMap((group) =>
+		[...group.server, ...group.shown].map((buf) => {
+			const server = props.servers.get(buf.server);
+			if (!server) {
+				return null;
+			}
 
-		const bouncerNetwork = server.bouncerNetID
-			? (props.bouncerNetworks.get(server.bouncerNetID) ?? null)
-			: null;
+			const bouncerNetwork = server.bouncerNetID
+				? (props.bouncerNetworks.get(server.bouncerNetID) ?? null)
+				: null;
 
-		return (
-			<BufferItem
-				key={buf.id}
-				buffer={buf}
-				server={server}
-				bouncerNetwork={bouncerNetwork}
-				onClick={props.onBufferClick}
-				onClose={props.onBufferClose}
-				active={props.activeBuffer === buf.id}
-			/>
-		);
-	});
+			const isServer = buf.type === BufferType.SERVER;
+			const isCollapsed = isServer && collapsed.has(getServerKey(server));
+
+			return (
+				<BufferItem
+					key={buf.id}
+					buffer={buf}
+					server={server}
+					bouncerNetwork={bouncerNetwork}
+					onClick={props.onBufferClick}
+					onClose={props.onBufferClose}
+					active={props.activeBuffer === buf.id}
+					collapsed={isServer ? isCollapsed : undefined}
+					hiddenUnread={isCollapsed ? group.hiddenUnread : undefined}
+					onToggleCollapse={isServer ? props.onToggleCollapse : undefined}
+				/>
+			);
+		}),
+	);
 
 	return (
 		<ul className="buffer-items" role="tablist" aria-label="Buffer list" aria-orientation="vertical">

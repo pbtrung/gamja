@@ -129,6 +129,14 @@ export interface Server {
 	reconnectAt?: number | null;
 }
 
+/**
+ * Identifies a server across reloads, e.g. to remember it's collapsed in the
+ * buffer list: its bouncer network, if any
+ */
+export function getServerKey(server: Server): string {
+	return server.bouncerNetID ?? "";
+}
+
 /** soju's metadata keys: https://soju.im/ext/metadata */
 export interface TargetMetadata {
 	/** Displayed more prominently than other buffers */

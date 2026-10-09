@@ -122,6 +122,7 @@ export default class AppController {
 			this.update((state) => ({ settings: { ...state.settings, ...settings } }));
 		}
 		applyTheme(this.state.settings.theme);
+		this.update({ collapsedNetworks: new Set(store.collapsedNetworks.load() ?? []) });
 		if (this.state.settings.autoAwayMinutes <= 0) {
 			this.present = true;
 		}
@@ -2137,6 +2138,27 @@ export default class AppController {
 			}
 		}
 		this.executeCommand(`/${action} ${nick}`);
+	}
+
+	/** Collapse or expand a network's buffers in the buffer list, or all networks. */
+	toggleCollapsed(serverID: number, all = false): void {
+		const server = this.state.servers.get(serverID);
+		if (!server) {
+			return;
+		}
+		const key = S.getServerKey(server);
+		const collapse = !this.state.collapsedNetworks.has(key);
+		const keys = all ? [...this.state.servers.values()].map(S.getServerKey) : [key];
+		const collapsedNetworks = new Set(this.state.collapsedNetworks);
+		for (const k of keys) {
+			if (collapse) {
+				collapsedNetworks.add(k);
+			} else {
+				collapsedNetworks.delete(k);
+			}
+		}
+		store.collapsedNetworks.put([...collapsedNetworks]);
+		this.update({ collapsedNetworks });
 	}
 
 	setOpenPanel(panel: "bufferList" | "memberList", open: boolean | "toggle"): void {

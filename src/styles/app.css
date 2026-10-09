@@ -936,7 +936,7 @@ kbd {
 	align-items: center;
 	gap: 0.5rem;
 	width: 100%;
-	padding: 0.3rem 0.625rem;
+	padding: 0.25rem 0.625rem;
 	border-radius: var(--radius);
 	color: var(--fg-muted);
 	font-size: 0.9rem;
@@ -958,7 +958,7 @@ kbd {
 }
 
 .buffer-items li.type-server:not(:first-child) {
-	margin-top: 0.75rem;
+	margin-top: 0.5rem;
 }
 
 .buffer-items li.type-server a {
@@ -2832,4 +2832,39 @@ mark {
 	letter-spacing: 0;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* Collapsing a network's buffers, from the chevron of its server buffer */
+.buffer-collapse {
+	display: inline-flex;
+	flex-shrink: 0;
+	margin: -0.25rem;
+	padding: 0.25rem;
+	border-radius: var(--radius-sm);
+	color: var(--fg-muted);
+	cursor: pointer;
+}
+
+.buffer-collapse:hover {
+	background-color: var(--bg-active);
+	color: var(--fg-emphasis);
+}
+
+.buffer-collapse svg.lucide {
+	width: 1rem;
+	height: 1rem;
+}
+
+/* Unread buffers hidden in a collapsed network */
+.buffer-count {
+	flex-shrink: 0;
+	min-width: 1.25rem;
+	padding: 0 0.375rem;
+	border-radius: 999px;
+	background-color: var(--bg-active);
+	color: var(--fg-emphasis);
+	font-size: 0.75rem;
+	font-weight: 600;
+	line-height: 1.25rem;
+	text-align: center;
 }

@@ -345,6 +345,10 @@ function Chat({ state }: { state: AppState }) {
 	);
 	const handleBufferClick = useCallback((buf: Buffer) => app.switchBuffer(buf.id), [app]);
 	const handleBufferClose = useCallback((buf: Buffer) => app.close(buf.id), [app]);
+	const handleToggleCollapse = useCallback(
+		(buf: Buffer, all: boolean) => app.toggleCollapsed(buf.server, all),
+		[app],
+	);
 	const handleScrollTop = useCallback(() => {
 		app.fetchOlderMessages().catch((err) => app.showError(err));
 	}, [app]);
@@ -447,8 +451,10 @@ function Chat({ state }: { state: AppState }) {
 						servers={state.servers}
 						bouncerNetworks={state.bouncerNetworks}
 						activeBuffer={state.activeBuffer}
+						collapsed={state.collapsedNetworks}
 						onBufferClick={handleBufferClick}
 						onBufferClose={handleBufferClose}
+						onToggleCollapse={handleToggleCollapse}
 					/>
 					{selfNick && (
 						<SelfStatus

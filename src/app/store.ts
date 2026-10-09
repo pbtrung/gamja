@@ -70,6 +70,8 @@ export interface AppState extends State {
 	error: string | null;
 	/** Away message set by the user, applied to all connections */
 	awayMessage: string | null;
+	/** Networks collapsed in the buffer list, see getServerKey() */
+	collapsedNetworks: ReadonlySet<string>;
 	openPanels: {
 		bufferList: boolean;
 		memberList: boolean;
@@ -89,6 +91,7 @@ export function createAppStore(): AppStore {
 		dialog: null,
 		error: null,
 		awayMessage: null,
+		collapsedNetworks: new Set(),
 		openPanels: {
 			bufferList: false,
 			memberList: false,
