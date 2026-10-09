@@ -2745,3 +2745,32 @@ mark {
 .action-menu.above {
 	transform-origin: bottom left;
 }
+
+/* Member actions: shown on hover or focus, always on touch screens */
+.member-items li {
+	position: relative;
+}
+
+.member-items li .member-menu {
+	position: absolute;
+	top: 50%;
+	right: 0.25rem;
+	transform: translateY(-50%);
+	opacity: 0;
+}
+
+.member-items li:hover .member-menu,
+.member-items li:focus-within .member-menu,
+.member-items li .member-menu[aria-expanded="true"] {
+	opacity: 1;
+}
+
+@media (hover: none) {
+	.member-items li .member-menu {
+		opacity: 1;
+	}
+}
+
+.member-items li a {
+	padding-right: 2.25rem;
+}

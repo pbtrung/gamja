@@ -76,6 +76,10 @@ export const defaultSettings: Settings = {
 	pushNotifications: false,
 };
 
+/** Actions on channel members, from the member list */
+export type MemberAction =
+	"message" | "whois" | "op" | "deop" | "voice" | "devoice" | "kick" | "ban" | "kickban";
+
 export interface User {
 	nick: string;
 	username?: string;

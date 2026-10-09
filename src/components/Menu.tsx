@@ -7,6 +7,7 @@ import {
 	type ReactNode,
 	type Ref,
 } from "react";
+import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 
 export interface MenuItem {
@@ -39,8 +40,8 @@ interface MenuProps {
 }
 
 /**
- * A button opening a menu. The menu is positioned fixed so that containers
- * clipping their overflow don't cut it.
+ * A button opening a menu. The menu is rendered in the body, positioned
+ * fixed, so that containers clipping their overflow don't cut it.
  */
 export default function Menu({
 	ref,
@@ -122,31 +123,33 @@ export default function Menu({
 				{ToggleIcon && <ToggleIcon aria-hidden="true" />}
 				{children}
 			</button>
-			{open && (
-				<div
-					className={"action-menu " + (position.bottom !== undefined ? "above" : "below")}
-					role="menu"
-					aria-label={label}
-					ref={menuRef}
-					style={position}
-				>
-					{items.map(({ key, icon: Icon, label, danger, onClick }) => (
-						<button
-							key={key}
-							type="button"
-							role="menuitem"
-							className={"action-menu-item" + (danger ? " danger" : "")}
-							onClick={() => {
-								setPosition(null);
-								onClick();
-							}}
-						>
-							<Icon aria-hidden="true" />
-							{label}
-						</button>
-					))}
-				</div>
-			)}
+			{open &&
+				createPortal(
+					<div
+						className={"action-menu " + (position.bottom !== undefined ? "above" : "below")}
+						role="menu"
+						aria-label={label}
+						ref={menuRef}
+						style={position}
+					>
+						{items.map(({ key, icon: Icon, label, danger, onClick }) => (
+							<button
+								key={key}
+								type="button"
+								role="menuitem"
+								className={"action-menu-item" + (danger ? " danger" : "")}
+								onClick={() => {
+									setPosition(null);
+									onClick();
+								}}
+							>
+								<Icon aria-hidden="true" />
+								{label}
+							</button>
+						))}
+					</div>,
+					document.body,
+				)}
 		</>
 	);
 }

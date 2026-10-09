@@ -1,15 +1,60 @@
-import { memo, type MouseEvent } from "react";
+import { memo, useRef, type MouseEvent } from "react";
+import {
+	Ban,
+	EllipsisVertical,
+	Info,
+	LogOut,
+	MessageSquare,
+	Mic,
+	MicOff,
+	Shield,
+	ShieldOff,
+	UserX,
+} from "lucide-react";
 import * as irc from "../lib/irc";
-import type { BouncerNetwork, User } from "../state";
+import type { BouncerNetwork, MemberAction, User } from "../state";
 import { getNickColorIndex, meaningfulRealname, nickInitial, sortMembers } from "../format";
 import Membership from "./Membership";
+import Menu, { type MenuHandle, type MenuItem } from "./Menu";
+
+function memberActions(
+	nick: string,
+	membership: string,
+	canModerate: boolean,
+	onAction: (nick: string, action: MemberAction) => void,
+): MenuItem[] {
+	const item = (action: MemberAction, icon: MenuItem["icon"], label: string, danger = false) => ({
+		key: action,
+		icon,
+		label,
+		danger,
+		onClick: () => onAction(nick, action),
+	});
+	const items = [item("message", MessageSquare, "Send message"), item("whois", Info, "Show info")];
+	if (canModerate) {
+		items.push(
+			membership.includes("@")
+				? item("deop", ShieldOff, "Remove operator")
+				: item("op", Shield, "Make operator"),
+			membership.includes("+")
+				? item("devoice", MicOff, "Remove voice")
+				: item("voice", Mic, "Give voice"),
+			item("kick", LogOut, "Kick", true),
+			item("ban", Ban, "Ban", true),
+			item("kickban", UserX, "Kick and ban", true),
+		);
+	}
+	return items;
+}
 
 interface MemberItemProps {
 	nick: string;
 	membership: string;
 	user: User | undefined;
 	bouncerNetwork: BouncerNetwork | null;
+	canModerate: boolean;
 	onClick: (nick: string) => void;
+	onAction: (nick: string, action: MemberAction) => void;
 }
 
 const MemberItem = memo(function MemberItem({
@@ -17,11 +62,20 @@ const MemberItem = memo(function MemberItem({
 	membership,
 	user,
 	bouncerNetwork,
+	canModerate,
 	onClick,
+	onAction,
 }: MemberItemProps) {
+	const menu = useRef<MenuHandle>(null);
+
 	function handleClick(event: MouseEvent) {
 		event.preventDefault();
 		onClick(nick);
+	}
+
+	function handleContextMenu(event: MouseEvent) {
+		event.preventDefault();
+		menu.current?.openAt(event.clientX, event.clientY);
 	}
 
 	const lines: string[] = [];
@@ -52,7 +106,13 @@ const MemberItem = memo(function MemberItem({
 
 	return (
 		<li>
-			<a href={url} className={classes.join(" ") || undefined} title={title} onClick={handleClick}>
+			<a
+				href={url}
+				className={classes.join(" ") || undefined}
+				title={title}
+				onClick={handleClick}
+				onContextMenu={handleContextMenu}
+			>
 				<span className={`member-avatar nick-${getNickColorIndex(nick)}`} aria-hidden="true">
 					{nickInitial(nick)}
 					{user?.away && <span className="presence away" />}
@@ -62,6 +122,14 @@ const MemberItem = memo(function MemberItem({
 					{nick}
 				</span>
 			</a>
+			<Menu
+				ref={menu}
+				items={memberActions(nick, membership, canModerate, onAction)}
+				label={`Actions for ${nick}`}
+				toggleLabel={`Actions for ${nick}`}
+				toggleIcon={EllipsisVertical}
+				toggleClassName="btn btn-sm member-menu"
+			/>
 		</li>
 	);
 });
@@ -71,7 +139,10 @@ interface MemberListProps {
 	users: irc.CaseMapMap<User>;
 	prefixes?: string;
 	bouncerNetwork: BouncerNetwork | null;
+	/** Whether the user is a channel operator */
+	canModerate: boolean;
 	onNickClick: (nick: string) => void;
+	onAction: (nick: string, action: MemberAction) => void;
 }
 
 const ROLE_TITLES: Record<string, string> = {
@@ -97,7 +168,15 @@ function groupMembers(sorted: [string, string][]): { title: string; members: [st
 	return [...groups].map(([title, members]) => ({ title, members }));
 }
 
-function MemberList({ members, users, prefixes, bouncerNetwork, onNickClick }: MemberListProps) {
+function MemberList({
+	members,
+	users,
+	prefixes,
+	bouncerNetwork,
+	canModerate,
+	onNickClick,
+	onAction,
+}: MemberListProps) {
 	const groups = groupMembers(sortMembers(members, prefixes));
 	return (
 		<div className="member-items">
@@ -118,7 +197,9 @@ function MemberList({ members, users, prefixes, bouncerNetwork, onNickClick }: M
 								membership={membership}
 								user={users.get(nick)}
 								bouncerNetwork={bouncerNetwork}
+								canModerate={canModerate}
 								onClick={onNickClick}
+								onAction={onAction}
 							/>
 						))}
 					</ul>

@@ -2097,6 +2097,34 @@ export default class AppController {
 		this.privmsg(buf.name, text);
 	}
 
+	/** Run an action from the member list on the active channel. */
+	handleMemberAction(nick: string, action: S.MemberAction): void {
+		const buf = S.getBuffer(this.state, this.state.activeBuffer);
+		switch (action) {
+			case "message":
+				this.open(nick);
+				this.setOpenPanel("memberList", false);
+				return;
+			case "whois":
+				this.executeCommand(`/whois ${nick}`);
+				if (buf) {
+					this.switchBuffer({ server: buf.server, name: SERVER_BUFFER });
+				}
+				this.setOpenPanel("memberList", false);
+				return;
+			case "kick":
+			case "ban":
+			case "kickban": {
+				const verb = { kick: "Kick", ban: "Ban", kickban: "Kick and ban" }[action];
+				if (!window.confirm(`${verb} ${nick} from ${buf?.name ?? "the channel"}?`)) {
+					return;
+				}
+				break;
+			}
+		}
+		this.executeCommand(`/${action} ${nick}`);
+	}
+
 	setOpenPanel(panel: "bufferList" | "memberList", open: boolean | "toggle"): void {
 		this.update((state) => ({
 			openPanels: {

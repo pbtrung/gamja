@@ -1,6 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import App from "../../src/components/App";
 import AppController from "../../src/app/controller";
 import { FakeWebSocket, installFakeWebSocket } from "../helpers/fake-ws";
@@ -104,6 +104,56 @@ describe("App", () => {
 		await userEvent.click(screen.getByRole("menuitem", { name: "Set as back" }));
 		expect(ws.sent).toEqual(["AWAY lunch", "AWAY"]);
 		expect(screen.getByRole("button", { name: "me, Online. Change status" })).toBeInTheDocument();
+	});
+
+	it("acts on channel members from the member list", async () => {
+		const app = await renderApp();
+		const ws = await login(app);
+		serverSays(ws, ":me!u@h JOIN #c", ":srv 353 me = #c :@me +bob carol", ":srv 366 me #c :End");
+		await userEvent.click(screen.getByRole("tab", { name: "#c" }));
+		ws.sent = [];
+		const members = screen.getByRole("complementary", { name: "Members list" });
+
+		await userEvent.click(within(members).getByRole("button", { name: "Actions for bob" }));
+		expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+			"Send message",
+			"Show info",
+			"Make operator",
+			"Remove voice",
+			"Kick",
+			"Ban",
+			"Kick and ban",
+		]);
+		await userEvent.click(screen.getByRole("menuitem", { name: "Make operator" }));
+		expect(ws.sent).toEqual(["MODE #c +o bob"]);
+
+		const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+		await userEvent.pointer({ keys: "[MouseRight]", target: within(members).getByText("carol") });
+		await userEvent.click(screen.getByRole("menuitem", { name: "Kick" }));
+		expect(confirm).toHaveBeenCalledWith("Kick carol from #c?");
+		expect(ws.sent).toEqual(["MODE #c +o bob"]);
+		confirm.mockReturnValue(true);
+		await userEvent.click(within(members).getByRole("button", { name: "Actions for carol" }));
+		await userEvent.click(screen.getByRole("menuitem", { name: "Kick" }));
+		expect(ws.sent).toEqual(["MODE #c +o bob", "KICK #c carol"]);
+		confirm.mockRestore();
+
+		await userEvent.click(within(members).getByRole("button", { name: "Actions for carol" }));
+		await userEvent.click(screen.getByRole("menuitem", { name: "Send message" }));
+		expect(screen.getByRole("heading", { level: 1, name: "carol" })).toBeInTheDocument();
+	});
+
+	it("only offers moderation to channel operators", async () => {
+		const app = await renderApp();
+		const ws = await login(app);
+		serverSays(ws, ":me!u@h JOIN #c", ":srv 353 me = #c :me bob", ":srv 366 me #c :End");
+		await userEvent.click(screen.getByRole("tab", { name: "#c" }));
+		const members = screen.getByRole("complementary", { name: "Members list" });
+		await userEvent.click(within(members).getByRole("button", { name: "Actions for bob" }));
+		expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+			"Send message",
+			"Show info",
+		]);
 	});
 
 	it("shows and dismisses errors", async () => {

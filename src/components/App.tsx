@@ -17,7 +17,15 @@ import {
 	X,
 } from "lucide-react";
 import * as irc from "../lib/irc";
-import { BufferType, ServerStatus, Unread, getServerName, unionUnread, type Buffer } from "../state";
+import {
+	BufferType,
+	ServerStatus,
+	Unread,
+	getServerName,
+	unionUnread,
+	type Buffer,
+	type MemberAction,
+} from "../state";
 import { setup as setupKeybindings } from "../keybindings";
 import { ControllerContext, useAppState, useController } from "../app/context";
 import type AppController from "../app/controller";
@@ -331,6 +339,10 @@ function Chat({ state }: { state: AppState }) {
 		},
 		[app],
 	);
+	const handleMemberAction = useCallback(
+		(nick: string, action: MemberAction) => app.handleMemberAction(nick, action),
+		[app],
+	);
 	const handleBufferClick = useCallback((buf: Buffer) => app.switchBuffer(buf.id), [app]);
 	const handleBufferClose = useCallback((buf: Buffer) => app.close(buf.id), [app]);
 	const handleScrollTop = useCallback(() => {
@@ -395,6 +407,10 @@ function Chat({ state }: { state: AppState }) {
 	} else if (activeBuffer && activeClient?.nick) {
 		privmsgMaxLen = irc.getMaxPrivmsgLen(activeClient.isupport, activeClient.nick, activeBuffer.name);
 	}
+
+	// Operators and half-operators
+	const myMembership = myNick ? (activeBuffer?.members.get(myNick) ?? "") : "";
+	const canModerate = canAct && /[~&@%]/.test(myMembership);
 
 	let memberListClass = "";
 	if (state.openPanels.memberList) {
@@ -548,7 +564,9 @@ function Chat({ state }: { state: AppState }) {
 							users={activeServer.users}
 							prefixes={activeServer.membershipModes?.map((m) => m.prefix).join("")}
 							bouncerNetwork={activeBouncerNetwork}
+							canModerate={canModerate}
 							onNickClick={handleMemberClick}
+							onAction={handleMemberAction}
 						/>
 					</div>
 				</aside>
