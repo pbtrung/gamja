@@ -88,6 +88,24 @@ describe("App", () => {
 		expect(screen.getByRole("dialog", { name: "Switch to a channel or user" })).toBeInTheDocument();
 	});
 
+	it("sets the away status from the buffer list", async () => {
+		const app = await renderApp();
+		const ws = await login(app);
+		await userEvent.click(screen.getByRole("button", { name: "me, Online. Change status" }));
+		await userEvent.click(screen.getByRole("menuitem", { name: "Set away…" }));
+		const dialog = screen.getByRole("dialog", { name: "Set away" });
+		const input = within(dialog).getByLabelText("Message");
+		await userEvent.clear(input);
+		await userEvent.type(input, "lunch");
+		await userEvent.click(within(dialog).getByRole("button", { name: "Set away" }));
+		expect(ws.sent).toEqual(["AWAY lunch"]);
+
+		await userEvent.click(screen.getByRole("button", { name: "me, Away: lunch. Change status" }));
+		await userEvent.click(screen.getByRole("menuitem", { name: "Set as back" }));
+		expect(ws.sent).toEqual(["AWAY lunch", "AWAY"]);
+		expect(screen.getByRole("button", { name: "me, Online. Change status" })).toBeInTheDocument();
+	});
+
 	it("shows and dismisses errors", async () => {
 		const app = await renderApp();
 		await login(app);

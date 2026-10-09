@@ -4,6 +4,7 @@ import {
 	CircleAlert,
 	CircleHelp,
 	ExternalLink,
+	Moon,
 	LogIn,
 	MessageSquareText,
 	MessagesSquare,
@@ -30,9 +31,11 @@ import ErrorBoundary from "./ErrorBoundary";
 import IconButton from "./IconButton";
 import MemberList from "./MemberList";
 import MessageList, { type MessageActionHandlers } from "./MessageList";
+import SelfStatus from "./SelfStatus";
 import TypingIndicator from "./TypingIndicator";
 import type { Message } from "../lib/irc";
 import AuthForm from "./forms/AuthForm";
+import AwayForm from "./forms/AwayForm";
 import ConfirmOpenBuffer from "./forms/ConfirmOpenBuffer";
 import ConnectForm from "./forms/ConnectForm";
 import Help from "./forms/Help";
@@ -256,6 +259,24 @@ function Dialogs({ state }: { state: AppState }) {
 					/>
 				</Dialog>
 			);
+		case "away":
+			return (
+				<Dialog
+					title="Set away"
+					icon={Moon}
+					description="Shown to others on all networks"
+					onDismiss={dismiss}
+					size="sm"
+				>
+					<AwayForm
+						message={state.awayMessage}
+						onSubmit={(message) => {
+							app.setAway(message);
+							app.dismissDialog();
+						}}
+					/>
+				</Dialog>
+			);
 		case "switch":
 			return (
 				<Dialog
@@ -323,6 +344,10 @@ function Chat({ state }: { state: AppState }) {
 
 	const activeID = activeBuffer?.id ?? null;
 	const myNick = activeServer?.nick ?? null;
+	let selfNick = myNick;
+	for (const server of state.servers.values()) {
+		selfNick ??= server.nick;
+	}
 	const canAct = activeServer?.status === ServerStatus.REGISTERED;
 	const canReact = canAct && Boolean(activeServer?.features.reactions);
 	const canReply = canAct && Boolean(activeServer?.features.replies);
@@ -404,6 +429,14 @@ function Chat({ state }: { state: AppState }) {
 						onBufferClick={handleBufferClick}
 						onBufferClose={handleBufferClose}
 					/>
+					{selfNick && (
+						<SelfStatus
+							nick={selfNick}
+							awayMessage={state.awayMessage}
+							onSetAway={() => app.openDialog({ kind: "away" })}
+							onBack={() => app.setAway(null)}
+						/>
+					)}
 				</div>
 			</nav>
 

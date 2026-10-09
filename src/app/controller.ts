@@ -825,6 +825,7 @@ export default class AppController {
 		});
 		client.debug = this.debug;
 		client.present = this.present;
+		client.awayMessage = this.state.awayMessage;
 
 		this.clients.set(serverID, client);
 		this.setServerState(serverID, { status: client.status });
@@ -2551,6 +2552,15 @@ export default class AppController {
 			return;
 		}
 		this.awayTimeoutID = setTimeout(() => this.setPresent(false), AUTO_AWAY_DELAY_MSEC);
+	}
+
+	/** Set or clear (with null or "") the away message on all connections. */
+	setAway(message: string | null): void {
+		const awayMessage = message || null;
+		this.update({ awayMessage });
+		for (const client of this.clients.values()) {
+			client.setAway(awayMessage);
+		}
 	}
 
 	setPresent(present: boolean): void {

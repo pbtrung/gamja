@@ -41,6 +41,7 @@ export type Dialog =
 	| { kind: "verify"; server: number; account: string; message: string; loading?: boolean }
 	| { kind: "settings"; showProtocolHandler: boolean }
 	| { kind: "switch" }
+	| { kind: "away" }
 	| { kind: "search"; server: number; buffer: string | null; query?: string };
 
 /** Message the user is replying to */
@@ -67,6 +68,8 @@ export interface AppState extends State {
 	loading: boolean;
 	dialog: Dialog | null;
 	error: string | null;
+	/** Away message set by the user, applied to all connections */
+	awayMessage: string | null;
 	openPanels: {
 		bufferList: boolean;
 		memberList: boolean;
@@ -85,6 +88,7 @@ export function createAppStore(): AppStore {
 		loading: true,
 		dialog: null,
 		error: null,
+		awayMessage: null,
 		openPanels: {
 			bufferList: false,
 			memberList: false,

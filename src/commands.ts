@@ -190,7 +190,8 @@ const commandList: Command[] = [
 		usage: "[message]",
 		description: "Set away message",
 		execute: (app, args) => {
-			getActiveClient(app).setAway(args.join(" "));
+			getActiveClient(app); // Fail early when disconnected
+			app.setAway(args.join(" "));
 		},
 	},
 	ban,
