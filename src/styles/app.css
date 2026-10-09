@@ -2826,7 +2826,7 @@ mark {
 	/* Roughly on the title's baseline */
 	padding-top: 0.3rem;
 	overflow: hidden;
-	color: var(--fg-subtle);
+	color: var(--fg-muted);
 	font-size: 0.6875rem;
 	font-weight: 500;
 	letter-spacing: 0;
