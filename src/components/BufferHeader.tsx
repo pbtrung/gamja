@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import useMediaQuery from "./useMediaQuery";
 import {
 	CirclePlus,
@@ -60,6 +60,24 @@ function NickStatus({ status }: { status: UserStatus }) {
 			aria-label={statusText[status]}
 		/>
 	);
+}
+
+function formatLag(ms: number): string {
+	return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+function formatDuration(sec: number): string {
+	return sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`;
+}
+
+/** Seconds left until a date, updated every second */
+function Countdown({ to }: { to: number }) {
+	const [now, setNow] = useState(Date.now);
+	useEffect(() => {
+		const id = setInterval(() => setNow(Date.now()), 1000);
+		return () => clearInterval(id);
+	}, []);
+	return <>{formatDuration(Math.max(0, Math.ceil((to - now) / 1000)))}</>;
 }
 
 interface ActionButtonProps {
@@ -153,7 +171,13 @@ export default function BufferHeader(props: BufferHeaderProps) {
 		case BufferType.SERVER: {
 			switch (server.status) {
 				case ServerStatus.DISCONNECTED:
-					description = "Disconnected";
+					description = server.reconnectAt ? (
+						<>
+							Disconnected, reconnecting in <Countdown to={server.reconnectAt} />
+						</>
+					) : (
+						"Disconnected"
+					);
 					break;
 				case ServerStatus.CONNECTING:
 					description = "Connecting…";
@@ -182,6 +206,9 @@ export default function BufferHeader(props: BufferHeaderProps) {
 						description = `Connected to ${buffer.serverInfo.name}`;
 					} else {
 						description = "Connected";
+					}
+					if (typeof description === "string" && typeof server.lag === "number") {
+						description += ` · ${formatLag(server.lag)} lag`;
 					}
 					break;
 			}

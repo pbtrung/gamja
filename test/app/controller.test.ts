@@ -540,7 +540,8 @@ describe("reactions, replies, redaction and typing", () => {
 		expect(sentRaw()).toEqual(["@+typing=active TAGMSG #c"]);
 		vi.advanceTimersByTime(3000);
 		app.notifyTyping("hel");
-		expect(sentRaw()).toEqual(["@+typing=active TAGMSG #c"]);
+		// Ignore the lag check, sent meanwhile
+		expect(sentRaw().filter((l) => !l.startsWith("PING "))).toEqual(["@+typing=active TAGMSG #c"]);
 		app.notifyTyping("");
 		expect(sentRaw()).toEqual(["@+typing=done TAGMSG #c"]);
 		app.notifyTyping("");

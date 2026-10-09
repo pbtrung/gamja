@@ -123,6 +123,10 @@ export interface Server {
 	features: Features;
 	/** Per-target settings synced by soju (draft/metadata-2), by target name */
 	metadata: irc.CaseMapMap<TargetMetadata>;
+	/** Round-trip time to the server in ms, unknown if null or missing */
+	lag?: number | null;
+	/** When the next reconnection attempt happens, in ms since the epoch */
+	reconnectAt?: number | null;
 }
 
 /** soju's metadata keys: https://soju.im/ext/metadata */

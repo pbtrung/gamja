@@ -876,6 +876,14 @@ export default class AppController {
 			this.handleMessage(serverID, (event as CustomEvent<MessageEventDetail>).detail.message);
 		});
 
+		client.addEventListener("reconnect", () => {
+			this.setServerState(serverID, { reconnectAt: client.reconnectAt });
+		});
+
+		client.addEventListener("lag", () => {
+			this.setServerState(serverID, { lag: client.lag });
+		});
+
 		client.addEventListener("error", (event) => {
 			errorID = this.showError((event as CustomEvent).detail);
 		});

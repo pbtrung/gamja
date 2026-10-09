@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import * as irc from "../../src/lib/irc";
@@ -63,6 +63,23 @@ describe("BufferHeader", () => {
 		expect(screen.getByText("Disconnected")).toBeInTheDocument();
 		await userEvent.click(screen.getByRole("button", { name: "Reconnect" }));
 		expect(props.onReconnect).toHaveBeenCalled();
+	});
+
+	it("counts down to the next reconnection", () => {
+		vi.useFakeTimers();
+		try {
+			setup({ server: { status: ServerStatus.DISCONNECTED, reconnectAt: Date.now() + 65 * 1000 } });
+			expect(screen.getByText("Disconnected, reconnecting in 1m 5s")).toBeInTheDocument();
+			act(() => vi.advanceTimersByTime(10 * 1000));
+			expect(screen.getByText("Disconnected, reconnecting in 55s")).toBeInTheDocument();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("shows the lag", () => {
+		setup({ buffer: { serverInfo: { name: "irc.example", version: "1" } }, server: { lag: 42 } });
+		expect(screen.getByText("Connected to irc.example · 42 ms lag")).toBeInTheDocument();
 	});
 
 	it("shows server info and join/settings for plain servers", () => {

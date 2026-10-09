@@ -40,8 +40,9 @@ On top of chat history and read markers, gamja supports soju's bouncer
 networks, search, Web Push notifications, detaching channels
 (`/detach`, joining reattaches) and pinning, muting and blocking (`/pin`,
 `/mute`, `/block` or the buffer header buttons), synced across clients.
-While the page stays hidden for a minute, gamja tells soju it's away
-(`draft/pre-away`), so soju can mark you away once all your clients are.
+While the page stays hidden for a while (a minute by default, see the
+settings), gamja tells soju it's away (`draft/pre-away`), so soju can mark
+you away once all your clients are.
 
 ### Checks
 

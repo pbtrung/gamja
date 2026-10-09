@@ -621,6 +621,48 @@ describe("away", () => {
 	});
 });
 
+describe("connection status", () => {
+	it("measures the lag", () => {
+		vi.useFakeTimers();
+		try {
+			const { client, ws } = register();
+			const onLag = vi.fn();
+			client.addEventListener("lag", onLag);
+			vi.advanceTimersByTime(2000);
+			const [ping] = ws.sent.splice(0);
+			const token = /^PING (gamja-lag-\d+)$/.exec(ping)?.[1];
+			expect(token).toBeDefined();
+			vi.advanceTimersByTime(42);
+			ws.receive(`:srv PONG srv ${token}`);
+			expect(client.lag).toBe(42);
+			expect(onLag).toHaveBeenCalledTimes(1);
+			// And again later
+			vi.advanceTimersByTime(30 * 1000);
+			expect(ws.sent).toEqual([expect.stringMatching(/^PING gamja-lag-/)]);
+			ws.serverClose(1006);
+			expect(client.lag).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("tells when it reconnects", () => {
+		vi.useFakeTimers();
+		try {
+			const { client, ws } = register();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			ws.serverClose(1006);
+			expect(client.reconnectAt).toBeGreaterThan(Date.now());
+			vi.advanceTimersByTime(client.reconnectAt! - Date.now());
+			expect(client.reconnectAt).toBeNull();
+			expect(client.status).toBe("connecting");
+			client.disconnect();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
+
 describe("soju extensions", () => {
 	it("requests NAMES explicitly with no-implicit-names", async () => {
 		const { client, ws } = register("soju.im/no-implicit-names batch");

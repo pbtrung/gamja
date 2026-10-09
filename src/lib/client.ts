@@ -39,6 +39,9 @@ const permanentCaps = [
 ];
 
 const RECONNECT_MIN_DELAY_MSEC = 10 * 1000; // 10s
+const LAG_FIRST_DELAY_MSEC = 2 * 1000;
+const LAG_INTERVAL_MSEC = 30 * 1000;
+const LAG_TOKEN_PREFIX = "gamja-lag-";
 const RECONNECT_MAX_DELAY_MSEC = 10 * 60 * 1000; // 10min
 
 // WebSocket status codes
@@ -247,6 +250,11 @@ export default class Client extends EventTarget {
 	reconnectBackoff = new Backoff(RECONNECT_MIN_DELAY_MSEC, RECONNECT_MAX_DELAY_MSEC);
 	lastReconnectDate = new Date(0);
 	pingIntervalID: ReturnType<typeof setInterval> | null = null;
+	/** When the next reconnection attempt happens, in ms since the epoch */
+	reconnectAt: number | null = null;
+	/** Round-trip time to the server, in ms, null until measured */
+	lag: number | null = null;
+	lagTimeoutID: ReturnType<typeof setTimeout> | undefined;
 	pendingCmds: Record<string, Promise<unknown>> = {
 		WHO: Promise.resolve(null),
 		CHATHISTORY: Promise.resolve(null),
@@ -279,6 +287,7 @@ export default class Client extends EventTarget {
 		this.disconnect();
 		this.autoReconnect = autoReconnect;
 
+		this.setReconnectAt(null);
 		console.log("Connecting to " + this.params.url);
 		this.setStatus(ClientStatus.CONNECTING);
 		this.lastReconnectDate = new Date();
@@ -349,6 +358,7 @@ export default class Client extends EventTarget {
 					this.reconnectTimeoutID = setTimeout(() => {
 						this.reconnect();
 					}, delay);
+					this.setReconnectAt(Date.now() + delay);
 				}
 			}
 		});
@@ -372,6 +382,32 @@ export default class Client extends EventTarget {
 		this.pendingLists = new irc.CaseMapMap(null, this.cm);
 		this.whoxQueries = new Map();
 		this.sentAway = null;
+		clearTimeout(this.lagTimeoutID);
+		this.setLag(null);
+	}
+
+	setReconnectAt(t: number | null): void {
+		if (this.reconnectAt !== t) {
+			this.reconnectAt = t;
+			this.dispatchEvent(new CustomEvent("reconnect"));
+		}
+	}
+
+	setLag(lag: number | null): void {
+		if (this.lag !== lag) {
+			this.lag = lag;
+			this.dispatchEvent(new CustomEvent("lag"));
+		}
+	}
+
+	/** Measure the lag now and then, the PONG tells how long it took. */
+	scheduleLagCheck(delay: number): void {
+		clearTimeout(this.lagTimeoutID);
+		this.lagTimeoutID = setTimeout(() => {
+			if (this.status === ClientStatus.REGISTERED) {
+				this.send({ command: "PING", params: [LAG_TOKEN_PREFIX + Date.now()] });
+			}
+		}, delay);
 	}
 
 	disconnect(): void {
@@ -383,6 +419,7 @@ export default class Client extends EventTarget {
 		this.reconnectTimeoutID = null;
 
 		globalThis.removeEventListener?.("online", this.handleOnline);
+		this.setReconnectAt(null);
 
 		this.setPingInterval(0);
 
@@ -495,6 +532,7 @@ export default class Client extends EventTarget {
 				this.setStatus(ClientStatus.REGISTERED);
 				// Restore the away status without draft/pre-away
 				this.syncAway();
+				this.scheduleLagCheck(LAG_FIRST_DELAY_MSEC);
 				break;
 			case irc.RPL_ISUPPORT: {
 				const prevMaxMonitorTargets = this.isupport.monitor();
@@ -564,6 +602,17 @@ export default class Client extends EventTarget {
 			case "PING":
 				this.send({ command: "PONG", params: [msg.params[0]] });
 				break;
+			case "PONG": {
+				const token = msg.params[1] ?? "";
+				if (token.startsWith(LAG_TOKEN_PREFIX)) {
+					const sent = parseInt(token.slice(LAG_TOKEN_PREFIX.length), 10);
+					if (!Number.isNaN(sent)) {
+						this.setLag(Math.max(0, Date.now() - sent));
+					}
+					this.scheduleLagCheck(LAG_INTERVAL_MSEC);
+				}
+				break;
+			}
 			case "NICK": {
 				const newNick = msg.params[0];
 				if (this.isMyNick(msg.prefix.name)) {
