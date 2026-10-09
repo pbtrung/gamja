@@ -583,6 +583,18 @@ export class Isupport {
 		return this.raw.get("BOT");
 	}
 
+	/** Build a ban mask matching an account, null if unsupported (account-extban). */
+	accountExtban(account: string): string | null {
+		const names = this.raw.get("ACCOUNTEXTBAN");
+		const extban = this.raw.get("EXTBAN");
+		if (!names || extban === undefined) {
+			return null;
+		}
+		// EXTBAN=<prefix>,<types>, the prefix may be empty
+		const prefix = extban.split(",")[0];
+		return prefix + names.split(",")[0] + ":" + account;
+	}
+
 	private int(key: string, def: number): number {
 		const v = this.raw.get(key);
 		if (v === undefined || v === "") {

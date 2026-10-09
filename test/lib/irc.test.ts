@@ -168,6 +168,19 @@ describe("Isupport", () => {
 		expect(is.chatHistory()).toBe(0);
 	});
 
+	it("builds account extban masks", () => {
+		const is = new irc.Isupport();
+		expect(is.accountExtban("bob")).toBeNull();
+		is.parse(["ACCOUNTEXTBAN=R"]);
+		expect(is.accountExtban("bob")).toBeNull(); // EXTBAN is required
+		is.parse(["EXTBAN=$,ARar"]);
+		expect(is.accountExtban("bob")).toBe("$R:bob");
+		is.parse(["EXTBAN=~,a", "ACCOUNTEXTBAN=account,a"]);
+		expect(is.accountExtban("bob")).toBe("~account:bob");
+		is.parse(["EXTBAN=,a", "ACCOUNTEXTBAN=a"]);
+		expect(is.accountExtban("bob")).toBe("a:bob");
+	});
+
 	it("ignores unpaired PREFIX modes", () => {
 		const is = new irc.Isupport();
 		is.parse(["PREFIX=(o)@+"]);

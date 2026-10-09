@@ -57,9 +57,16 @@ async function setUserHostMode(app: AppController, args: string[], mode: string)
 	}
 	const user = info[2];
 	const host = info[3];
+	const masks = [`*!${user}@${host}`];
+	// Also match the account, which survives host changes
+	const account = whois[irc.RPL_WHOISACCOUNT]?.params[2];
+	const accountMask = account ? client.isupport.accountExtban(account) : null;
+	if (accountMask) {
+		masks.push(accountMask);
+	}
 	client.send({
 		command: "MODE",
-		params: [activeChannel, mode, `*!${user}@${host}`],
+		params: [activeChannel, mode[0] + mode.slice(1).repeat(masks.length), ...masks],
 	});
 }
 

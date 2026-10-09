@@ -138,6 +138,24 @@ describe("commands", () => {
 		expect(sent()).toEqual(["MODE #c +b *!buser@bhost"]);
 	});
 
+	it("also bans the account with account-extban", async () => {
+		const { app, sent, recv } = await inChannel();
+		recv(":srv 005 me EXTBAN=$,ar ACCOUNTEXTBAN=a :are supported");
+		app.handleComposerSubmit("/ban bob");
+		recv(
+			":srv 311 me bob buser bhost * :Bob",
+			":srv 330 me bob bobacct :is logged in as",
+			":srv 318 me bob :End",
+		);
+		await flush();
+		expect(sent()).toEqual(["WHOIS bob", "MODE #c +bb *!buser@bhost $a:bobacct"]);
+
+		app.handleComposerSubmit("/unban bob");
+		recv(":srv 311 me bob buser bhost * :Bob", ":srv 318 me bob :End");
+		await flush();
+		expect(sent()).toEqual(["WHOIS bob", "MODE #c -b *!buser@bhost"]);
+	});
+
 	it("reports usage errors", async () => {
 		const { app } = await inChannel();
 		vi.spyOn(console, "error").mockImplementation(() => {});
