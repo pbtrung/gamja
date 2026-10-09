@@ -989,16 +989,24 @@ export function handleMessage(
 		case "PRIVMSG":
 		case "NOTICE":
 		case "TAGMSG": {
+			if (!msg.prefix?.user) {
+				return;
+			}
+			const update: Partial<User> = {};
+			const user = state.servers.get(serverID)?.users.get(prefix.name);
 			// account-tag
 			const account = msg.tags.account;
-			if (account === undefined || !msg.prefix?.user) {
+			if (account !== undefined && user?.account !== account) {
+				update.account = account;
+			}
+			// Bot mode: the tag saves a WHO to find out
+			if (msg.tags.bot !== undefined && !user?.bot) {
+				update.bot = true;
+			}
+			if (Object.keys(update).length === 0) {
 				return;
 			}
-			const user = state.servers.get(serverID)?.users.get(prefix.name);
-			if (user && user.account === account) {
-				return;
-			}
-			return updateUser(prefix.name, { account });
+			return updateUser(prefix.name, update);
 		}
 		case "REDACT":
 			target = msg.params[0];

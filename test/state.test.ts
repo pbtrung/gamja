@@ -335,6 +335,22 @@ describe("handleMessage", () => {
 		expect(t.user("srv")).toBeUndefined();
 	});
 
+	it("learns bots from the bot tag", () => {
+		const t = setup();
+		t.handle("@bot :robo!u@h PRIVMSG #c :beep");
+		expect(t.user("robo")?.bot).toBe(true);
+		expect(
+			S.handleMessage(
+				t.state,
+				irc.parseMessage("@bot :robo!u@h PRIVMSG #c :beep"),
+				t.serverID,
+				t.client,
+			),
+		).toBeUndefined();
+		t.handle(":bob!u@h PRIVMSG #c :hi");
+		expect(t.user("bob")).toBeUndefined();
+	});
+
 	it("marks NAMES as received", () => {
 		const t = setup(["#c"]);
 		expect(t.buf("#c").hasNames).toBe(false);

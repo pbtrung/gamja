@@ -507,6 +507,17 @@ describe("comfortable layout", () => {
 		expect(container.querySelectorAll(".avatar")).toHaveLength(4);
 	});
 
+	it("shows a bot badge from the bot tag", () => {
+		const { container } = renderList(
+			[msg("@bot :robo!u@h PRIVMSG #c :beep"), msg(":bob!u@h PRIVMSG #c :hi")],
+			{ settings: { layout: "comfortable" } },
+		);
+		const badges = [...container.querySelectorAll(".logline-header")].map(
+			(el) => el.querySelector(".tag-badge")?.textContent ?? null,
+		);
+		expect(badges).toEqual(["bot", null]);
+	});
+
 	it("starts a new group for replies and folds events", () => {
 		const { container } = renderList(
 			[

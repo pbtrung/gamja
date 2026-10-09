@@ -612,7 +612,9 @@ const LogLine = memo(
 						{isGroupedChat && group === "first" && (
 							<div className="logline-header">
 								{createNick(from)}
-								{ctx.server.users.get(from)?.bot && <span className="tag-badge">bot</span>}
+								{(msg.tags.bot !== undefined || ctx.server.users.get(from)?.bot) && (
+									<span className="tag-badge">bot</span>
+								)}
 								<Timestamp date={date} url={url} showSeconds={showSeconds} />
 							</div>
 						)}
