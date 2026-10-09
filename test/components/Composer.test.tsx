@@ -120,6 +120,30 @@ describe("Composer replies and typing", () => {
 		expect(onTextChange).toHaveBeenLastCalledWith("");
 	});
 
+	it("keeps unsent text per buffer", async () => {
+		const onTextChange = vi.fn();
+		const props = {
+			readOnly: false,
+			commandOnly: false,
+			onSubmit: vi.fn(),
+			autocomplete: () => [],
+			onTextChange,
+		};
+		const { rerender } = render(<Composer {...props} draftKey={1} />);
+		const input = screen.getByRole("textbox");
+		await userEvent.type(input, "draft one");
+		rerender(<Composer {...props} draftKey={2} />);
+		expect(input).toHaveValue("");
+		await userEvent.type(input, "two");
+		onTextChange.mockClear();
+		rerender(<Composer {...props} draftKey={1} />);
+		expect(input).toHaveValue("draft one");
+		rerender(<Composer {...props} draftKey={2} />);
+		expect(input).toHaveValue("two");
+		// Switching buffers isn't typing
+		expect(onTextChange).not.toHaveBeenCalled();
+	});
+
 	it("renders a status line", () => {
 		setup({ status: <p>bob is typing…</p> });
 		expect(screen.getByText("bob is typing…")).toBeInTheDocument();

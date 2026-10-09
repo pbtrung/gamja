@@ -20,6 +20,8 @@ export interface ComposerHandle {
 
 interface ComposerProps {
 	ref?: Ref<ComposerHandle>;
+	/** Identifies the buffer: each one keeps its own unsent text */
+	draftKey?: unknown;
 	readOnly: boolean;
 	commandOnly: boolean;
 	maxLen?: number;
@@ -50,6 +52,7 @@ function isEditableFocused(): boolean {
 
 export default function Composer({
 	ref,
+	draftKey,
 	readOnly,
 	commandOnly,
 	maxLen,
@@ -61,6 +64,19 @@ export default function Composer({
 	status,
 }: ComposerProps) {
 	const [text, setText] = useState("");
+	// Unsent text of the other buffers
+	const [drafts, setDrafts] = useState(() => new Map<unknown, string>());
+	const [prevDraftKey, setPrevDraftKey] = useState(draftKey);
+	if (draftKey !== prevDraftKey) {
+		const next = new Map(drafts);
+		if (text) {
+			next.set(prevDraftKey, text);
+		}
+		setText(next.get(draftKey) ?? "");
+		next.delete(draftKey);
+		setDrafts(next);
+		setPrevDraftKey(draftKey);
+	}
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const lastAutocomplete = useRef<Autocomplete | null>(null);
 
@@ -87,9 +103,15 @@ export default function Composer({
 	useEffect(() => {
 		onTextChangeRef.current = onTextChange;
 	});
+	const textDraftKey = useRef(draftKey);
 	useEffect(() => {
+		// Text restored when switching buffers isn't typing
+		if (textDraftKey.current !== draftKey) {
+			textDraftKey.current = draftKey;
+			return;
+		}
 		onTextChangeRef.current?.(text);
-	}, [text]);
+	}, [text, draftKey]);
 
 	function submit() {
 		if (!text || tooLong) {
