@@ -59,6 +59,8 @@ export interface StoredConnectParams {
 export const autoconnect = new Item<StoredConnectParams>("autoconnect");
 export const naggedProtocolHandler = new Item<boolean>("naggedProtocolHandler");
 export const settings = new Item<Record<string, unknown>>("settings");
+/** Reactions picked last, most recent first */
+export const recentReactions = new Item<string[]>("recentReactions");
 
 export interface StoredServer {
 	bouncerNetwork?: string | null;

@@ -349,21 +349,47 @@ describe("MessageList interactions", () => {
 		expect(actions.onRedact).toHaveBeenCalledWith(expect.objectContaining({ params: ["#c", "mine"] }));
 	});
 
+	it("searches reactions and offers recent ones first", async () => {
+		localStorage.clear();
+		const { actions } = renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], { actions: true });
+		const toggle = screen.getByRole("button", { name: "Add reaction" });
+
+		await userEvent.click(toggle);
+		const picker = screen.getByRole("dialog", { name: "Pick a reaction" });
+		expect(within(picker).getByRole("searchbox", { name: "Search emoji" })).toHaveFocus();
+		await userEvent.keyboard("fir");
+		expect(
+			within(picker)
+				.getAllByRole("menuitem")
+				.map((el) => el.textContent),
+		).toEqual(["🔥"]);
+		await userEvent.keyboard("{Enter}");
+		expect(actions.onReact).toHaveBeenLastCalledWith(expect.anything(), "🔥");
+		expect(screen.queryByRole("dialog")).toBeNull();
+
+		await userEvent.click(toggle);
+		const quick = screen.getByRole("menu", { name: "Frequently used" });
+		expect(within(quick).getAllByRole("menuitem")[0]).toHaveTextContent("🔥");
+		await userEvent.keyboard("qqq");
+		expect(screen.getByText("No emoji found")).toBeInTheDocument();
+		localStorage.clear();
+	});
+
 	it("closes the reaction picker with Escape", async () => {
 		renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], { actions: true });
 		await userEvent.click(screen.getByRole("button", { name: "Add reaction" }));
-		expect(screen.getByRole("menu")).toBeInTheDocument();
+		expect(screen.getByRole("dialog", { name: "Pick a reaction" })).toBeInTheDocument();
 		await userEvent.keyboard("{Escape}");
-		expect(screen.queryByRole("menu")).toBeNull();
+		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
 	it("closes the reaction picker with its toggle button", async () => {
 		renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], { actions: true });
 		const toggle = screen.getByRole("button", { name: "Add reaction" });
 		await userEvent.click(toggle);
-		expect(screen.getByRole("menu")).toBeInTheDocument();
+		expect(screen.getByRole("dialog", { name: "Pick a reaction" })).toBeInTheDocument();
 		await userEvent.click(toggle);
-		expect(screen.queryByRole("menu")).toBeNull();
+		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
 	it("updates reply quotes when the original message is deleted", () => {

@@ -1,7 +1,30 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Reply, SmilePlus, Trash2 } from "lucide-react";
-import { QUICK_REACTIONS } from "../format";
+import { EMOJIS, QUICK_REACTIONS } from "../format";
+import * as store from "../store";
 import IconButton from "./IconButton";
+
+const QUICK_COUNT = QUICK_REACTIONS.length;
+
+/** Recently picked reactions first, then the default ones. */
+function quickReactions(): string[] {
+	const recent = store.recentReactions.load() ?? [];
+	return [...new Set([...recent, ...QUICK_REACTIONS])].slice(0, QUICK_COUNT);
+}
+
+function rememberReaction(emoji: string): void {
+	const recent = store.recentReactions.load() ?? [];
+	store.recentReactions.put([emoji, ...recent.filter((e) => e !== emoji)].slice(0, 2 * QUICK_COUNT));
+}
+
+/** The emoji matching a search, by their words or the emoji itself. */
+function searchEmoji(query: string): string[] {
+	const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+	return EMOJIS.filter(([emoji, keywords]) =>
+		words.every((w) => emoji === w || keywords.split(" ").some((k) => k.startsWith(w))),
+	).map(([emoji]) => emoji);
+}
 
 interface ReactionPickerProps {
 	onPick: (emoji: string) => void;
@@ -12,15 +35,30 @@ interface ReactionPickerProps {
 
 function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 	const ref = useRef<HTMLDivElement>(null);
+	const [query, setQuery] = useState("");
+	const [quick] = useState(quickReactions);
+	const [position, setPosition] = useState<CSSProperties>({ opacity: 0 });
 	// onClose changes on every render of the parent: don't re-run the effects
 	const onCloseRef = useRef(onClose);
 	useEffect(() => {
 		onCloseRef.current = onClose;
 	});
 
-	useEffect(() => {
-		ref.current?.querySelector("button")?.focus();
-	}, []);
+	// Below the toggle, or above it when there's no room, e.g. on the last
+	// message. Positioned fixed: the chat log would clip it
+	useLayoutEffect(() => {
+		const rect = toggleRef.current?.getBoundingClientRect();
+		const height = ref.current?.offsetHeight ?? 0;
+		if (!rect) {
+			return;
+		}
+		const right = window.innerWidth - rect.right;
+		setPosition(
+			rect.bottom + 4 + height > window.innerHeight && rect.top - 4 - height >= 0
+				? { bottom: window.innerHeight - rect.top + 4, right }
+				: { top: rect.bottom + 4, right },
+		);
+	}, [toggleRef]);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -43,24 +81,75 @@ function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 		};
 	}, [toggleRef]);
 
-	return (
-		<div className="reaction-picker" role="menu" aria-label="Pick a reaction" ref={ref}>
-			{QUICK_REACTIONS.map((emoji) => (
+	function pick(emoji: string) {
+		rememberReaction(emoji);
+		onPick(emoji);
+		onClose();
+	}
+
+	const results = query.trim() ? searchEmoji(query) : null;
+	const choices = (emojis: string[], label: string) => (
+		<div className="reaction-choices" role="menu" aria-label={label}>
+			{emojis.map((emoji) => (
 				<button
 					key={emoji}
 					type="button"
 					role="menuitem"
 					className="reaction-choice"
 					aria-label={`React with ${emoji}`}
-					onClick={() => {
-						onPick(emoji);
-						onClose();
-					}}
+					onClick={() => pick(emoji)}
 				>
 					{emoji}
 				</button>
 			))}
 		</div>
+	);
+
+	return createPortal(
+		<div
+			className="reaction-picker"
+			role="dialog"
+			aria-label="Pick a reaction"
+			ref={ref}
+			style={position}
+		>
+			<input
+				type="search"
+				className="reaction-search"
+				placeholder="Search emoji"
+				aria-label="Search emoji"
+				value={query}
+				autoFocus
+				onChange={(event) => setQuery(event.target.value)}
+				onKeyDown={(event) => {
+					if (event.key === "Enter" && results?.[0]) {
+						event.preventDefault();
+						pick(results[0]);
+					} else if (event.key === "ArrowDown") {
+						event.preventDefault();
+						ref.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+					}
+				}}
+			/>
+			{results ? (
+				results.length > 0 ? (
+					choices(results, "Search results")
+				) : (
+					<p className="reaction-empty">No emoji found</p>
+				)
+			) : (
+				<>
+					{choices(quick, "Frequently used")}
+					<div className="reaction-all">
+						{choices(
+							EMOJIS.map(([emoji]) => emoji).filter((emoji) => !quick.includes(emoji)),
+							"All reactions",
+						)}
+					</div>
+				</>
+			)}
+		</div>,
+		document.body,
 	);
 }
 
