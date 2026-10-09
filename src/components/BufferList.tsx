@@ -182,6 +182,11 @@ const BufferItem = memo(function BufferItem({
 				<span className="buffer-name">{name}</span>
 				{metadata.muted && <BellOff className="buffer-flag" aria-hidden="true" />}
 				{metadata.pinned && <Pin className="buffer-flag" aria-hidden="true" />}
+				{hiddenUnread ? (
+					<span className="buffer-count" aria-hidden="true">
+						{hiddenUnread}
+					</span>
+				) : null}
 				{buffer.type === BufferType.SERVER && (
 					<span
 						className={`connection-status status-${connectionStatus(server, bouncerNetwork)}`}
@@ -189,11 +194,6 @@ const BufferItem = memo(function BufferItem({
 						title={connectionLabel[connectionStatus(server, bouncerNetwork)]}
 					/>
 				)}
-				{hiddenUnread ? (
-					<span className="buffer-count" aria-hidden="true">
-						{hiddenUnread}
-					</span>
-				) : null}
 				{buffer.unread !== Unread.NONE ? (
 					<span className="unread-indicator" aria-hidden="true" />
 				) : null}
