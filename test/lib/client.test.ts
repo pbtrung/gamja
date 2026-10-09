@@ -571,6 +571,56 @@ describe("commands", () => {
 	});
 });
 
+describe("away", () => {
+	const take = (ws: FakeWebSocket) => ws.sent.splice(0);
+
+	it("marks itself away before registration with draft/pre-away", () => {
+		const { client, ws } = connect();
+		client.present = false;
+		take(ws);
+		ws.receive(":srv CAP * LS :draft/pre-away");
+		expect(take(ws)).toEqual(["CAP REQ draft/pre-away", "AWAY *", "CAP END"]);
+		ws.receive(":srv CAP me ACK draft/pre-away", ":srv 001 me :Welcome");
+		expect(take(ws)).toEqual([]);
+
+		client.setPresent(true);
+		expect(take(ws)).toEqual(["AWAY"]);
+		client.setPresent(true);
+		expect(take(ws)).toEqual([]);
+		client.setPresent(false);
+		expect(take(ws)).toEqual(["AWAY *"]);
+	});
+
+	it("doesn't go away on absence without draft/pre-away", () => {
+		const { client, ws } = connect();
+		client.present = false;
+		take(ws);
+		ws.receive(":srv CAP * LS :batch", ":srv 001 me :Welcome");
+		client.setPresent(false);
+		expect(take(ws)).toEqual(["CAP REQ batch", "CAP END"]);
+	});
+
+	it("keeps the user's away message over presence", () => {
+		const { client, ws } = register("draft/pre-away");
+		client.setAway("lunch");
+		client.setPresent(false);
+		client.setPresent(true);
+		expect(take(ws)).toEqual(["AWAY lunch"]);
+		client.setAway("");
+		expect(take(ws)).toEqual(["AWAY"]);
+		client.setAway(null);
+		expect(take(ws)).toEqual(["AWAY"]);
+	});
+
+	it("restores the away message after reconnecting", () => {
+		const { client, ws } = connect();
+		client.setAway("lunch");
+		take(ws);
+		ws.receive(":srv CAP * LS :batch", ":srv 001 me :Welcome");
+		expect(take(ws)).toEqual(["CAP REQ batch", "CAP END", "AWAY lunch"]);
+	});
+});
+
 describe("soju extensions", () => {
 	it("requests NAMES explicitly with no-implicit-names", async () => {
 		const { client, ws } = register("soju.im/no-implicit-names batch");

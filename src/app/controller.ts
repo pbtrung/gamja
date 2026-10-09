@@ -34,6 +34,8 @@ import {
 } from "./config";
 
 const CHATHISTORY_MAX_SIZE = 4000;
+// How long the page stays hidden before marking the user away
+const AUTO_AWAY_DELAY_MSEC = 60 * 1000;
 
 function getReceipt(stored: store.StoredBuffer | undefined, type: ReceiptType): Receipt | null {
 	return stored?.receipts?.[type] ?? null;
@@ -110,6 +112,9 @@ export default class AppController {
 	pushEnv: webpush.PushEnvironment | null = webpush.getPushEnvironment();
 	/** Hooks provided by the UI */
 	ui: { focusComposer?: () => void } = {};
+	/** Whether the user is at the page, see Client.present */
+	present = typeof document === "undefined" || document.visibilityState !== "hidden";
+	awayTimeoutID: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(appStore: AppStore = createAppStore()) {
 		this.store = appStore;
@@ -819,6 +824,7 @@ export default class AppController {
 			eventPlayback: this.state.settings.bufferEvents !== BufferEventsDisplayMode.HIDE,
 		});
 		client.debug = this.debug;
+		client.present = this.present;
 
 		this.clients.set(serverID, client);
 		this.setServerState(serverID, { status: client.status });
@@ -2520,14 +2526,38 @@ export default class AppController {
 		const onFocus = () => this.handleWindowFocus();
 		const onHashChange = () => this.handleWindowHashChange();
 		const onWorkerMessage = (event: MessageEvent) => this.handleWorkerMessage(event.data);
+		const onVisibilityChange = () => this.handleVisibilityChange();
 		window.addEventListener("focus", onFocus);
 		window.addEventListener("hashchange", onHashChange);
+		document.addEventListener("visibilitychange", onVisibilityChange);
 		this.pushEnv?.serviceWorker.addEventListener("message", onWorkerMessage);
 		return () => {
 			window.removeEventListener("focus", onFocus);
 			window.removeEventListener("hashchange", onHashChange);
+			document.removeEventListener("visibilitychange", onVisibilityChange);
 			this.pushEnv?.serviceWorker.removeEventListener("message", onWorkerMessage);
+			clearTimeout(this.awayTimeoutID);
 		};
+	}
+
+	/**
+	 * Mark the user as away while the page stays hidden, see draft/pre-away.
+	 * Briefly switching tabs doesn't count.
+	 */
+	handleVisibilityChange(): void {
+		clearTimeout(this.awayTimeoutID);
+		if (document.visibilityState !== "hidden") {
+			this.setPresent(true);
+			return;
+		}
+		this.awayTimeoutID = setTimeout(() => this.setPresent(false), AUTO_AWAY_DELAY_MSEC);
+	}
+
+	setPresent(present: boolean): void {
+		this.present = present;
+		for (const client of this.clients.values()) {
+			client.setPresent(present);
+		}
 	}
 
 	/** Handle messages from the service worker, e.g. a clicked push notification. */

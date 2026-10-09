@@ -147,6 +147,7 @@ const AVAILABLE_CAPS = [
 	"draft/message-redaction",
 	"draft/account-registration=before-connect",
 	"draft/metadata-2",
+	"draft/pre-away",
 	"soju.im/no-implicit-names",
 	"soju.im/search",
 	"soju.im/webpush",
@@ -348,6 +349,13 @@ export class FakeServer {
 				return;
 			case "BOUNCER":
 				return this.handleBouncer(conn, msg, reply);
+			case "AWAY":
+				// draft/pre-away allows AWAY during registration
+				if (!conn.registered && conn.caps.has("draft/pre-away")) {
+					conn.away = msg.params[0] || null;
+					return;
+				}
+				break;
 		}
 
 		if (!conn.registered) {

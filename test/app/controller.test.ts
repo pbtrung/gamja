@@ -744,3 +744,31 @@ describe("search", () => {
 		expect(app.state.error).toMatch(/doesn't support searching/);
 	});
 });
+
+describe("AppController presence", () => {
+	function setVisibility(state: DocumentVisibilityState) {
+		Object.defineProperty(document, "visibilityState", { value: state, configurable: true });
+		document.dispatchEvent(new Event("visibilitychange"));
+	}
+
+	it("goes away once the page stays hidden, with draft/pre-away", async () => {
+		const { app, sent } = await connectedApp({ caps: "batch draft/pre-away" });
+		const detach = app.attach();
+		vi.useFakeTimers();
+		try {
+			setVisibility("hidden");
+			setVisibility("visible");
+			setVisibility("hidden");
+			vi.advanceTimersByTime(59 * 1000);
+			expect(sent()).toEqual([]);
+			vi.advanceTimersByTime(1000);
+			expect(sent()).toEqual(["AWAY *"]);
+			setVisibility("visible");
+			expect(sent()).toEqual(["AWAY"]);
+		} finally {
+			setVisibility("visible");
+			detach();
+			vi.useRealTimers();
+		}
+	});
+});

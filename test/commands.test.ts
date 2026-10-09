@@ -39,6 +39,7 @@ describe("commands", () => {
 		["/notice bob hi", "NOTICE bob hi"],
 		["/nick newme", "NICK newme"],
 		["/away gone fishing", "AWAY :gone fishing"],
+		["/away *", "AWAY *"],
 		["/away", "AWAY"],
 		["/quote PRIVMSG #x :raw text", "PRIVMSG #x :raw text"],
 		["/whois bob", "WHOIS bob"],

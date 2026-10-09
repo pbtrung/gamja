@@ -29,6 +29,7 @@ const permanentCaps = [
 	"draft/message-redaction",
 	"draft/metadata-2",
 	"draft/no-implicit-names",
+	"draft/pre-away",
 	"draft/read-marker",
 
 	"soju.im/bouncer-networks",
@@ -256,6 +257,12 @@ export default class Client extends EventTarget {
 	whoxQueries = new Map<string, string>();
 	/** Message handlers of pending roundtrips */
 	roundtripHandlers = new Set<(msg: Message) => void>();
+	/** Whether the user is at the client, e.g. the page is visible */
+	present = true;
+	/** Away message set by the user, it takes precedence over presence */
+	awayMessage: string | null = null;
+	/** Away message last sent on this connection, undefined if unknown */
+	sentAway: string | null | undefined = null;
 
 	constructor(params: Partial<ClientParams> & { url: string }) {
 		super();
@@ -364,6 +371,7 @@ export default class Client extends EventTarget {
 		this.monitored = new irc.CaseMapMap(null, this.cm);
 		this.pendingLists = new irc.CaseMapMap(null, this.cm);
 		this.whoxQueries = new Map();
+		this.sentAway = null;
 	}
 
 	disconnect(): void {
@@ -485,6 +493,8 @@ export default class Client extends EventTarget {
 
 				console.log("Registration complete");
 				this.setStatus(ClientStatus.REGISTERED);
+				// Restore the away status without draft/pre-away
+				this.syncAway();
 				break;
 			case irc.RPL_ISUPPORT: {
 				const prevMaxMonitorTargets = this.isupport.monitor();
@@ -916,7 +926,52 @@ export default class Client extends EventTarget {
 		if (this.caps.available.has("soju.im/bouncer-networks") && this.params.bouncerNetwork) {
 			this.send({ command: "BOUNCER", params: ["BIND", this.params.bouncerNetwork] });
 		}
+		// draft/pre-away: don't appear present while reconnecting in the
+		// background. The REQ has been sent, the server handles it first
+		const away = this.caps.available.has("draft/pre-away") ? this.wantedAway(true) : null;
+		if (away) {
+			this.send({ command: "AWAY", params: [away] });
+			this.sentAway = away;
+		}
 		this.send({ command: "CAP", params: ["END"] });
+	}
+
+	/**
+	 * The away message the server should have. Being absent only makes us
+	 * away with draft/pre-away, which lets bouncers tell it apart from an
+	 * away message typed by the user.
+	 */
+	wantedAway(preAway = this.caps.enabled.has("draft/pre-away")): string | null {
+		if (this.awayMessage) {
+			return this.awayMessage;
+		}
+		return !this.present && preAway ? "*" : null;
+	}
+
+	/** Set or clear (with null or "") the user's away message. */
+	setAway(message: string | null): void {
+		this.awayMessage = message || null;
+		// The user may expect AWAY to be sent even when nothing changed
+		this.sentAway = undefined;
+		this.syncAway();
+	}
+
+	/** Update whether the user is at the client, see draft/pre-away. */
+	setPresent(present: boolean): void {
+		this.present = present;
+		this.syncAway();
+	}
+
+	syncAway(): void {
+		if (this.status !== ClientStatus.REGISTERED) {
+			return;
+		}
+		const away = this.wantedAway();
+		if (away === this.sentAway) {
+			return;
+		}
+		this.sentAway = away;
+		this.send({ command: "AWAY", params: away ? [away] : [] });
 	}
 
 	send(msg: OutgoingMessage): void {

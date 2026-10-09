@@ -183,11 +183,7 @@ const commandList: Command[] = [
 		usage: "[message]",
 		description: "Set away message",
 		execute: (app, args) => {
-			const params: string[] = [];
-			if (args.length) {
-				params.push(args.join(" "));
-			}
-			getActiveClient(app).send({ command: "AWAY", params });
+			getActiveClient(app).setAway(args.join(" "));
 		},
 	},
 	ban,
