@@ -1,0 +1,152 @@
+import {
+	useEffect,
+	useImperativeHandle,
+	useRef,
+	useState,
+	type CSSProperties,
+	type ReactNode,
+	type Ref,
+} from "react";
+import type { LucideIcon } from "lucide-react";
+
+export interface MenuItem {
+	key: string;
+	icon: LucideIcon;
+	label: string;
+	danger?: boolean;
+	onClick: () => void;
+}
+
+/** Where to show the menu relative to its toggle */
+export type MenuPlacement = "below-end" | "above-start";
+
+export interface MenuHandle {
+	/** Open the menu at a point, e.g. for a context menu */
+	openAt(x: number, y: number): void;
+}
+
+interface MenuProps {
+	ref?: Ref<MenuHandle>;
+	items: MenuItem[];
+	/** Accessible name of the menu */
+	label: string;
+	toggleLabel: string;
+	toggleIcon?: LucideIcon;
+	toggleClassName?: string;
+	/** Shown in the toggle after its icon */
+	children?: ReactNode;
+	placement?: MenuPlacement;
+}
+
+/**
+ * A button opening a menu. The menu is positioned fixed so that containers
+ * clipping their overflow don't cut it.
+ */
+export default function Menu({
+	ref,
+	items,
+	label,
+	toggleLabel,
+	toggleIcon: ToggleIcon,
+	toggleClassName = "btn btn-sm",
+	placement = "below-end",
+	children,
+}: MenuProps) {
+	const [position, setPosition] = useState<CSSProperties | null>(null);
+	const open = position !== null;
+	const toggleRef = useRef<HTMLButtonElement>(null);
+	const menuRef = useRef<HTMLDivElement>(null);
+
+	function toggle() {
+		const rect = toggleRef.current?.getBoundingClientRect();
+		if (open || !rect) {
+			setPosition(null);
+		} else if (placement === "above-start") {
+			setPosition({ bottom: window.innerHeight - rect.top + 6, left: rect.left });
+		} else {
+			setPosition({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+		}
+	}
+
+	useImperativeHandle(ref, () => ({ openAt: (x, y) => setPosition({ top: y, left: x }) }), []);
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+		const menuItems = () =>
+			Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
+		menuItems()[0]?.focus({ preventScroll: true });
+		const close = () => {
+			setPosition(null);
+			toggleRef.current?.focus();
+		};
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				event.stopPropagation();
+				close();
+			} else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+				event.preventDefault();
+				const l = menuItems();
+				const i = l.indexOf(document.activeElement as HTMLElement);
+				const next = event.key === "ArrowDown" ? i + 1 : i - 1;
+				l[(next + l.length) % l.length]?.focus();
+			}
+		};
+		const handlePointer = (event: PointerEvent) => {
+			const target = event.target as Node;
+			if (!menuRef.current?.contains(target) && !toggleRef.current?.contains(target)) {
+				setPosition(null);
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown, true);
+		window.addEventListener("pointerdown", handlePointer, true);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown, true);
+			window.removeEventListener("pointerdown", handlePointer, true);
+		};
+	}, [open]);
+
+	return (
+		<>
+			<button
+				type="button"
+				ref={toggleRef}
+				className={toggleClassName}
+				title={toggleLabel}
+				aria-label={toggleLabel}
+				aria-haspopup="menu"
+				aria-expanded={open}
+				onClick={toggle}
+			>
+				{ToggleIcon && <ToggleIcon aria-hidden="true" />}
+				{children}
+			</button>
+			{open && (
+				<div
+					className={"action-menu " + (position.bottom !== undefined ? "above" : "below")}
+					role="menu"
+					aria-label={label}
+					ref={menuRef}
+					style={position}
+				>
+					{items.map(({ key, icon: Icon, label, danger, onClick }) => (
+						<button
+							key={key}
+							type="button"
+							role="menuitem"
+							className={"action-menu-item" + (danger ? " danger" : "")}
+							onClick={() => {
+								setPosition(null);
+								onClick();
+							}}
+						>
+							<Icon aria-hidden="true" />
+							{label}
+						</button>
+					))}
+				</div>
+			)}
+		</>
+	);
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import useMediaQuery from "./useMediaQuery";
 import {
 	CirclePlus,
@@ -36,6 +36,7 @@ import {
 	type User,
 } from "../state";
 import RichText, { type LinkClickHandler } from "./RichText";
+import Menu from "./Menu";
 
 const UserStatus = {
 	HERE: "here",
@@ -75,99 +76,6 @@ interface ActionButtonProps {
 
 /** Small screens only show the panel toggles and a menu with the rest */
 const SMALL_SCREEN = "(max-width: 640px)";
-
-/** A "more actions" button opening a menu, for small screens */
-function ActionMenu({ actions }: { actions: Action[] }) {
-	// Where to show the menu: fixed, the header clips its overflow
-	const [position, setPosition] = useState<{ top: number; right: number } | null>(null);
-	const open = position !== null;
-	const setOpen = (value: boolean | ((open: boolean) => boolean)) => {
-		const next = typeof value === "function" ? value(open) : value;
-		const rect = toggleRef.current?.getBoundingClientRect();
-		setPosition(next && rect ? { top: rect.bottom + 6, right: window.innerWidth - rect.right } : null);
-	};
-	const toggleRef = useRef<HTMLButtonElement>(null);
-	const menuRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-		const items = () =>
-			Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
-		items()[0]?.focus({ preventScroll: true });
-		const close = () => {
-			setPosition(null);
-			toggleRef.current?.focus();
-		};
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				event.stopPropagation();
-				close();
-			} else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-				event.preventDefault();
-				const l = items();
-				const i = l.indexOf(document.activeElement as HTMLElement);
-				const next = event.key === "ArrowDown" ? i + 1 : i - 1;
-				l[(next + l.length) % l.length]?.focus();
-			}
-		};
-		const handlePointer = (event: PointerEvent) => {
-			const target = event.target as Node;
-			if (!menuRef.current?.contains(target) && !toggleRef.current?.contains(target)) {
-				setPosition(null);
-			}
-		};
-		window.addEventListener("keydown", handleKeyDown, true);
-		window.addEventListener("pointerdown", handlePointer, true);
-		return () => {
-			window.removeEventListener("keydown", handleKeyDown, true);
-			window.removeEventListener("pointerdown", handlePointer, true);
-		};
-	}, [open]);
-
-	return (
-		<>
-			<button
-				type="button"
-				ref={toggleRef}
-				className="btn btn-sm"
-				title="More actions"
-				aria-label="More actions"
-				aria-haspopup="menu"
-				aria-expanded={open}
-				onClick={() => setOpen((o) => !o)}
-			>
-				<EllipsisVertical aria-hidden="true" />
-			</button>
-			{open && (
-				<div
-					className="action-menu"
-					role="menu"
-					aria-label="Buffer actions"
-					ref={menuRef}
-					style={{ top: position.top, right: position.right }}
-				>
-					{actions.map(({ key, icon: Icon, label, danger, onClick }) => (
-						<button
-							key={key}
-							type="button"
-							role="menuitem"
-							className={"action-menu-item" + (danger ? " danger" : "")}
-							onClick={() => {
-								setOpen(false);
-								onClick();
-							}}
-						>
-							<Icon aria-hidden="true" />
-							{label}
-						</button>
-					))}
-				</div>
-			)}
-		</>
-	);
-}
 
 /** A header action: a button on wide screens, a menu item on small ones */
 interface Action {
@@ -533,7 +441,14 @@ export default function BufferHeader(props: BufferHeaderProps) {
 				<div className="btn-group" role="group" aria-label="Buffer actions">
 					{toggles}
 					{smallScreen
-						? actions.length > 0 && <ActionMenu actions={actions} />
+						? actions.length > 0 && (
+								<Menu
+									items={actions}
+									label="Buffer actions"
+									toggleLabel="More actions"
+									toggleIcon={EllipsisVertical}
+								/>
+							)
 						: actions.map(({ key, ...action }) => <ActionButton key={key} {...action} />)}
 				</div>
 			</div>
