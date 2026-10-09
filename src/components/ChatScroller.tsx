@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowUp } from "lucide-react";
 import { flash } from "../lib/flash";
 
 /** A message and its distance from the top of the viewport, in pixels */
@@ -21,6 +22,8 @@ interface ChatScrollerProps {
 	/** data-msgid of a message to scroll to */
 	jumpTo?: string | null;
 	onJumped?: () => void;
+	/** Selector for the unread marker: offers to jump to it when scrolled past */
+	unreadMarker?: string;
 }
 
 function isAtBottom(el: HTMLElement): boolean {
@@ -45,8 +48,10 @@ export default function ChatScroller({
 	label,
 	jumpTo,
 	onJumped,
+	unreadMarker,
 }: ChatScrollerProps) {
 	const ref = useRef<HTMLElement>(null);
+	const [unreadAbove, setUnreadAbove] = useState(false);
 	const stickToBottom = useRef(true);
 	const onScrollTopRef = useRef(onScrollTop);
 
@@ -133,6 +138,51 @@ export default function ChatScroller({
 		};
 	}, []);
 
+	// Watch whether the unread marker is above the view, it can come and go
+	useEffect(() => {
+		const el = ref.current;
+		if (!el || !unreadMarker || typeof IntersectionObserver === "undefined") {
+			return;
+		}
+		let marker: Element | null = null;
+		const observer = new IntersectionObserver(([entry]) => {
+			const rootTop = entry.rootBounds?.top ?? el.getBoundingClientRect().top;
+			setUnreadAbove(!entry.isIntersecting && entry.boundingClientRect.bottom <= rootTop);
+		});
+		const update = () => {
+			const next = el.querySelector(unreadMarker);
+			if (next === marker) {
+				return;
+			}
+			if (marker) {
+				observer.unobserve(marker);
+			}
+			marker = next;
+			if (marker) {
+				observer.observe(marker);
+			} else {
+				setUnreadAbove(false);
+			}
+		};
+		update();
+		const mutationObserver = new MutationObserver(update);
+		mutationObserver.observe(el, { childList: true, subtree: true });
+		return () => {
+			observer.disconnect();
+			mutationObserver.disconnect();
+		};
+	}, [unreadMarker]);
+
+	function jumpToUnread() {
+		const el = ref.current;
+		const marker = unreadMarker ? el?.querySelector(unreadMarker) : null;
+		if (!el || !marker) {
+			return;
+		}
+		el.scrollTop += marker.getBoundingClientRect().top - el.getBoundingClientRect().top - 8;
+		save(el);
+	}
+
 	return (
 		<section
 			id={id}
@@ -148,6 +198,13 @@ export default function ChatScroller({
 				}
 			}}
 		>
+			{unreadAbove && (
+				<div className="jump-unread">
+					<button type="button" className="btn btn-sm" onClick={jumpToUnread}>
+						<ArrowUp aria-hidden="true" /> Jump to new messages
+					</button>
+				</div>
+			)}
 			{children}
 		</section>
 	);

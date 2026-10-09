@@ -2774,3 +2774,20 @@ mark {
 .member-items li a {
 	padding-right: 2.25rem;
 }
+
+/* Offer to jump to the unread marker when it's scrolled out of view */
+.jump-unread {
+	position: sticky;
+	top: 0.5rem;
+	z-index: 5;
+	display: flex;
+	justify-content: center;
+	height: 0;
+	overflow: visible;
+}
+
+.jump-unread .btn {
+	border-radius: 999px;
+	background-color: var(--bg-elevated);
+	box-shadow: var(--shadow-lg);
+}

@@ -128,3 +128,27 @@ test("switches the comfortable layout to the compact style on small screens", as
 	await page.setViewportSize({ width: 1280, height: 720 });
 	await expect(line).toHaveClass(/comfortable/);
 });
+
+test("jumps to the unread marker when scrolled past it", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#busy");
+	await page.setViewportSize({ width: 1000, height: 500 });
+	await connect(page, "tester", { channels: ["#busy", "#quiet"] });
+	await page.getByRole("tab", { name: "#busy" }).click();
+	bob.privmsg("#busy", "seen");
+	await expect(page.locator("#buffer .talk").last()).toContainText("seen");
+	await page.getByRole("tab", { name: "#quiet" }).click();
+
+	for (let i = 0; i < 40; i++) {
+		bob.privmsg("#busy", `unread ${i}`);
+	}
+	await expect(page.getByRole("tab", { name: "#busy" })).toHaveAttribute("aria-description", /Unread/);
+	await page.getByRole("tab", { name: "#busy" }).click();
+	await expect(page.locator("#buffer .talk").last()).toContainText("unread 39");
+
+	const jump = page.getByRole("button", { name: "Jump to new messages" });
+	await expect(jump).toBeVisible();
+	await jump.click();
+	await expect(page.locator(".unread-separator")).toBeInViewport();
+	await expect(jump).toBeHidden();
+});

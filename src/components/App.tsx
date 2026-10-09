@@ -505,6 +505,7 @@ function Chat({ state }: { state: AppState }) {
 				jumpTo={state.jumpTo?.buffer === state.activeBuffer ? state.jumpTo.msgid : null}
 				onJumped={handleJumped}
 				stickTo=".logline"
+				unreadMarker=".unread-separator"
 				onScrollTop={handleScrollTop}
 				label={activeBuffer ? `Messages in ${activeBuffer.name}` : "Messages"}
 			>
