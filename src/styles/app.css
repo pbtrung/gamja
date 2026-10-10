@@ -2706,14 +2706,6 @@ mark {
 	}
 }
 
-@media (pointer: none), (pointer: coarse) {
-	.buffer-items li a,
-	.member-items li a {
-		padding-top: 0.5rem;
-		padding-bottom: 0.5rem;
-	}
-}
-
 /* The user's own nick and away status, at the bottom of the buffer list */
 .self-status {
 	flex-shrink: 0;
