@@ -152,3 +152,28 @@ test("jumps to the unread marker when scrolled past it", async ({ page, connect,
 	await expect(page.locator(".unread-separator")).toBeInViewport();
 	await expect(jump).toBeHidden();
 });
+
+test("hides a member's actions button once its menu is closed", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#hover");
+	await connect(page, "tester", { channels: ["#hover"] });
+	await page.locator("#buffer-header .member-list-toggle").click();
+	const items = page.locator(".member-items li");
+	await expect(items).toHaveCount(2);
+	const toggle = page.getByRole("button", { name: "Actions for bob" });
+	const menu = page.getByRole("menu", { name: "Actions for bob" });
+
+	for (const close of ["Escape", "toggle"]) {
+		await items.first().hover();
+		await toggle.click();
+		await expect(menu).toBeVisible();
+		if (close === "Escape") {
+			await page.keyboard.press("Escape");
+		} else {
+			await toggle.click();
+		}
+		await expect(menu).toBeHidden();
+		await page.locator("#buffer").hover();
+		await expect(toggle).toHaveCSS("opacity", "0");
+	}
+});

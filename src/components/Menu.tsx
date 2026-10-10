@@ -5,6 +5,7 @@ import {
 	useRef,
 	useState,
 	type CSSProperties,
+	type MouseEvent,
 	type ReactNode,
 	type Ref,
 } from "react";
@@ -58,8 +59,12 @@ export default function Menu({
 	const open = position !== null;
 	const toggleRef = useRef<HTMLButtonElement>(null);
 	const menuRef = useRef<HTMLDivElement>(null);
+	// Only give the focus back to the toggle for keyboard users: after a
+	// click, it would keep showing toggles only visible on focus or hover
+	const fromKeyboard = useRef(false);
 
-	function toggle() {
+	function toggle(event: MouseEvent) {
+		fromKeyboard.current = event.detail === 0;
 		const rect = toggleRef.current?.getBoundingClientRect();
 		if (open || !rect) {
 			setPosition(null);
@@ -70,7 +75,16 @@ export default function Menu({
 		}
 	}
 
-	useImperativeHandle(ref, () => ({ openAt: (x, y) => setPosition({ top: y, left: x }) }), []);
+	useImperativeHandle(
+		ref,
+		() => ({
+			openAt: (x, y) => {
+				fromKeyboard.current = false;
+				setPosition({ top: y, left: x });
+			},
+		}),
+		[],
+	);
 
 	// Keep menus opened at a point inside the viewport
 	useLayoutEffect(() => {
@@ -95,7 +109,9 @@ export default function Menu({
 		menuItems()[0]?.focus({ preventScroll: true });
 		const close = () => {
 			setPosition(null);
-			toggleRef.current?.focus();
+			if (fromKeyboard.current) {
+				toggleRef.current?.focus();
+			}
 		};
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape") {

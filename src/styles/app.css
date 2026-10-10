@@ -2791,7 +2791,7 @@ mark {
 }
 
 .member-items li:hover .member-menu,
-.member-items li:focus-within .member-menu,
+.member-items li:has(:focus-visible) .member-menu,
 .member-items li .member-menu[aria-expanded="true"] {
 	opacity: 1;
 }
