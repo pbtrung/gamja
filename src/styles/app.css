@@ -2817,15 +2817,27 @@ mark {
 	top: 0.5rem;
 	z-index: 5;
 	display: flex;
+	/* Not stretched to the zero height */
+	align-items: flex-start;
 	justify-content: center;
 	height: 0;
 	overflow: visible;
 }
 
 .jump-unread .btn {
+	padding: 0.4rem 0.9rem;
+	border-color: var(--accent);
 	border-radius: 999px;
-	background-color: var(--bg-elevated);
+	background-color: var(--accent);
+	color: var(--accent-fg);
+	font-weight: 600;
 	box-shadow: var(--shadow-lg);
+}
+
+.jump-unread .btn:hover {
+	border-color: var(--accent-hover);
+	background-color: var(--accent-hover);
+	color: var(--accent-fg);
 }
 
 .sidebar-version {
