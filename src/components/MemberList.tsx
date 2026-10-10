@@ -128,7 +128,7 @@ const MemberItem = memo(function MemberItem({
 				label={`Actions for ${nick}`}
 				toggleLabel={`Actions for ${nick}`}
 				toggleIcon={EllipsisVertical}
-				toggleClassName="btn btn-sm member-menu"
+				toggleClassName="icon-btn member-menu"
 			/>
 		</li>
 	);

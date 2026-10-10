@@ -2777,8 +2777,17 @@ mark {
 	position: absolute;
 	top: 50%;
 	right: 0.25rem;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: var(--radius-sm);
+	font-size: 1rem;
 	transform: translateY(-50%);
 	opacity: 0;
+}
+
+.member-items li .member-menu:hover,
+.member-items li .member-menu[aria-expanded="true"] {
+	background-color: var(--bg-active);
 }
 
 .member-items li:hover .member-menu,
@@ -2794,7 +2803,7 @@ mark {
 }
 
 .member-items li a {
-	padding-right: 2.25rem;
+	padding-right: 2rem;
 }
 
 /* Offer to jump to the unread marker when it's scrolled out of view */
