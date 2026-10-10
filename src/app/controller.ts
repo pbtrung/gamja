@@ -35,6 +35,11 @@ import {
 
 const CHATHISTORY_MAX_SIZE = 4000;
 
+/** Whether the side panes cover the whole screen, see app.css */
+function isSmallScreen(): boolean {
+	return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches;
+}
+
 function getReceipt(stored: store.StoredBuffer | undefined, type: ReceiptType): Receipt | null {
 	return stored?.receipts?.[type] ?? null;
 }
@@ -500,7 +505,11 @@ export default class AppController {
 			openPanels: { ...state.openPanels, bufferList: false },
 		}));
 
-		this.ui.focusComposer?.();
+		// On small screens, focusing would pop up the on-screen keyboard over
+		// the messages the user just switched to read
+		if (!isSmallScreen()) {
+			this.ui.focusComposer?.();
+		}
 
 		const server = this.state.servers.get(buf.server);
 		if (client && client.status === ClientStatus.REGISTERED) {

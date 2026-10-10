@@ -12,6 +12,8 @@ test("opens the buffer list from the header on small screens", async ({ page, co
 	await page.getByRole("tab", { name: "FakeNet" }).click();
 	await expect(page.locator("#buffer-list")).toBeHidden();
 	await expect(page.locator("#buffer-header h1")).toHaveText("FakeNet");
+	// The on-screen keyboard would cover the buffer
+	await expect(page.locator("#composer textarea")).not.toBeFocused();
 });
 
 for (const layout of ["comfortable", "compact"] as const) {
