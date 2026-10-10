@@ -70,7 +70,13 @@ const MemberItem = memo(function MemberItem({
 
 	function handleClick(event: MouseEvent) {
 		event.preventDefault();
-		onClick(nick);
+		// Touch screens have no room for a button per nick: tapping opens the
+		// actions instead, which start with sending a message
+		if (window.matchMedia?.("(hover: none)").matches) {
+			menu.current?.openAt(event.clientX, event.clientY);
+		} else {
+			onClick(nick);
+		}
 	}
 
 	function handleContextMenu(event: MouseEvent) {

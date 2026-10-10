@@ -48,3 +48,20 @@ test("opens header actions from a menu on small screens", async ({ page, connect
 	await header.getByRole("button", { name: "More actions" }).click();
 	await expect(page.getByRole("menuitem", { name: "Join" })).toBeVisible();
 });
+
+test("opens member actions by tapping a nick on touch screens", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#tap");
+	await connect(page, "tester", { channels: ["#tap"] });
+	await expect(page.locator("#buffer-header h1")).toHaveText("#tap");
+	await page.getByRole("button", { name: "Open member list" }).click();
+	const members = page.locator("#member-list");
+	await expect(members.getByRole("button", { name: "Actions for bob" })).toBeHidden();
+	await members.getByRole("link", { name: "@bob" }).tap();
+	const menu = page.getByRole("menu", { name: "Actions for bob" });
+	await expect(menu).toBeVisible();
+	const box = (await menu.boundingBox())!;
+	expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+	await page.getByRole("menuitem", { name: "Send message" }).click();
+	await expect(page.locator("#buffer-header h1")).toHaveText("bob");
+});

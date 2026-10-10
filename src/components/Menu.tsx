@@ -1,6 +1,7 @@
 import {
 	useEffect,
 	useImperativeHandle,
+	useLayoutEffect,
 	useRef,
 	useState,
 	type CSSProperties,
@@ -70,6 +71,20 @@ export default function Menu({
 	}
 
 	useImperativeHandle(ref, () => ({ openAt: (x, y) => setPosition({ top: y, left: x }) }), []);
+
+	// Keep menus opened at a point inside the viewport
+	useLayoutEffect(() => {
+		const rect = menuRef.current?.getBoundingClientRect();
+		if (!rect || typeof position?.left !== "number" || typeof position.top !== "number") {
+			return;
+		}
+		const margin = 8;
+		const left = Math.max(margin, Math.min(position.left, window.innerWidth - rect.width - margin));
+		const top = Math.max(margin, Math.min(position.top, window.innerHeight - rect.height - margin));
+		if (left !== position.left || top !== position.top) {
+			setPosition({ top, left });
+		}
+	}, [position]);
 
 	useEffect(() => {
 		if (!open) {

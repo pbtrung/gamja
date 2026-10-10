@@ -2768,7 +2768,7 @@ mark {
 	transform-origin: bottom left;
 }
 
-/* Member actions: shown on hover or focus, always on touch screens */
+/* Member actions: shown on hover or focus */
 .member-items li {
 	position: relative;
 }
@@ -2796,14 +2796,19 @@ mark {
 	opacity: 1;
 }
 
-@media (hover: none) {
-	.member-items li .member-menu {
-		opacity: 1;
-	}
-}
-
 .member-items li a {
 	padding-right: 2rem;
+}
+
+/* Touch screens open the actions by tapping the nick instead */
+@media (hover: none) {
+	.member-items li .member-menu {
+		display: none;
+	}
+
+	.member-items li a {
+		padding-right: 0.625rem;
+	}
 }
 
 /* Offer to jump to the unread marker when it's scrolled out of view */
