@@ -1802,8 +1802,14 @@ export default class AppController {
 			return;
 		}
 
+		// The server may be closed while waiting for the history
+		const isClosed = () => this.clients.get(serverID) !== client;
+
 		const now = irc.formatDate(new Date());
 		const targets = await client.fetchHistoryTargets(now, lastReceipt.time);
+		if (isClosed()) {
+			return;
+		}
 		await Promise.all(
 			targets.map(async (target) => {
 				let from: Receipt = lastReceipt;
@@ -1835,8 +1841,14 @@ export default class AppController {
 				try {
 					result = await client.fetchHistoryBetween(target.name, from, to, CHATHISTORY_MAX_SIZE);
 				} catch (err) {
+					if (isClosed()) {
+						return;
+					}
 					console.error("Failed to fetch backlog for '" + target.name + "': ", err);
 					this.showError("Failed to fetch backlog for '" + target.name + "'");
+					return;
+				}
+				if (isClosed()) {
 					return;
 				}
 

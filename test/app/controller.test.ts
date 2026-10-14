@@ -956,4 +956,14 @@ describe("AppController chat history", () => {
 		expect(buf(app, "#c")!.unread).toBe(Unread.HIGHLIGHT);
 		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
 	});
+
+	it("drops the backlog of a server closed meanwhile", async () => {
+		const { app, serverID, replyTargets } = await withBacklog();
+		await replyTargets();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.close({ server: serverID, name: SERVER_BUFFER });
+		await flush();
+		expect(app.state.error).toBeNull();
+		expect(app.state.buffers.size).toBe(0);
+	});
 });
