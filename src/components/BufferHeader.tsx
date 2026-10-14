@@ -36,7 +36,7 @@ import {
 	type User,
 } from "../state";
 import RichText, { type LinkClickHandler } from "./RichText";
-import Menu from "./Menu";
+import Menu, { type MenuItem } from "./Menu";
 
 const UserStatus = {
 	HERE: "here",
@@ -99,13 +99,8 @@ interface ActionButtonProps {
 const SMALL_SCREEN = "(max-width: 640px)";
 
 /** A header action: a button on wide screens, a menu item on small ones */
-interface Action {
-	key: string;
-	icon: LucideIcon;
-	label: string;
-	danger?: boolean;
+interface Action extends MenuItem {
 	iconOnly?: boolean;
-	onClick: () => void;
 }
 
 function ActionButton({
