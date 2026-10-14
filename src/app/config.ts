@@ -53,7 +53,11 @@ export function splitHostPort(str: string): { host: string; port: number | null 
 	const i = str.lastIndexOf(":");
 	if (i > 0 && !str.endsWith("]")) {
 		host = str.slice(0, i);
-		port = parseInt(str.slice(i + 1), 10);
+		// parseInt() gives NaN for "abc" and accepts "12abc"
+		const s = str.slice(i + 1);
+		if (/^\d{1,5}$/.test(s) && Number(s) <= 65535) {
+			port = Number(s);
+		}
 	}
 
 	if (host.startsWith("[") && host.endsWith("]")) {

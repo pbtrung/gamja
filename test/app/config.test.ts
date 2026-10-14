@@ -26,6 +26,9 @@ describe("config helpers", () => {
 		expect(splitHostPort("irc.example")).toEqual({ host: "irc.example", port: null });
 		expect(splitHostPort("[::1]:6697")).toEqual({ host: "::1", port: 6697 });
 		expect(splitHostPort("[::1]")).toEqual({ host: "::1", port: null });
+		expect(splitHostPort("irc.example:abc")).toEqual({ host: "irc.example", port: null });
+		expect(splitHostPort("irc.example:66x")).toEqual({ host: "irc.example", port: null });
+		expect(splitHostPort("irc.example:99999")).toEqual({ host: "irc.example", port: null });
 	});
 
 	it("parses and formats window hashes", () => {
