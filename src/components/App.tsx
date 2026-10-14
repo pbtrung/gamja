@@ -564,6 +564,8 @@ function Chat({ state }: { state: AppState }) {
 						}
 						bouncerNetwork={activeBouncerNetwork}
 						memberListHidden={!state.settings.showMemberList}
+						bufferListOpen={state.openPanels.bufferList}
+						memberListOpen={state.openPanels.memberList}
 						unreadElsewhere={unreadElsewhere}
 						onChannelClick={handleChannelClick}
 						onClose={() => app.close(activeBuffer.id)}

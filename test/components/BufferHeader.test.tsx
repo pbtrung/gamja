@@ -34,6 +34,8 @@ function setup(
 		user: null,
 		bouncerNetwork: null,
 		memberListHidden: false,
+		bufferListOpen: false,
+		memberListOpen: false,
 		unreadElsewhere: Unread.NONE,
 		onChannelClick: vi.fn(),
 		onClose: vi.fn(),
@@ -120,6 +122,19 @@ describe("BufferHeader", () => {
 		expect(buttons()).toEqual(["Open buffer list", "Open member list", "Search", "Leave"]);
 		await userEvent.click(screen.getByRole("button", { name: "Leave" }));
 		expect(props.onClose).toHaveBeenCalled();
+	});
+
+	it("tells whether the side panels are open", () => {
+		setup({
+			buffer: { type: BufferType.CHANNEL, name: "#c", joined: true },
+			memberListOpen: true,
+		});
+		const bufferList = screen.getByRole("button", { name: "Open buffer list" });
+		expect(bufferList).toHaveAttribute("aria-expanded", "false");
+		expect(bufferList).toHaveAttribute("aria-controls", "buffer-list");
+		const memberList = screen.getByRole("button", { name: "Open member list" });
+		expect(memberList).toHaveAttribute("aria-expanded", "true");
+		expect(memberList).toHaveAttribute("aria-controls", "member-list");
 	});
 
 	it("offers to rejoin parted channels", () => {

@@ -88,6 +88,9 @@ interface ActionButtonProps {
 	className?: string;
 	/** Extra information for assistive technologies */
 	description?: string;
+	/** Panel toggles: whether the panel is open, and its ID */
+	expanded?: boolean;
+	controls?: string;
 	onClick: () => void;
 	children?: ReactNode;
 }
@@ -112,6 +115,8 @@ function ActionButton({
 	iconOnly,
 	className,
 	description,
+	expanded,
+	controls,
 	onClick,
 	children,
 }: ActionButtonProps) {
@@ -122,6 +127,8 @@ function ActionButton({
 			title={label}
 			aria-label={iconOnly ? label : undefined}
 			aria-description={description}
+			aria-expanded={expanded}
+			aria-controls={controls}
 			onClick={onClick}
 		>
 			<Icon aria-hidden="true" />
@@ -137,6 +144,9 @@ export interface BufferHeaderProps {
 	user: User | null;
 	bouncerNetwork: BouncerNetwork | null;
 	memberListHidden: boolean;
+	/** Whether the side panels are open, on small screens */
+	bufferListOpen: boolean;
+	memberListOpen: boolean;
 	unreadElsewhere: Unread;
 	onChannelClick: LinkClickHandler;
 	onClose: () => void;
@@ -431,6 +441,8 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			iconOnly
 			className="buffer-list-toggle"
 			description={unreadLabel(props.unreadElsewhere) ?? undefined}
+			expanded={props.bufferListOpen}
+			controls="buffer-list"
 			onClick={props.onOpenBufferList}
 		>
 			{props.unreadElsewhere !== Unread.NONE ? (
@@ -446,6 +458,8 @@ export default function BufferHeader(props: BufferHeaderProps) {
 				label="Open member list"
 				iconOnly
 				className={"member-list-toggle" + (props.memberListHidden ? " always" : "")}
+				expanded={props.memberListOpen}
+				controls="member-list"
 				onClick={props.onOpenMemberList}
 			/>,
 		);
