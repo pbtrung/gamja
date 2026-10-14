@@ -390,7 +390,7 @@ describe("roundtrip", () => {
 
 	it("rejects on FAIL and standard error numerics", async () => {
 		const { client, ws } = register();
-		const p = client.fetchHistoryBefore("#c", "2020-01-01T00:00:00.000Z", 10);
+		const p = client.fetchHistoryBefore("#c", { time: "2020-01-01T00:00:00.000Z" }, 10);
 		await Promise.resolve();
 		ws.receive("FAIL CHATHISTORY INVALID_TARGET #c :nope");
 		await expect(p).rejects.toThrow("nope");
@@ -414,8 +414,8 @@ describe("roundtrip", () => {
 	it("unblocks queued chat history requests after a timeout", async () => {
 		vi.useFakeTimers();
 		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
-		const p1 = client.fetchHistoryBefore("#a", "2020-01-01T00:00:00.000Z", 10);
-		const p2 = client.fetchHistoryBefore("#b", "2020-01-01T00:00:00.000Z", 10);
+		const p1 = client.fetchHistoryBefore("#a", { time: "2020-01-01T00:00:00.000Z" }, 10);
+		const p2 = client.fetchHistoryBefore("#b", { time: "2020-01-01T00:00:00.000Z" }, 10);
 		const rejected = expect(p1).rejects.toThrow("Timed out waiting for CHATHISTORY");
 		await vi.advanceTimersByTimeAsync(0);
 		expect(ws.takeSent().map((m) => m.params[1])).toEqual(["#a"]);
@@ -568,7 +568,7 @@ describe("commands", () => {
 
 	it("fetches history before a date and chat history targets", async () => {
 		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
-		const p = client.fetchHistoryBefore("#c", "2020-01-01T00:00:00.000Z", 100);
+		const p = client.fetchHistoryBefore("#c", { time: "2020-01-01T00:00:00.000Z" }, 100);
 		await flush();
 		expect(ws.takeSent()[0].params).toEqual(["BEFORE", "#c", "timestamp=2020-01-01T00:00:00.000Z", "50"]);
 		ws.receive(":srv BATCH +a chathistory #c", ":srv BATCH -a");
@@ -585,7 +585,7 @@ describe("commands", () => {
 
 	it("doesn't report more history when CHATHISTORY ISUPPORT is missing", async () => {
 		const { client, ws } = register("batch draft/chathistory", "CHANTYPES=#");
-		const p = client.fetchHistoryBefore("BouncerServ", "2020-01-01T00:00:00.000Z", 100);
+		const p = client.fetchHistoryBefore("BouncerServ", { time: "2020-01-01T00:00:00.000Z" }, 100);
 		await flush();
 		ws.takeSent();
 		ws.receive(":srv BATCH +a chathistory BouncerServ", ":srv BATCH -a");

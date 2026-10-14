@@ -1345,11 +1345,17 @@ export default class Client extends EventTarget {
 	/* Fetch one page of history before the given date. */
 	async fetchHistoryBefore(
 		target: string,
-		before: string,
+		before: { time: string; msgid?: string },
 		limit: number,
 	): Promise<{ messages: Message[]; more: boolean }> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		const params = ["BEFORE", target, "timestamp=" + before, max];
+		// Bounds are exclusive: start from the message's ID if the server
+		// accepts it, its timestamp would skip the messages sharing it
+		const bound =
+			before.msgid && this.isupport.msgRefTypes().includes("msgid")
+				? "msgid=" + before.msgid
+				: "timestamp=" + before.time;
+		const params = ["BEFORE", target, bound, max];
 		const messages = await this.roundtripChatHistory(params);
 		return { messages, more: max > 0 && messages.length >= max };
 	}
