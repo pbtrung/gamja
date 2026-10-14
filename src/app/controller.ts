@@ -84,6 +84,81 @@ function showNotification(title: string, options: NotificationOptions): MessageN
 	}
 }
 
+/** Fill connection parameters from config.json, dropping invalid settings. */
+function applyConfigFile(config: Config, connectParams: ConnectParams): void {
+	if (typeof config.server.url === "string") {
+		connectParams.url = config.server.url;
+	}
+	if (Array.isArray(config.server.autojoin)) {
+		connectParams.autojoin = config.server.autojoin;
+	} else if (typeof config.server.autojoin === "string") {
+		connectParams.autojoin = [config.server.autojoin];
+	}
+	if (typeof config.server.nick === "string") {
+		connectParams.nick = config.server.nick;
+	}
+	if (typeof config.server.autoconnect === "boolean") {
+		connectParams.autoconnect = config.server.autoconnect;
+	}
+	if (config.server.auth === "external") {
+		connectParams.saslExternal = true;
+	}
+	if (typeof config.server.ping === "number") {
+		connectParams.ping = config.server.ping;
+	}
+
+	if (connectParams.autoconnect && config.server.auth === "mandatory") {
+		console.error(
+			'Error in config.json: cannot set server.autoconnect = true and server.auth = "mandatory"',
+		);
+		connectParams.autoconnect = false;
+	}
+	if (
+		config.server.auth === "oauth2" &&
+		(!config.oauth2 || !config.oauth2.url || !config.oauth2.client_id)
+	) {
+		console.error('Error in config.json: server.auth = "oauth2" requires oauth2 settings');
+		config.server.auth = null;
+	}
+}
+
+/** Messages not displayed in any buffer, see routeMessage() */
+const UNDISPLAYED_COMMANDS = new Set([
+	irc.RPL_YOURHOST,
+	irc.RPL_MYINFO,
+	irc.RPL_ISUPPORT,
+	irc.RPL_ENDOFMOTD,
+	irc.ERR_NOMOTD,
+	irc.RPL_AWAY,
+	irc.RPL_NOTOPIC,
+	irc.RPL_TOPIC,
+	irc.RPL_TOPICWHOTIME,
+	irc.RPL_NAMREPLY,
+	irc.RPL_ENDOFNAMES,
+	irc.RPL_SASLSUCCESS,
+	irc.RPL_CHANNEL_URL,
+	"AWAY",
+	"SETNAME",
+	"CHGHOST",
+	"ACCOUNT",
+	"CAP",
+	"AUTHENTICATE",
+	"PING",
+	"PONG",
+	"BATCH",
+	"TAGMSG",
+	"CHATHISTORY",
+	"ACK",
+	"BOUNCER",
+	"MARKREAD",
+	"REDACT",
+	"WEBPUSH",
+	"METADATA",
+	irc.RPL_KEYVALUE,
+	irc.RPL_METADATASUBOK,
+	irc.RPL_METADATAUNSUBOK,
+]);
+
 /** Maximum length of the channel list of a JOIN, IRC lines are 512 bytes */
 const MAX_JOIN_LENGTH = 400;
 
@@ -228,41 +303,7 @@ export default class AppController {
 	 */
 	async handleConfig(config: Config): Promise<void> {
 		let connectParams: ConnectParams = { ...this.state.connectParams };
-
-		if (typeof config.server.url === "string") {
-			connectParams.url = config.server.url;
-		}
-		if (Array.isArray(config.server.autojoin)) {
-			connectParams.autojoin = config.server.autojoin;
-		} else if (typeof config.server.autojoin === "string") {
-			connectParams.autojoin = [config.server.autojoin];
-		}
-		if (typeof config.server.nick === "string") {
-			connectParams.nick = config.server.nick;
-		}
-		if (typeof config.server.autoconnect === "boolean") {
-			connectParams.autoconnect = config.server.autoconnect;
-		}
-		if (config.server.auth === "external") {
-			connectParams.saslExternal = true;
-		}
-		if (typeof config.server.ping === "number") {
-			connectParams.ping = config.server.ping;
-		}
-
-		if (connectParams.autoconnect && config.server.auth === "mandatory") {
-			console.error(
-				'Error in config.json: cannot set server.autoconnect = true and server.auth = "mandatory"',
-			);
-			connectParams.autoconnect = false;
-		}
-		if (
-			config.server.auth === "oauth2" &&
-			(!config.oauth2 || !config.oauth2.url || !config.oauth2.client_id)
-		) {
-			console.error('Error in config.json: server.auth = "oauth2" requires oauth2 settings');
-			config.server.auth = null;
-		}
+		applyConfigFile(config, connectParams);
 
 		const autoconnect = store.autoconnect.load();
 		if (autoconnect) {
@@ -321,40 +362,8 @@ export default class AppController {
 		}
 
 		if (config.server.auth === "oauth2" && !connectParams.saslOauthBearer) {
-			if (queryParams.error) {
-				console.error("OAuth 2.0 authorization failed: ", queryParams.error);
-				this.showError(
-					"Authentication failed: " + (queryParams.error_description || queryParams.error),
-				);
+			if (!(await this.handleOauth2Redirect(queryParams, connectParams))) {
 				return;
-			}
-
-			if (!queryParams.code) {
-				await this.redirectOauth2Authorize();
-				return;
-			}
-
-			// Strip code from query params, to prevent page refreshes from
-			// trying to exchange the code again
-			const url = new URL(window.location.toString());
-			url.searchParams.delete("code");
-			url.searchParams.delete("state");
-			window.history.replaceState(null, "", url.toString());
-
-			let saslOauthBearer;
-			try {
-				const state = typeof queryParams.state === "string" ? queryParams.state : undefined;
-				const pending = oauth2.takePendingAuthorization(state);
-				saslOauthBearer = await this.exchangeOauth2Code(queryParams.code, pending);
-			} catch (err) {
-				this.showError(err);
-				return;
-			}
-
-			connectParams.saslOauthBearer = saslOauthBearer;
-
-			if (saslOauthBearer.username && !connectParams.nick) {
-				connectParams.nick = saslOauthBearer.username;
 			}
 		}
 
@@ -374,6 +383,51 @@ export default class AppController {
 			this.update({ connectForm: false });
 			this.connect(connectParams);
 		}
+	}
+
+	/**
+	 * Get an OAuth 2.0 token, from the authorization code in the URL or by
+	 * redirecting to the authorization server. Returns false if the token
+	 * isn't available (yet).
+	 */
+	async handleOauth2Redirect(
+		queryParams: Record<string, string>,
+		connectParams: ConnectParams,
+	): Promise<boolean> {
+		if (queryParams.error) {
+			console.error("OAuth 2.0 authorization failed: ", queryParams.error);
+			this.showError("Authentication failed: " + (queryParams.error_description || queryParams.error));
+			return false;
+		}
+
+		if (!queryParams.code) {
+			await this.redirectOauth2Authorize();
+			return false;
+		}
+
+		// Strip code from query params, to prevent page refreshes from
+		// trying to exchange the code again
+		const url = new URL(window.location.toString());
+		url.searchParams.delete("code");
+		url.searchParams.delete("state");
+		window.history.replaceState(null, "", url.toString());
+
+		let saslOauthBearer;
+		try {
+			const state = typeof queryParams.state === "string" ? queryParams.state : undefined;
+			const pending = oauth2.takePendingAuthorization(state);
+			saslOauthBearer = await this.exchangeOauth2Code(queryParams.code, pending);
+		} catch (err) {
+			this.showError(err);
+			return false;
+		}
+
+		connectParams.saslOauthBearer = saslOauthBearer;
+
+		if (saslOauthBearer.username && !connectParams.nick) {
+			connectParams.nick = saslOauthBearer.username;
+		}
+		return true;
 	}
 
 	async redirectOauth2Authorize(): Promise<void> {
@@ -1392,9 +1446,9 @@ export default class AppController {
 		const chatHistoryBatch = irc.findBatchByType(msg, "chathistory");
 		const from = msg.prefix?.name ?? "*";
 
-		// Reply triggered by some command sent by us, not worth displaying to
-		// the user
-		if (msg.internal) {
+		// Internal messages are replies triggered by some command sent by us,
+		// not worth displaying to the user
+		if (msg.internal || UNDISPLAYED_COMMANDS.has(msg.command)) {
 			return [];
 		}
 
@@ -1490,41 +1544,6 @@ export default class AppController {
 			case irc.RPL_MONONLINE:
 			case irc.RPL_MONOFFLINE:
 				return msg.params[1].split(",").map((t) => irc.parsePrefix(t).name);
-			case irc.RPL_YOURHOST:
-			case irc.RPL_MYINFO:
-			case irc.RPL_ISUPPORT:
-			case irc.RPL_ENDOFMOTD:
-			case irc.ERR_NOMOTD:
-			case irc.RPL_AWAY:
-			case irc.RPL_NOTOPIC:
-			case irc.RPL_TOPIC:
-			case irc.RPL_TOPICWHOTIME:
-			case irc.RPL_NAMREPLY:
-			case irc.RPL_ENDOFNAMES:
-			case irc.RPL_SASLSUCCESS:
-			case irc.RPL_CHANNEL_URL:
-			case "AWAY":
-			case "SETNAME":
-			case "CHGHOST":
-			case "ACCOUNT":
-			case "CAP":
-			case "AUTHENTICATE":
-			case "PING":
-			case "PONG":
-			case "BATCH":
-			case "TAGMSG":
-			case "CHATHISTORY":
-			case "ACK":
-			case "BOUNCER":
-			case "MARKREAD":
-			case "REDACT":
-			case "WEBPUSH":
-			case "METADATA":
-			case irc.RPL_KEYVALUE:
-			case irc.RPL_METADATASUBOK:
-			case irc.RPL_METADATAUNSUBOK:
-				// Ignore these
-				return [];
 			default:
 				return [SERVER_BUFFER];
 		}
@@ -2096,93 +2115,97 @@ export default class AppController {
 			return;
 		}
 
-		const client = this.clients.get(buf.server);
-		switch (buf.type) {
-			case BufferType.SERVER: {
-				this.update((state) => {
-					const buffers = new Map(state.buffers);
-					for (const [id, b] of state.buffers) {
-						if (b.server === buf.server) {
-							buffers.delete(id);
-						}
-					}
+		if (buf.type === BufferType.SERVER) {
+			this.closeServer(buf.server);
+		} else {
+			this.closeBuffer(buf);
+		}
+	}
 
-					let activeBuffer = state.activeBuffer;
-					if (activeBuffer && state.buffers.get(activeBuffer)?.server === buf.server) {
-						activeBuffer = buffers.size > 0 ? buffers.keys().next().value! : null;
-					}
-
-					return { buffers, activeBuffer };
-				});
-
-				// From the server state rather than the caps, which are gone
-				// while disconnected
-				const disconnectAll =
-					client &&
-					!client.params.bouncerNetwork &&
-					Boolean(this.state.servers.get(buf.server)?.isBouncer);
-				const isFirstServer = this.state.servers.keys().next().value === buf.server;
-
-				this.disconnect(buf.server);
-				this.clients.delete(buf.server);
-
-				this.update((state) => {
-					const servers = new Map(state.servers);
-					servers.delete(buf.server);
-
-					let connectForm = state.connectForm;
-					if (servers.size === 0) {
-						connectForm = true;
-					}
-
-					return { servers, connectForm };
-				});
-
-				if (disconnectAll) {
-					for (const serverID of [...this.clients.keys()]) {
-						this.close({ server: serverID, name: SERVER_BUFFER });
-					}
-					this.bufferStore.clear();
-				} else if (client) {
-					this.bufferStore.clear(client.params);
+	/** Disconnect from a server and remove it with its buffers. */
+	closeServer(serverID: number): void {
+		const client = this.clients.get(serverID);
+		this.update((state) => {
+			const buffers = new Map(state.buffers);
+			for (const [id, b] of state.buffers) {
+				if (b.server === serverID) {
+					buffers.delete(id);
 				}
-
-				// TODO: only clear autoconnect if this server is stored there
-				if (isFirstServer) {
-					store.autoconnect.put(null);
-				}
-
-				if (this.state.activeBuffer) {
-					this.switchBuffer(this.state.activeBuffer);
-				}
-				break;
 			}
-			case BufferType.CHANNEL:
-			case BufferType.NICK:
-				if (buf.type === BufferType.CHANNEL && buf.joined && client) {
-					client.send({ command: "PART", params: [buf.name] });
-				}
-				if (this.state.activeBuffer === buf.id) {
-					this.switchBuffer({ server: buf.server, name: SERVER_BUFFER });
-				}
-				this.update((state) => {
-					const buffers = new Map(state.buffers);
-					buffers.delete(buf.id);
-					return { buffers };
-				});
 
-				if (client) {
-					if (client.status === ClientStatus.REGISTERED) {
-						client.unmonitor(buf.name);
-					}
+			let activeBuffer = state.activeBuffer;
+			if (activeBuffer && state.buffers.get(activeBuffer)?.server === serverID) {
+				activeBuffer = buffers.size > 0 ? buffers.keys().next().value! : null;
+			}
 
-					this.bufferStore.put({
-						name: buf.name,
-						server: client.params,
-						closed: true,
-					});
-				}
-				break;
+			return { buffers, activeBuffer };
+		});
+
+		// From the server state rather than the caps, which are gone
+		// while disconnected
+		const disconnectAll =
+			client && !client.params.bouncerNetwork && Boolean(this.state.servers.get(serverID)?.isBouncer);
+		const isFirstServer = this.state.servers.keys().next().value === serverID;
+
+		this.disconnect(serverID);
+		this.clients.delete(serverID);
+
+		this.update((state) => {
+			const servers = new Map(state.servers);
+			servers.delete(serverID);
+
+			let connectForm = state.connectForm;
+			if (servers.size === 0) {
+				connectForm = true;
+			}
+
+			return { servers, connectForm };
+		});
+
+		if (disconnectAll) {
+			for (const id of [...this.clients.keys()]) {
+				this.closeServer(id);
+			}
+			this.bufferStore.clear();
+		} else if (client) {
+			this.bufferStore.clear(client.params);
+		}
+
+		// TODO: only clear autoconnect if this server is stored there
+		if (isFirstServer) {
+			store.autoconnect.put(null);
+		}
+
+		if (this.state.activeBuffer) {
+			this.switchBuffer(this.state.activeBuffer);
+		}
+	}
+
+	/** Close a channel or a conversation, leaving the channel. */
+	closeBuffer(buf: Buffer): void {
+		const client = this.clients.get(buf.server);
+		if (buf.type === BufferType.CHANNEL && buf.joined && client) {
+			client.send({ command: "PART", params: [buf.name] });
+		}
+		if (this.state.activeBuffer === buf.id) {
+			this.switchBuffer({ server: buf.server, name: SERVER_BUFFER });
+		}
+		this.update((state) => {
+			const buffers = new Map(state.buffers);
+			buffers.delete(buf.id);
+			return { buffers };
+		});
+
+		if (client) {
+			if (client.status === ClientStatus.REGISTERED) {
+				client.unmonitor(buf.name);
+			}
+
+			this.bufferStore.put({
+				name: buf.name,
+				server: client.params,
+				closed: true,
+			});
 		}
 	}
 
