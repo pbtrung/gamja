@@ -483,8 +483,14 @@ export interface MembershipMode {
 
 export class Isupport {
 	raw = new Map<string, string>();
+	/** Values derived from raw, dropped when it changes */
+	private cache: {
+		clientTagDeny?: ClientTagDeny;
+		channelModeTypes?: ReadonlyMap<string, string>;
+	} = {};
 
 	parse(tokens: string[]): void {
+		this.cache = {};
 		for (const tok of tokens) {
 			if (tok.startsWith("-")) {
 				this.raw.delete(tok.slice(1).toUpperCase());
@@ -641,13 +647,13 @@ export class Isupport {
 	}
 
 	/** Client tags the server refuses to relay, from CLIENTTAGDENY */
-	clientTagDeny(): { denyAll: boolean; allowed: Set<string>; denied: Set<string> } {
+	clientTagDeny(): ClientTagDeny {
+		if (this.cache.clientTagDeny) {
+			return this.cache.clientTagDeny;
+		}
 		const v = this.raw.get("CLIENTTAGDENY");
 		const result = { denyAll: false, allowed: new Set<string>(), denied: new Set<string>() };
-		if (!v) {
-			return result;
-		}
-		for (const item of v.split(",")) {
+		for (const item of v ? v.split(",") : []) {
 			if (item === "*") {
 				result.denyAll = true;
 			} else if (item.startsWith("-")) {
@@ -656,8 +662,34 @@ export class Isupport {
 				result.denied.add(item);
 			}
 		}
+		this.cache.clientTagDeny = result;
 		return result;
 	}
+
+	/** The type of each channel mode, "A" to "D" as in CHANMODES, membership modes are "B". */
+	channelModeTypes(): ReadonlyMap<string, string> {
+		if (this.cache.channelModeTypes) {
+			return this.cache.channelModeTypes;
+		}
+		const typeByMode = new Map<string, string>();
+		const types = ["A", "B", "C", "D"];
+		this.chanModes().forEach((modes, i) => {
+			for (const mode of modes) {
+				typeByMode.set(mode, types[i]);
+			}
+		});
+		for (const membership of this.membershipModes()) {
+			typeByMode.set(membership.mode, "B");
+		}
+		this.cache.channelModeTypes = typeByMode;
+		return typeByMode;
+	}
+}
+
+interface ClientTagDeny {
+	denyAll: boolean;
+	allowed: ReadonlySet<string>;
+	denied: ReadonlySet<string>;
 }
 
 /** Check whether the server relays the given client-only tag (without "+"). */
@@ -712,7 +744,18 @@ export function chunkTargets(targets: string[], maxTargets = Infinity, maxBytes 
 }
 
 function caseMapWith(table: Record<string, string>): CaseMapFn {
+	// Most strings are already lowercase: return them as is
+	const affected = new RegExp(
+		"[A-Z" +
+			Object.keys(table)
+				.map((ch) => "\\" + ch)
+				.join("") +
+			"]",
+	);
 	return (str: string) => {
+		if (!affected.test(str)) {
+			return str;
+		}
 		let out = "";
 		for (const ch of str) {
 			if ("A" <= ch && ch <= "Z") {
@@ -877,15 +920,7 @@ export function forEachChannelModeUpdate(
 	isupport: Isupport,
 	callback: (mode: string, add: boolean, arg: string | null) => void,
 ): void {
-	const [a, b, c, d] = isupport.chanModes();
-	const membershipModes = isupport.membershipModes();
-
-	const typeByMode = new Map<string, string>();
-	Array.from(a).forEach((mode) => typeByMode.set(mode, "A"));
-	Array.from(b).forEach((mode) => typeByMode.set(mode, "B"));
-	Array.from(c).forEach((mode) => typeByMode.set(mode, "C"));
-	Array.from(d).forEach((mode) => typeByMode.set(mode, "D"));
-	membershipModes.forEach((membership) => typeByMode.set(membership.mode, "B"));
+	const typeByMode = isupport.channelModeTypes();
 
 	if (msg.command !== "MODE") {
 		throw new Error("Expected a MODE message");

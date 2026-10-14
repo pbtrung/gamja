@@ -228,6 +228,21 @@ describe("Isupport", () => {
 		expect(irc.isClientTagAllowed(is, "draft/react")).toBe(false);
 	});
 
+	it("recomputes derived values when ISUPPORT changes", () => {
+		const is = new irc.Isupport();
+		expect(is.channelModeTypes().get("q")).toBeUndefined();
+		expect(is.channelModeTypes()).toBe(is.channelModeTypes());
+		is.parse(["CHANMODES=bq,k,l,imnst", "PREFIX=(Yov)!@+"]);
+		expect(is.channelModeTypes().get("q")).toBe("A");
+		expect(is.channelModeTypes().get("Y")).toBe("B");
+		expect(is.channelModeTypes().get("l")).toBe("C");
+		expect(irc.isClientTagAllowed(is, "typing")).toBe(true);
+		is.parse(["CLIENTTAGDENY=*"]);
+		expect(irc.isClientTagAllowed(is, "typing")).toBe(false);
+		is.parse(["-CLIENTTAGDENY"]);
+		expect(irc.isClientTagAllowed(is, "typing")).toBe(true);
+	});
+
 	it("parses TARGMAX", () => {
 		const is = new irc.Isupport();
 		expect(is.targMax("JOIN")).toBe(Infinity);
@@ -254,6 +269,15 @@ describe("CaseMapping", () => {
 		expect(irc.CaseMapping.RFC1459Strict("AB{}\\~")).toBe("ab[]|~");
 		expect(irc.CaseMapping.ASCII("AB{}")).toBe("ab{}");
 		expect(irc.CaseMapping.byName("nope")).toBeNull();
+	});
+
+	it("maps strings with a single affected character", () => {
+		expect(irc.CaseMapping.RFC1459("nick~")).toBe("nick^");
+		expect(irc.CaseMapping.RFC1459("a\\b")).toBe("a|b");
+		expect(irc.CaseMapping.RFC1459("#chan[]|^")).toBe("#chan[]|^");
+		expect(irc.CaseMapping.RFC1459Strict("x~")).toBe("x~");
+		expect(irc.CaseMapping.ASCII("x{Y")).toBe("x{y");
+		expect(irc.CaseMapping.ASCII("ÉÀ")).toBe("ÉÀ");
 	});
 });
 
