@@ -81,6 +81,44 @@ function showNotification(title: string, options: NotificationOptions): MessageN
 	}
 }
 
+/** Maximum length of the channel list of a JOIN, IRC lines are 512 bytes */
+const MAX_JOIN_LENGTH = 400;
+
+/**
+ * Join channels with as few JOIN commands as possible, each short enough
+ * and with no more channels than the server accepts (TARGMAX).
+ */
+// TODO: use the target chunking helpers of lib/irc once available
+function joinChannels(client: Client, channels: string[]): void {
+	let maxTargets = Infinity;
+	for (const entry of client.isupport.raw.get("TARGMAX")?.split(",") ?? []) {
+		const [cmd, n] = entry.split(":");
+		if (cmd.toUpperCase() === "JOIN" && Number(n) > 0) {
+			maxTargets = Number(n);
+		}
+	}
+
+	const encoder = new TextEncoder();
+	let chunk: string[] = [];
+	let length = 0;
+	const flush = () => {
+		if (chunk.length > 0) {
+			client.send({ command: "JOIN", params: [chunk.join(",")] });
+		}
+		chunk = [];
+		length = 0;
+	};
+	for (const channel of channels) {
+		const n = encoder.encode(channel).length;
+		if (chunk.length >= maxTargets || (chunk.length > 0 && length + 1 + n > MAX_JOIN_LENGTH)) {
+			flush();
+		}
+		length += (chunk.length > 0 ? 1 : 0) + n;
+		chunk.push(channel);
+	}
+	flush();
+}
+
 /** Changes gathered while handling a page of history, applied at once */
 interface HistoryBatch {
 	/** Messages to add, by buffer ID */
@@ -1694,12 +1732,7 @@ export default class AppController {
 			client.params.autojoin = [];
 		}
 
-		if (join.length > 0) {
-			client.send({
-				command: "JOIN",
-				params: [join.join(",")],
-			});
-		}
+		joinChannels(client, join);
 
 		const serverHost = bouncerNetwork?.host ?? "";
 		if (this.autoOpenURL && serverHost === this.autoOpenURL.host) {
@@ -1791,10 +1824,7 @@ export default class AppController {
 				netClient.params.autojoin &&
 				netClient.params.autojoin.length > 0
 			) {
-				netClient.send({
-					command: "JOIN",
-					params: [netClient.params.autojoin.join(",")],
-				});
+				joinChannels(netClient, netClient.params.autojoin);
 				netClient.params.autojoin = [];
 			}
 		}

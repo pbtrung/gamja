@@ -241,6 +241,33 @@ describe("AppController messaging", () => {
 		expect(buf(second.app, "carol")).toBeDefined();
 	});
 
+	it("joins many channels with several short enough JOINs", async () => {
+		const stored = new store.BufferStore();
+		const channels = Array.from(
+			{ length: 20 },
+			(_, i) => "#" + String(i).padStart(2, "0") + "x".repeat(40),
+		);
+		for (const name of channels) {
+			stored.put({ name, server: {} });
+		}
+		stored.saveImmediately();
+		stored.dispose();
+
+		const register = async (isupport: string) => {
+			const { recv, sent } = await connectedApp({ register: false });
+			recv(":srv CAP * LS :batch", `:srv 001 me :Welcome`, `:srv 005 me CHANTYPES=# ${isupport} :ok`);
+			sent();
+			recv(":srv 376 me :End");
+			return sent().filter((l) => l.startsWith("JOIN "));
+		};
+		const joins = await register("");
+		expect(joins.length).toBeGreaterThan(1);
+		expect(joins.every((l) => l.length <= 405)).toBe(true);
+		expect(joins.flatMap((l) => l.slice(5).split(","))).toEqual(channels);
+
+		expect(await register("TARGMAX=PRIVMSG:4,JOIN:3")).toHaveLength(7);
+	});
+
 	it("tab-completes commands, channels and members", async () => {
 		const { app, recv } = await connectedApp();
 		recv(":me!u@h JOIN #chan", ":bob!u@h JOIN #chan", ":bobby!u@h JOIN #chan");
