@@ -440,6 +440,19 @@ export default class AppController {
 		return this.clients.get(serverID);
 	}
 
+	/**
+	 * Get the client of a server if it's ready to send messages, otherwise
+	 * show an error: sending on a closed connection throws.
+	 */
+	getConnectedClient(serverID: number | null | undefined): Client | undefined {
+		const client = this.getClient(serverID);
+		if (!client || client.status !== ClientStatus.REGISTERED) {
+			this.showError("Not connected to the server");
+			return undefined;
+		}
+		return client;
+	}
+
 	getActiveClient(): Client | undefined {
 		return this.getClient(S.getActiveServerID(this.state));
 	}
@@ -1134,9 +1147,12 @@ export default class AppController {
 	/** Toggle a reaction on a message. */
 	react(bufID: number, msg: Message, emoji: string): void {
 		const buf = S.getBuffer(this.state, bufID);
-		const client = buf ? this.clients.get(buf.server) : undefined;
 		const msgid = msg.tags.msgid;
-		if (!buf || !client || !msgid || !client.nick) {
+		if (!buf || !msgid) {
+			return;
+		}
+		const client = this.getConnectedClient(buf.server);
+		if (!client?.nick) {
 			return;
 		}
 		const nicks = buf.reactions.get(msgid)?.get(emoji) ?? [];
@@ -1173,8 +1189,11 @@ export default class AppController {
 	/** Delete a message (draft/message-redaction). */
 	redact(bufID: number, msg: Message, reason?: string): void {
 		const buf = S.getBuffer(this.state, bufID);
-		const client = buf ? this.clients.get(buf.server) : undefined;
-		if (!buf || !client || !msg.tags.msgid) {
+		if (!buf || !msg.tags.msgid) {
+			return;
+		}
+		const client = this.getConnectedClient(buf.server);
+		if (!client) {
 			return;
 		}
 		const params = [buf.name, msg.tags.msgid];
@@ -2163,7 +2182,8 @@ export default class AppController {
 		}
 
 		const serverID = S.getActiveServerID(this.state);
-		const client = this.getClient(serverID);
+		// Before clearing the reply, so that it's kept for a retry
+		const client = this.getConnectedClient(serverID);
 		if (!client || !serverID) {
 			return;
 		}
@@ -2276,7 +2296,7 @@ export default class AppController {
 				this.openDialog({ kind: "join", server: buf.server });
 				break;
 			case BufferType.CHANNEL:
-				this.clients.get(buf.server)?.send({ command: "JOIN", params: [buf.name] });
+				this.getConnectedClient(buf.server)?.send({ command: "JOIN", params: [buf.name] });
 				break;
 		}
 	}

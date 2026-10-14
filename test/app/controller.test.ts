@@ -522,6 +522,25 @@ describe("reactions, replies, redaction and typing", () => {
 		expect(app.state.replyTo).toBeNull();
 	});
 
+	it("refuses to send while disconnected, keeping the reply", async () => {
+		const { app, id, msg } = await chat();
+		app.startReply(id, msg);
+		app.disconnect();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.handleComposerSubmit("hi bob");
+		expect(app.state.error).toBe("Not connected to the server");
+		expect(app.state.replyTo).not.toBeNull();
+		for (const action of [
+			() => app.react(id, msg, "👍"),
+			() => app.redact(id, msg),
+			() => app.handleJoinClick(buf(app, "#c")!),
+		]) {
+			app.dismissError();
+			action();
+			expect(app.state.error).toBe("Not connected to the server");
+		}
+	});
+
 	it("cancels a reply when switching buffers", async () => {
 		const { app, id, msg } = await chat();
 		app.startReply(id, msg);
