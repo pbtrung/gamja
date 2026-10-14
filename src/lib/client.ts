@@ -1,3 +1,4 @@
+import * as base64 from "./base64";
 import * as irc from "./irc";
 import type { Message, OutgoingMessage, Prefix, Batch } from "./irc";
 
@@ -124,6 +125,27 @@ export class IRCError extends Error {
 		super(text);
 
 		this.msg = msg;
+	}
+}
+
+/** Turn an OAUTHBEARER error challenge into an error, see RFC 7628 section 3.2.2. */
+function parseOAuthBearerError(challenge: string): Error {
+	let status: string | undefined;
+	try {
+		const data = JSON.parse(new TextDecoder().decode(base64.decodeURL(challenge)));
+		status = typeof data?.status === "string" ? data.status : undefined;
+	} catch (err) {
+		console.warn("Failed to parse OAUTHBEARER challenge:", challenge, err);
+	}
+	switch (status) {
+		case "invalid_token":
+			return new Error("OAuth 2.0 token invalid or expired, please log in again");
+		case "insufficient_scope":
+			return new Error("OAuth 2.0 token doesn't grant enough permissions");
+		case undefined:
+			return new Error("OAuth 2.0 authentication failed");
+		default:
+			return new Error("OAuth 2.0 authentication failed: " + status);
 	}
 }
 
@@ -590,16 +612,6 @@ export default class Client extends EventTarget {
 			case "CAP":
 				this.handleCap(msg);
 				break;
-			case "AUTHENTICATE": {
-				// PLAIN, EXTERNAL and OAUTHBEARER expect an empty challenge. A
-				// non-empty one is an OAUTHBEARER error: aborting reports it.
-				const challengeStr = msg.params[0];
-				if (challengeStr !== "+") {
-					this.dispatchError(new Error("Expected an empty challenge, got: " + challengeStr));
-					this.send({ command: "AUTHENTICATE", params: ["*"] });
-				}
-				break;
-			}
 			case irc.RPL_LOGGEDIN:
 				console.log("Logged in");
 				break;
@@ -761,12 +773,36 @@ export default class Client extends EventTarget {
 		}
 
 		const startMsg = { command: "AUTHENTICATE", params: [mechanism] };
+		let oauthError: Error | null = null;
 		const promise = this.roundtrip(startMsg, (msg) => {
 			switch (msg.command) {
+				case "AUTHENTICATE": {
+					// PLAIN, EXTERNAL and OAUTHBEARER expect an empty challenge
+					const challenge = msg.params[0];
+					if (challenge === "+") {
+						break;
+					}
+					if (mechanism !== "OAUTHBEARER") {
+						this.send({ command: "AUTHENTICATE", params: ["*"] });
+						throw new Error("Expected an empty challenge, got: " + challenge);
+					}
+					// An OAUTHBEARER error: the client must acknowledge it with
+					// a dummy response, the server then fails, see RFC 7628
+					// section 3.2.3
+					oauthError = parseOAuthBearerError(challenge);
+					this.send({ command: "AUTHENTICATE", params: ["AQ=="] });
+					break;
+				}
 				case irc.RPL_SASLSUCCESS:
 					return true;
-				case irc.ERR_NICKLOCKED:
 				case irc.ERR_SASLFAIL:
+					if (oauthError) {
+						// Reported once, with the details of the challenge
+						msg.internal = true;
+						throw oauthError;
+					}
+					throw new IRCError(msg);
+				case irc.ERR_NICKLOCKED:
 				case irc.ERR_SASLTOOLONG:
 				case irc.ERR_SASLABORTED:
 				case irc.ERR_SASLALREADY:

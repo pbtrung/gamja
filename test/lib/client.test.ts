@@ -285,6 +285,40 @@ describe("SASL", () => {
 		expect(ws.sent).toContain("AUTHENTICATE " + btoa("n,,\x01auth=Bearer tok\x01\x01"));
 	});
 
+	it("acknowledges OAUTHBEARER errors and reports them once", async () => {
+		const { client, ws } = connect({ saslOauthBearer: { token: "tok" } });
+		const errors: Error[] = [];
+		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
+		const internal: boolean[] = [];
+		client.addEventListener("message", (e) => {
+			const msg = (e as CustomEvent).detail.message;
+			if (msg.command === "904") {
+				internal.push(Boolean(msg.internal));
+			}
+		});
+		ws.receive(":srv CAP * LS :sasl=OAUTHBEARER");
+		ws.takeSent();
+		ws.receive("AUTHENTICATE +");
+		const challenge = btoa(JSON.stringify({ status: "invalid_token", scope: "irc" }));
+		ws.receive("AUTHENTICATE " + challenge);
+		expect(ws.sent).toEqual(["AUTHENTICATE AQ=="]);
+		ws.receive(":srv 904 me :SASL authentication failed");
+		await flush();
+		expect(errors.map((err) => err.message)).toEqual([
+			"OAuth 2.0 token invalid or expired, please log in again",
+		]);
+		expect(internal).toEqual([true]);
+	});
+
+	it("aborts on unexpected challenges", async () => {
+		const { client, ws } = register("sasl=PLAIN");
+		const p = client.authenticate("PLAIN", { username: "a", password: "b" });
+		ws.takeSent();
+		ws.receive("AUTHENTICATE Zm9v");
+		await expect(p).rejects.toThrow("Expected an empty challenge, got: Zm9v");
+		expect(ws.sent).toEqual(["AUTHENTICATE *"]);
+	});
+
 	it("rejects unsupported mechanisms and failures", async () => {
 		const { client, ws } = register("sasl=PLAIN");
 		await expect(client.authenticate("EXTERNAL")).rejects.toThrow(/not supported/);
