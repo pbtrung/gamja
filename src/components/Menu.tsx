@@ -17,6 +17,8 @@ export interface MenuItem {
 	icon: LucideIcon;
 	label: string;
 	danger?: boolean;
+	/** Makes the item a radio: whether it's the chosen one */
+	checked?: boolean;
 	onClick: () => void;
 }
 
@@ -105,7 +107,7 @@ export default function Menu({
 			return;
 		}
 		const menuItems = () =>
-			Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
+			Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]") ?? []);
 		menuItems()[0]?.focus({ preventScroll: true });
 		const close = () => {
 			setPosition(null);
@@ -163,11 +165,12 @@ export default function Menu({
 						ref={menuRef}
 						style={position}
 					>
-						{items.map(({ key, icon: Icon, label, danger, onClick }) => (
+						{items.map(({ key, icon: Icon, label, danger, checked, onClick }) => (
 							<button
 								key={key}
 								type="button"
-								role="menuitem"
+								role={checked === undefined ? "menuitem" : "menuitemradio"}
+								aria-checked={checked}
 								className={"action-menu-item" + (danger ? " danger" : "")}
 								onClick={() => {
 									setPosition(null);

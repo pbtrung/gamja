@@ -14,5 +14,6 @@ test("offers push notifications when the server supports them", async ({ page, c
 	await context.grantPermissions(["notifications"]);
 	await connect(page);
 	await page.getByRole("button", { name: "Settings" }).click();
+	await page.getByRole("tab", { name: "Notifications" }).click();
 	await expect(page.getByRole("checkbox", { name: /Push notifications/ })).toBeVisible();
 });

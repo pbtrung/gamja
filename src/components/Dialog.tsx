@@ -9,6 +9,8 @@ interface DialogProps {
 	/** A short line under the title, e.g. the server it applies to */
 	description?: ReactNode;
 	onDismiss?: () => void;
+	/** Buttons shown in the header, before the close button */
+	actions?: ReactNode;
 	children: ReactNode;
 	size?: "sm" | "md" | "lg";
 }
@@ -21,6 +23,7 @@ export default function Dialog({
 	icon: Icon,
 	description,
 	onDismiss,
+	actions,
 	children,
 	size = "md",
 }: DialogProps) {
@@ -41,7 +44,8 @@ export default function Dialog({
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape" && onDismiss) {
+			// A menu opened from the dialog closes first
+			if (event.key === "Escape" && onDismiss && !document.querySelector("[role=menu]")) {
 				event.stopPropagation();
 				onDismiss();
 				return;
@@ -107,6 +111,7 @@ export default function Dialog({
 							</p>
 						)}
 					</div>
+					{actions}
 					{onDismiss && <IconButton icon={X} label="Close" onClick={onDismiss} />}
 				</header>
 				<div className="dialog-body">{children}</div>

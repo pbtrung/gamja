@@ -80,6 +80,7 @@ describe("App", () => {
 
 		await userEvent.click(screen.getByRole("button", { name: "Settings" }));
 		expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
+		await userEvent.click(screen.getByRole("tab", { name: "Messages" }));
 		await userEvent.click(screen.getByLabelText("Show member list"));
 		expect(app.state.settings.showMemberList).toBe(true);
 		await userEvent.click(screen.getByRole("button", { name: "Done" }));

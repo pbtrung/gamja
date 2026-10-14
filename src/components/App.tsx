@@ -10,7 +10,6 @@ import {
 	MessagesSquare,
 	Search,
 	Server,
-	Settings as SettingsIcon,
 	ShieldCheck,
 	UserPlus,
 	Users,
@@ -50,7 +49,7 @@ import Help from "./forms/Help";
 import JoinForm from "./forms/JoinForm";
 import NetworkForm from "./forms/NetworkForm";
 import RegisterForm from "./forms/RegisterForm";
-import SettingsForm from "./forms/SettingsForm";
+import SettingsForm, { SettingsDialog } from "./forms/SettingsForm";
 import SwitcherForm from "./forms/SwitcherForm";
 import SearchForm from "./forms/SearchForm";
 import VerifyForm from "./forms/VerifyForm";
@@ -223,26 +222,24 @@ function Dialogs({ state }: { state: AppState }) {
 			);
 		case "settings":
 			return (
-				<Dialog
-					title="Settings"
-					icon={SettingsIcon}
-					description="Appearance, messages and notifications"
-					onDismiss={dismiss}
-					size="lg"
-				>
-					<SettingsForm
-						settings={state.settings}
-						showProtocolHandler={dialog.showProtocolHandler}
-						pushAvailable={app.canEnablePush()}
-						onPushChange={(enabled) => app.setPushNotifications(enabled)}
-						onChange={(settings) => app.handleSettingsChange(settings)}
-						onDisconnect={() => {
-							app.dismissDialog();
-							app.disconnectAll();
-						}}
-						onClose={dismiss}
-					/>
-				</Dialog>
+				<SettingsDialog onDismiss={dismiss}>
+					{(tab, setTab) => (
+						<SettingsForm
+							tab={tab}
+							onTabChange={setTab}
+							settings={state.settings}
+							showProtocolHandler={dialog.showProtocolHandler}
+							pushAvailable={app.canEnablePush()}
+							onPushChange={(enabled) => app.setPushNotifications(enabled)}
+							onChange={(settings) => app.handleSettingsChange(settings)}
+							onDisconnect={() => {
+								app.dismissDialog();
+								app.disconnectAll();
+							}}
+							onClose={dismiss}
+						/>
+					)}
+				</SettingsDialog>
 			);
 		case "search":
 			return (

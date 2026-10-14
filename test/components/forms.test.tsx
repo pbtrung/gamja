@@ -187,10 +187,12 @@ describe("SettingsForm", () => {
 				onClose={() => {}}
 			/>,
 		);
+		await userEvent.click(screen.getByRole("tab", { name: "Messages" }));
 		await userEvent.click(screen.getByLabelText("Show seconds in time indicator"));
 		expect(onChange).toHaveBeenCalledWith({ secondsInTimestamps: false });
 		await userEvent.click(screen.getByRole("radio", { name: "Hide" }));
 		expect(onChange).toHaveBeenCalledWith({ bufferEvents: "hide" });
+		await userEvent.click(screen.getByRole("tab", { name: "Notifications" }));
 		await userEvent.click(screen.getByRole("radio", { name: "All" }));
 		expect(onChange).toHaveBeenCalledWith({ notifications: "all" });
 		await userEvent.click(screen.getByRole("radio", { name: "5 min" }));
@@ -238,6 +240,7 @@ describe("SettingsForm push notifications", () => {
 				onClose={() => {}}
 			/>,
 		);
+		await userEvent.click(screen.getByRole("tab", { name: "Notifications" }));
 		const toggle = screen.getByRole("checkbox", { name: /Push notifications/ });
 		await userEvent.click(toggle);
 		expect(onPushChange).toHaveBeenCalledWith(true);
@@ -246,7 +249,7 @@ describe("SettingsForm push notifications", () => {
 		expect(screen.queryByRole("alert")).toBeNull();
 	});
 
-	it("hides the toggle when unavailable", () => {
+	it("hides the toggle when unavailable", async () => {
 		render(
 			<SettingsForm
 				settings={defaultSettings}
@@ -256,6 +259,7 @@ describe("SettingsForm push notifications", () => {
 				onClose={() => {}}
 			/>,
 		);
+		await userEvent.click(screen.getByRole("tab", { name: "Notifications" }));
 		expect(screen.queryByRole("checkbox", { name: /Push notifications/ })).toBeNull();
 	});
 });

@@ -348,22 +348,109 @@ h3.settings-heading:not(:first-child) {
 	margin-top: 1.5rem;
 }
 
-/* Settings dialog */
+/* Settings dialog: the sections in tabs on the left, the current one on the right */
+
+.dialog:has(.settings-form) {
+	max-width: 52rem;
+	height: min(40rem, calc(100dvh - 2rem));
+}
+
+.dialog:has(.settings-form) .dialog-body {
+	--dialog-padding: 0;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
 
 .settings-form {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
-	gap: 1.5rem;
+	min-width: 0;
 }
 
-.settings-section {
+.settings-layout {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+.settings-nav {
 	display: flex;
 	flex-direction: column;
-	gap: 0.75rem;
+	flex-shrink: 0;
+	gap: 0.25rem;
+	width: 12rem;
+	padding: 0.75rem;
+	border-right: 1px solid var(--border);
+	background-color: var(--bg-sidebar);
 }
 
-.settings-section > .settings-heading {
+.settings-nav-item {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	padding: 0.5rem 0.75rem;
+	border: none;
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--fg-muted);
+	font: inherit;
+	font-size: 0.875rem;
+	font-weight: 500;
+	text-align: left;
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background-color var(--transition),
+		color var(--transition);
+}
+
+.settings-nav-item svg.lucide {
+	flex-shrink: 0;
+	width: 1rem;
+	height: 1rem;
+}
+
+.settings-nav-item:hover {
+	background-color: var(--bg-hover);
+	color: var(--fg-emphasis);
+}
+
+.settings-nav-item.active {
+	background-color: var(--bg-active);
+	color: var(--fg-active);
+}
+
+.settings-nav-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.settings-pane {
+	flex: 1;
+	min-width: 0;
+	padding: 1.25rem 1.5rem;
+	overflow-y: auto;
+}
+
+.settings-fieldset {
 	margin: 0;
+}
+
+.settings-fieldset + .settings-fieldset {
+	margin-top: 1.5rem;
+}
+
+/* A legend can't be a flex item: float it to lay it out like the headings */
+.settings-fieldset > legend.settings-heading {
+	float: left;
+	width: 100%;
+}
+
+.settings-fieldset > legend.settings-heading + * {
+	clear: both;
 }
 
 .settings-card {
@@ -371,24 +458,6 @@ h3.settings-heading:not(:first-child) {
 	border: 1px solid var(--border);
 	border-radius: var(--radius-lg);
 	background-color: var(--bg);
-}
-
-.settings-card-padded {
-	padding: 0.875rem;
-}
-
-.settings-label {
-	float: left;
-	width: 100%;
-	margin-bottom: 0.75rem;
-	padding: 0;
-	color: var(--fg-emphasis);
-	font-size: 0.875rem;
-	font-weight: 600;
-}
-
-.settings-label + * {
-	clear: both;
 }
 
 .settings-row {
@@ -726,13 +795,64 @@ input.switch:focus-visible {
 	color: var(--accent-fg);
 }
 
-/* Settings have more content: a tighter body than other dialogs */
-.dialog:has(.settings-form) .dialog-body {
-	--dialog-padding: 0.75rem;
+.settings-form > .dialog-actions {
+	position: static;
+	margin: 0;
+	padding: 0.625rem 1rem;
 }
 
-.settings-form > .dialog-actions {
-	margin-top: 0;
+/* Phones: the sections are in the ⋮ menu of the header, with the current one in the title */
+.settings-menu,
+.settings-current {
+	display: none;
+}
+
+.settings-current {
+	color: var(--fg-muted);
+	font-weight: 400;
+}
+
+.action-menu-item[aria-checked="true"] {
+	background-color: var(--bg-active);
+	color: var(--fg-active);
+}
+
+.action-menu-item[aria-checked="true"] svg.lucide {
+	color: inherit;
+}
+
+/* Phones: full screen */
+@media (max-width: 640px) {
+	.settings-menu,
+	.settings-current {
+		display: inline;
+	}
+
+	.settings-nav {
+		display: none;
+	}
+
+	.dialog-backdrop:has(.settings-form) {
+		padding: 0;
+	}
+
+	.dialog:has(.settings-form) {
+		max-width: none;
+		height: 100dvh;
+		max-height: 100dvh;
+		border: none;
+		border-radius: 0;
+	}
+
+	.settings-form > .dialog-actions {
+		border-radius: 0;
+		padding-inline: 0.75rem;
+		padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+	}
+
+	.settings-pane {
+		padding: 1rem 0.75rem;
+	}
 }
 
 @media (max-width: 640px) {

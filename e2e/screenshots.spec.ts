@@ -98,12 +98,35 @@ test("settings screenshots", async ({ page, connect }) => {
 		} else {
 			await page.getByRole("button", { name: "Settings" }).click();
 		}
-		const body = page.locator(".dialog-body");
-		await expect(body).toBeVisible();
+		const pane = page.locator(".settings-pane");
+		await expect(pane).toBeVisible();
 		await page.screenshot({ path: `${dir()}/settings-${name}.png` });
-		await body.evaluate((el) => (el.scrollTop = el.scrollHeight));
+		await pane.evaluate((el) => (el.scrollTop = el.scrollHeight));
 		await page.screenshot({ path: `${dir()}/settings-${name}-bottom.png` });
-		await body.evaluate((el) => (el.scrollTop = 0));
+		await pane.evaluate((el) => (el.scrollTop = 0));
+		if (name === "mobile") {
+			// Small screens put the sections in a menu
+			await page.getByRole("button", { name: "Settings sections" }).click();
+			await page.screenshot({ path: `${dir()}/settings-menu-mobile.png` });
+			// Escape closes the menu, not the dialog
+			await page.keyboard.press("Escape");
+			await expect(page.getByRole("menu")).toBeHidden();
+			await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+			await page.getByRole("button", { name: "Settings sections" }).click();
+			await page.getByRole("menuitemradio", { name: "Notifications" }).click();
+		} else {
+			await page.getByRole("tab", { name: "Notifications" }).click();
+		}
+		await page.screenshot({
+			path: `${dir()}/settings-${name}-notifications.png`,
+			animations: "disabled",
+		});
+		if (name === "mobile") {
+			await page.getByRole("button", { name: "Settings sections" }).click();
+			await page.getByRole("menuitemradio", { name: "Appearance" }).click();
+		} else {
+			await page.getByRole("tab", { name: "Appearance" }).click();
+		}
 		await page
 			.locator("label.theme-option")
 			.filter({ has: page.getByRole("radio", { name: "Light", exact: true }) })
