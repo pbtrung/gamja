@@ -674,7 +674,7 @@ export function createBuffer(
 		type = BufferType.NICK;
 	}
 
-	let bufferList = Array.from(state.buffers.values());
+	const bufferList = Array.from(state.buffers.values());
 	bufferList.push({
 		id,
 		name,
@@ -694,9 +694,13 @@ export function createBuffer(
 		unread: Unread.NONE,
 		prevReadReceipt: null,
 	});
-	bufferList = bufferList.sort((a, b) => compareBuffers(state, a, b));
-	const buffers = new Map(bufferList.map((buf) => [buf.id, buf]));
-	return [id, { buffers }];
+	return [id, { buffers: sortBuffers(state, bufferList) }];
+}
+
+/** Sort buffers in the order of the buffer list, into a new map. */
+function sortBuffers(state: State, bufferList: Buffer[]): Map<number, Buffer> {
+	bufferList.sort((a, b) => compareBuffers(state, a, b));
+	return new Map(bufferList.map((buf) => [buf.id, buf]));
 }
 
 export function storeBouncerNetwork(state: State, id: string, attrs: BouncerNetwork): Partial<State> {
@@ -921,19 +925,9 @@ export function handleMessage(
 			return state;
 		}
 		case "PART":
-			channel = msg.params[0];
-
-			return updateBufferWith(channel, (buf) => {
-				const members = new irc.CaseMapMap(buf.members);
-				members.delete(prefix.name);
-
-				const joined = buf.joined && !client.isMyNick(prefix.name);
-
-				return { members, joined };
-			});
 		case "KICK": {
 			channel = msg.params[0];
-			const nick = msg.params[1];
+			const nick = msg.command === "KICK" ? msg.params[1] : prefix.name;
 
 			return updateBufferWith(channel, (buf) => {
 				const members = new irc.CaseMapMap(buf.members);
@@ -1070,11 +1064,10 @@ export function handleMessage(
 			if (!buf) {
 				return;
 			}
-			let bufferList = Array.from(state.buffers.values()).map((b) =>
+			const bufferList = Array.from(state.buffers.values()).map((b) =>
 				b.id === buf.id ? { ...b, name: to } : b,
 			);
-			bufferList = bufferList.sort((a, b) => compareBuffers(state, a, b));
-			return { buffers: new Map(bufferList.map((b) => [b.id, b])) };
+			return { buffers: sortBuffers(state, bufferList) };
 		}
 		case "PRIVMSG":
 		case "NOTICE":
