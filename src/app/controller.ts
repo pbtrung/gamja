@@ -2692,5 +2692,6 @@ export default class AppController {
 			client.disconnect();
 		}
 		this.clients.clear();
+		this.bufferStore.dispose();
 	}
 }

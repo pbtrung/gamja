@@ -91,19 +91,24 @@ export class BufferStore {
 	raw = new Item<Record<string, StoredBuffer>>("buffers");
 	m: Map<string, StoredBuffer>;
 	save: () => void;
+	onVisibilityChange = () => {
+		if (document.visibilityState === "hidden") {
+			this.saveImmediately();
+		}
+	};
 
 	constructor() {
 		const obj = this.raw.load();
 		this.m = new Map(Object.entries(obj || {}));
 
-		const saveImmediately = this.saveImmediately.bind(this);
-		this.save = debounce(saveImmediately, 500);
+		this.save = debounce(this.saveImmediately.bind(this), 500);
 
-		document.addEventListener("visibilitychange", () => {
-			if (document.visibilityState === "hidden") {
-				saveImmediately();
-			}
-		});
+		document.addEventListener("visibilitychange", this.onVisibilityChange);
+	}
+
+	/** Stop saving when the page is hidden. */
+	dispose(): void {
+		document.removeEventListener("visibilitychange", this.onVisibilityChange);
 	}
 
 	key(buf: { name: string; server: StoredServer }): string {

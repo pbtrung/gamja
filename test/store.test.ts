@@ -69,4 +69,15 @@ describe("BufferStore", () => {
 		expect(localStorage.getItem("gamja_buffers")).not.toBeNull();
 		Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
 	});
+
+	it("stops listening to the page visibility once disposed", () => {
+		const store = new BufferStore();
+		store.dispose();
+		store.put({ name: "#disposed", server });
+		Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+		document.dispatchEvent(new Event("visibilitychange"));
+		// Stores of the previous tests are still listening
+		expect(localStorage.getItem("gamja_buffers") ?? "").not.toContain("#disposed");
+		Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+	});
 });
