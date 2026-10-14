@@ -92,7 +92,7 @@ const WHOX_FIELDS = {
 	realname: "r",
 } as const;
 
-type WhoxField = keyof typeof WHOX_FIELDS;
+export type WhoxField = keyof typeof WHOX_FIELDS;
 
 interface WhoReply {
 	channel?: string;

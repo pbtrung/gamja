@@ -1,6 +1,6 @@
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
-import Client, { ClientStatus, IRCError, type MessageEventDetail } from "../lib/client";
+import Client, { ClientStatus, IRCError, type MessageEventDetail, type WhoxField } from "../lib/client";
 import * as oauth2 from "../lib/oauth2";
 import { strip as stripANSI } from "../lib/ansi";
 import * as S from "../state";
@@ -34,6 +34,9 @@ import {
 } from "./config";
 
 const CHATHISTORY_MAX_SIZE = 4000;
+
+/** User details requested with WHO, see User in state.ts */
+const WHO_FIELDS: WhoxField[] = ["flags", "hostname", "nick", "realname", "username", "account"];
 
 /** Whether the side panes cover the whole screen, see app.css */
 function isSmallScreen(): boolean {
@@ -2034,9 +2037,7 @@ export default class AppController {
 		}
 
 		client
-			.who(target, {
-				fields: ["flags", "hostname", "nick", "realname", "username", "account"],
-			})
+			.who(target, { fields: WHO_FIELDS })
 			.catch((err) => console.warn(`Failed to WHO ${target}:`, err));
 		client.monitor(target);
 
@@ -2053,9 +2054,7 @@ export default class AppController {
 
 		let hasInitialWho = false;
 		try {
-			await client.who(target, {
-				fields: ["flags", "hostname", "nick", "realname", "username", "account"],
-			});
+			await client.who(target, { fields: WHO_FIELDS });
 			hasInitialWho = true;
 		} finally {
 			this.setBufferState({ name: target, server: serverID }, { hasInitialWho });
@@ -2533,25 +2532,25 @@ export default class AppController {
 		const client = this.clients.get(serverID)!;
 		const promise = client.authenticate("PLAIN", { username, password }).then(() => {
 			this.dismissDialog();
-
-			const firstClient = this.clients.values().next().value;
-			if (client !== firstClient) {
-				return;
-			}
-
-			let autoconnect = store.autoconnect.load();
-			if (!autoconnect) {
-				return;
-			}
-
-			console.log("Saving SASL PLAIN credentials");
-			autoconnect = {
-				...autoconnect,
-				saslPlain: { username, password },
-			};
-			store.autoconnect.put(autoconnect);
+			this.saveCredentials(client, username, password);
 		});
 		this.setDialogLoading(promise);
+	}
+
+	/** Save SASL PLAIN credentials if the connection is remembered ("Remember me"). */
+	saveCredentials(client: Client, username: string, password: string): void {
+		const firstClient = this.clients.values().next().value;
+		if (client !== firstClient) {
+			return;
+		}
+
+		const autoconnect = store.autoconnect.load();
+		if (!autoconnect) {
+			return;
+		}
+
+		console.log("Saving SASL PLAIN credentials");
+		store.autoconnect.put({ ...autoconnect, saslPlain: { username, password } });
 	}
 
 	handleRegisterClick(serverID: number): void {
@@ -2568,23 +2567,7 @@ export default class AppController {
 			if (data.verificationRequired) {
 				this.handleVerifyClick(serverID, data.account, data.message);
 			}
-
-			const firstClient = this.clients.values().next().value;
-			if (client !== firstClient) {
-				return;
-			}
-
-			let autoconnect = store.autoconnect.load();
-			if (!autoconnect) {
-				return;
-			}
-
-			console.log("Saving account registration credentials");
-			autoconnect = {
-				...autoconnect,
-				saslPlain: { username: data.account, password },
-			};
-			store.autoconnect.put(autoconnect);
+			this.saveCredentials(client, data.account, password);
 		});
 		this.setDialogLoading(promise);
 	}
