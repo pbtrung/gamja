@@ -250,12 +250,6 @@ svg.lucide {
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.spinner {
-		animation-duration: 2s;
-	}
-}
-
 .badge {
 	display: inline-flex;
 	align-items: center;
@@ -1417,12 +1411,6 @@ li.unread-highlight .unread-indicator,
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.action-menu {
-		animation: none;
-	}
-}
-
 .action-menu-item {
 	display: flex;
 	align-items: center;
@@ -2200,13 +2188,6 @@ textarea.composer-input:focus {
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.typing-dots span,
-	#buffer .logline.flash {
-		animation: none;
-	}
-}
-
 .composer-reply {
 	display: flex;
 	align-items: center;
@@ -2607,14 +2588,6 @@ form > .switch-row {
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.dialog-backdrop,
-	.dialog,
-	.toast {
-		animation: none;
-	}
-}
-
 .help-list {
 	margin: 0;
 	font-size: 0.875rem;
@@ -3004,4 +2977,20 @@ mark {
 	letter-spacing: 0;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* Last, so that it overrides the animations above */
+@media (prefers-reduced-motion: reduce) {
+	.spinner {
+		animation-duration: 2s;
+	}
+
+	.action-menu,
+	.typing-dots span,
+	#buffer .logline.flash,
+	.dialog-backdrop,
+	.dialog,
+	.toast {
+		animation: none;
+	}
 }

@@ -95,6 +95,14 @@ test("shows errors for unknown commands", async ({ page, connect }) => {
 	await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
+test("doesn't animate error toasts with reduced motion", async ({ page, connect }) => {
+	await page.emulateMedia({ reducedMotion: "reduce" });
+	await connect(page);
+	await page.keyboard.type("/frobnicate");
+	await page.keyboard.press("Enter");
+	await expect(page.getByRole("alert")).toHaveCSS("animation-name", "none");
+});
+
 test("logs in with SASL", async ({ page, connect }) => {
 	await connect(page, "alice", { password: "secret" });
 	await expect(page.locator("#buffer")).toContainText("You are now authenticated as alice");
