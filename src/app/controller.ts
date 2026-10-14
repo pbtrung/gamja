@@ -2147,8 +2147,10 @@ export default class AppController {
 	executeCommand(s: string): void {
 		// Extra spaces after the command name don't make empty arguments
 		const [, name, rest] = /^\/(\S*)\s*(.*)$/s.exec(s) ?? ["", "", ""];
-		// Repeated and trailing spaces don't make empty arguments
-		const args = rest.trim() === "" ? [] : rest.trim().split(/ +/);
+		// Repeated and trailing spaces don't make empty arguments, but are
+		// kept in the text of e.g. /me and /msg
+		const text = rest.trimEnd();
+		const args = text === "" ? [] : text.split(/ +/);
 
 		const cmd = commands.get(name.toLowerCase());
 		if (!cmd) {
@@ -2157,7 +2159,7 @@ export default class AppController {
 		}
 
 		try {
-			const result = cmd.execute(this, args);
+			const result = cmd.execute(this, args, text);
 			if (result instanceof Promise) {
 				result.catch((error: Error) => {
 					console.error(`Failed to execute command "${name}":`, error);

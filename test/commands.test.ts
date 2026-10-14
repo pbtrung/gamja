@@ -102,6 +102,22 @@ describe("commands", () => {
 		expect(sent()).toEqual(["PRIVMSG bob :hi there", "WHOWAS bob"]);
 	});
 
+	it.each([
+		["/me  waves   twice  ", "PRIVMSG #c :\x01ACTION waves   twice\x01"],
+		["/msg bob hi  there", "PRIVMSG bob :hi  there"],
+		["/notice bob  hi  there", "NOTICE bob :hi  there"],
+		["/query bob a  b", "PRIVMSG bob :a  b"],
+		["/topic a  b", "TOPIC #c :a  b"],
+		["/part see  you", "PART #c :see  you"],
+		["/kick bob go  away", "KICK #c bob :go  away"],
+		["/away gone  fishing", "AWAY :gone  fishing"],
+		["/quote PRIVMSG #x :raw  text", "PRIVMSG #x :raw  text"],
+	])("keeps the spaces in the text of %s", async (input, expected) => {
+		const { app, sent } = await inChannel();
+		app.handleComposerSubmit(input);
+		expect(sent()).toContain(expected);
+	});
+
 	it("can't join channels on a connection without channels", async () => {
 		const { app, sent } = await connectedApp({ isupport: "CASEMAPPING=ascii CHANTYPES= BOT=B" });
 		vi.spyOn(console, "error").mockImplementation(() => {});

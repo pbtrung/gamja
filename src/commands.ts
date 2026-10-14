@@ -7,7 +7,19 @@ export interface Command {
 	name: string;
 	usage?: string;
 	description: string;
-	execute: (app: AppController, args: string[]) => void | Promise<void>;
+	/**
+	 * Arguments are split on spaces, text is the raw string they come from,
+	 * for commands taking text which may contain repeated spaces.
+	 */
+	execute: (app: AppController, args: string[], text: string) => void | Promise<void>;
+}
+
+/** The raw text after the first n arguments, keeping its spaces. */
+function textAfter(text: string, n: number): string {
+	for (let i = 0; i < n; i++) {
+		text = text.replace(/^[^ ]* */, "");
+	}
+	return text;
 }
 
 function getActiveClient(app: AppController): Client {
@@ -146,12 +158,12 @@ const kick: Command = {
 	name: "kick",
 	usage: "<nick> [comment]",
 	description: "Remove a user from the channel",
-	execute: (app, args) => {
+	execute: (app, args, text) => {
 		const nick = requireArg(args, 0, "nick");
 		const activeChannel = getActiveChannel(app);
 		const params = [activeChannel, nick];
 		if (args.length > 1) {
-			params.push(args.slice(1).join(" "));
+			params.push(textAfter(text, 1));
 		}
 		getActiveClient(app).send({ command: "KICK", params });
 	},
@@ -189,9 +201,9 @@ const commandList: Command[] = [
 		name: "away",
 		usage: "[message]",
 		description: "Set away message",
-		execute: (app, args) => {
+		execute: (app, _args, text) => {
 			getActiveClient(app); // Fail early when disconnected
-			app.setAway(args.join(" "));
+			app.setAway(text);
 		},
 	},
 	ban,
@@ -269,11 +281,11 @@ const commandList: Command[] = [
 		name: "kickban",
 		usage: "<target>",
 		description: "Ban a user and removes them from the channel",
-		execute: async (app, args) => {
+		execute: async (app, args, text) => {
 			requireArg(args, 0, "nick");
 			// Ban first: if looking up the user's host fails, don't kick either
-			await ban.execute(app, args);
-			kick.execute(app, args);
+			await ban.execute(app, args, text);
+			kick.execute(app, args, text);
 		},
 	},
 	{
@@ -289,8 +301,7 @@ const commandList: Command[] = [
 		name: "me",
 		usage: "<action>",
 		description: "Send an action message to the current buffer",
-		execute: (app, args) => {
-			const action = args.join(" ");
+		execute: (app, _args, action) => {
 			const target = getActiveTarget(app);
 			const text = `\x01ACTION ${action}\x01`;
 			app.privmsg(target, text);
@@ -322,11 +333,11 @@ const commandList: Command[] = [
 		name: "msg",
 		usage: "<target> <message>",
 		description: "Send a message to a nickname or a channel",
-		execute: (app, args) => {
+		execute: (app, args, text) => {
 			const target = requireArg(args, 0, "target");
 			requireArg(args, 1, "message");
 			getActiveClient(app);
-			app.sendChatMessage("PRIVMSG", target, args.slice(1).join(" "));
+			app.sendChatMessage("PRIVMSG", target, textAfter(text, 1));
 		},
 	},
 	metadataCommand("mute", "muted", true, "[target]", "Silence a buffer's notifications (soju)"),
@@ -343,11 +354,11 @@ const commandList: Command[] = [
 		name: "notice",
 		usage: "<target> <message>",
 		description: "Send a notice to a nickname or a channel",
-		execute: (app, args) => {
+		execute: (app, args, text) => {
 			const target = requireArg(args, 0, "target");
 			requireArg(args, 1, "message");
 			getActiveClient(app);
-			app.sendChatMessage("NOTICE", target, args.slice(1).join(" "));
+			app.sendChatMessage("NOTICE", target, textAfter(text, 1));
 		},
 	},
 	{
@@ -360,8 +371,7 @@ const commandList: Command[] = [
 		name: "part",
 		usage: "[reason]",
 		description: "Leave a channel",
-		execute: (app, args) => {
-			const reason = args.join(" ");
+		execute: (app, _args, reason) => {
 			const activeChannel = getActiveChannel(app);
 			const params = [activeChannel];
 			if (reason) {
@@ -375,13 +385,12 @@ const commandList: Command[] = [
 		name: "query",
 		usage: "<nick> [message]",
 		description: "Open a buffer to send messages to a nickname",
-		execute: (app, args) => {
+		execute: (app, args, text) => {
 			const nick = requireArg(args, 0, "nickname");
 			app.open(nick);
 
 			if (args.length > 1) {
-				const text = args.slice(1).join(" ");
-				app.privmsg(nick, text);
+				app.privmsg(nick, textAfter(text, 1));
 			}
 		},
 	},
@@ -411,10 +420,10 @@ const commandList: Command[] = [
 		name: "quote",
 		usage: "<command>",
 		description: "Send a raw IRC command to the server",
-		execute: (app, args) => {
+		execute: (app, _args, text) => {
 			let msg;
 			try {
-				msg = irc.parseMessage(args.join(" "));
+				msg = irc.parseMessage(text);
 			} catch (err) {
 				throw new Error("Failed to parse IRC command", { cause: err });
 			}
@@ -432,16 +441,15 @@ const commandList: Command[] = [
 		name: "search",
 		usage: "[text]",
 		description: "Search messages in the current buffer",
-		execute: (app, args) => {
-			app.openSearch("buffer", args.join(" ") || undefined);
+		execute: (app, _args, text) => {
+			app.openSearch("buffer", text || undefined);
 		},
 	},
 	{
 		name: "setname",
 		usage: "<realname>",
 		description: "Change current realname",
-		execute: (app, args) => {
-			const newRealname = args.join(" ");
+		execute: (app, _args, newRealname) => {
 			const client = getActiveClient(app);
 			if (!client.caps.enabled.has("setname")) {
 				throw new Error("Server doesn't support changing the realname");
@@ -467,11 +475,11 @@ const commandList: Command[] = [
 		name: "topic",
 		usage: "<topic>",
 		description: "Change the topic of the current channel",
-		execute: (app, args) => {
+		execute: (app, _args, topic) => {
 			const activeChannel = getActiveChannel(app);
 			const params = [activeChannel];
-			if (args.length > 0) {
-				params.push(args.join(" "));
+			if (topic) {
+				params.push(topic);
 			}
 			getActiveClient(app).send({ command: "TOPIC", params });
 		},
