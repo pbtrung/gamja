@@ -81,6 +81,14 @@ function showNotification(title: string, options: NotificationOptions): MessageN
 	}
 }
 
+/** Changes gathered while handling a page of history, applied at once */
+interface HistoryBatch {
+	/** Messages to add, by buffer ID */
+	messages: Map<number, Message[]>;
+	/** Last read marker update to send, by case-mapped buffer name */
+	readMarkers: Map<string, store.BufferUpdate>;
+}
+
 let lastErrorID = 0;
 
 export interface ControllerOptions {
@@ -487,10 +495,19 @@ export default class AppController {
 		client.setReadMarker(storedBuffer.name, readReceipt.time);
 	}
 
-	/** Store the receipts of a buffer, and send its read marker if it moved. */
-	storeReceipts(client: Client, update: store.BufferUpdate): void {
-		if (this.bufferStore.put(update)) {
+	/**
+	 * Store the receipts of a buffer, and send its read marker if it moved.
+	 * With a batch, only the last read marker of each buffer is sent, once the
+	 * whole batch is handled.
+	 */
+	storeReceipts(client: Client, update: store.BufferUpdate, batch?: HistoryBatch): void {
+		if (!this.bufferStore.put(update)) {
+			return;
+		}
+		if (!batch) {
 			this.sendReadReceipt(client, update);
+		} else if (update.receipts?.[ReceiptType.READ]) {
+			batch.readMarkers.set(client.cm(update.name), update);
 		}
 	}
 
@@ -671,7 +688,12 @@ export default class AppController {
 		}
 	}
 
-	handleChatMessage(serverID: number, bufName: string, msg: Message): void {
+	/**
+	 * Show a message in a buffer, as new: it may mark the buffer unread and
+	 * notify. With a batch, the message is only added once the whole batch is
+	 * handled, see applyHistory().
+	 */
+	handleChatMessage(serverID: number, bufName: string, msg: Message, batch?: HistoryBatch): void {
 		const client = this.clients.get(serverID)!;
 
 		this.prepareChatMessage(serverID, msg);
@@ -770,7 +792,11 @@ export default class AppController {
 		}
 
 		const bufID = { server: serverID, name: bufName };
-		this.update((state) => S.addMessage(state, msg, bufID));
+		if (batch) {
+			this.queueHistoryMessage(batch, bufID, msg);
+		} else {
+			this.update((state) => S.addMessage(state, msg, bufID));
+		}
 		if (msg.command === "PRIVMSG" || msg.command === "NOTICE") {
 			this.setBufferState(bufID, (b) =>
 				b.typing.size > 0 ? S.applyTyping(b, from, "done", client.cm) : undefined,
@@ -798,11 +824,65 @@ export default class AppController {
 			prevReadReceipt = S.receiptFromMessage(msg);
 		}
 
-		this.storeReceipts(client, { name: buf.name, server: client.params, unread, receipts });
-		this.setBufferState(buf.id, { unread, prevReadReceipt });
+		this.storeReceipts(client, { name: buf.name, server: client.params, unread, receipts }, batch);
+		if (unread !== buf.unread || prevReadReceipt !== buf.prevReadReceipt) {
+			this.setBufferState(buf.id, { unread, prevReadReceipt });
+		}
 
 		if (msgUnread === Unread.HIGHLIGHT) {
 			this.updateDocumentTitle();
+		}
+	}
+
+	queueHistoryMessage(batch: HistoryBatch, bufID: BufferID, msg: Message): void {
+		// Like addMessage(), skip buffers which don't exist (yet)
+		const id = S.getBuffer(this.state, bufID)?.id;
+		if (id === undefined) {
+			return;
+		}
+		const messages = batch.messages.get(id);
+		if (messages) {
+			messages.push(msg);
+		} else {
+			batch.messages.set(id, [msg]);
+		}
+	}
+
+	/**
+	 * Show a page of chat history, with one state update per buffer. Live
+	 * history, missed while disconnected, is handled like new messages: it
+	 * marks buffers unread and notifies.
+	 */
+	applyHistory(serverID: number, msgs: Message[], { live = false } = {}): void {
+		const client = this.clients.get(serverID);
+		if (!client) {
+			return;
+		}
+
+		const batch: HistoryBatch = { messages: new Map(), readMarkers: new Map() };
+		for (const msg of msgs) {
+			if (msg.command === "TAGMSG") {
+				this.handleTagMessage(serverID, msg);
+				continue;
+			}
+			const destBuffers = this.routeMessage(serverID, msg);
+			if (live) {
+				for (const bufName of destBuffers) {
+					this.handleChatMessage(serverID, bufName, msg, batch);
+				}
+				continue;
+			}
+			this.prepareChatMessage(serverID, msg);
+			for (const bufName of destBuffers) {
+				this.queueHistoryMessage(batch, { server: serverID, name: bufName }, msg);
+			}
+		}
+
+		for (const [id, messages] of batch.messages) {
+			this.update((state) => S.addMessages(state, messages, id));
+		}
+		for (const update of batch.readMarkers.values()) {
+			this.sendReadReceipt(client, update);
 		}
 	}
 
@@ -1215,14 +1295,7 @@ export default class AppController {
 		const loaded = buf.messages.some((m) => m.tags.msgid === msgid);
 		if (!loaded && client.caps.enabled.has("draft/chathistory")) {
 			const messages = await client.fetchHistoryAround(target, { msgid, time }, 50);
-			for (const msg of messages) {
-				if (msg.command === "TAGMSG") {
-					this.handleTagMessage(serverID, msg);
-					continue;
-				}
-				this.prepareChatMessage(serverID, msg);
-				this.update((state) => S.addMessage(state, msg, buf.id));
-			}
+			this.applyHistory(serverID, messages);
 		}
 		this.update({ jumpTo: { buffer: buf.id, msgid } });
 	}
@@ -1767,16 +1840,7 @@ export default class AppController {
 					return;
 				}
 
-				for (const msg of result.messages) {
-					if (msg.command === "TAGMSG") {
-						this.handleTagMessage(serverID, msg);
-						continue;
-					}
-					const destBuffers = this.routeMessage(serverID, msg);
-					for (const bufName of destBuffers) {
-						this.handleChatMessage(serverID, bufName, msg);
-					}
-				}
+				this.applyHistory(serverID, result.messages, { live: true });
 			}),
 		);
 	}
@@ -2319,18 +2383,7 @@ export default class AppController {
 			});
 		}
 
-		for (const msg of result.messages) {
-			if (msg.command === "TAGMSG") {
-				this.handleTagMessage(buf.server, msg);
-				continue;
-			}
-			this.prepareChatMessage(buf.server, msg);
-			const destBuffers = this.routeMessage(buf.server, msg);
-			for (const bufName of destBuffers) {
-				const bufID = { server: buf.server, name: bufName };
-				this.update((state) => S.addMessage(state, msg, bufID));
-			}
-		}
+		this.applyHistory(buf.server, result.messages);
 	}
 
 	openDialog(dialog: Dialog): void {

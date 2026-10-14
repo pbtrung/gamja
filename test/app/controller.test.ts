@@ -869,3 +869,91 @@ describe("AppController notifications", () => {
 		}
 	});
 });
+
+describe("AppController chat history", () => {
+	const caps =
+		"batch server-time echo-message message-tags labeled-response draft/chathistory draft/read-marker";
+
+	/** Connect with a stored #c buffer, so that its backlog gets fetched. */
+	async function withBacklog() {
+		const t = "2030-01-01T00:00:00.000Z";
+		localStorage.setItem(
+			"gamja_buffers",
+			JSON.stringify({
+				[JSON.stringify({ name: "#c", server: {} })]: {
+					name: "#c",
+					unread: Unread.NONE,
+					closed: false,
+					server: {},
+					receipts: { delivered: { time: t }, read: { time: t } },
+				},
+			}),
+		);
+		const h = await connectedApp({ register: false });
+		h.recv(`:srv CAP * LS :${caps}`, `:srv CAP me ACK :${caps}`);
+		h.recv(":srv 001 me :Welcome", ":srv 005 me CHANTYPES=# CHATHISTORY=100 :ok", ":srv 376 me :End");
+		const targets = h.sentRaw().find((l) => l.includes("CHATHISTORY TARGETS"))!;
+		const reply = (req: string, type: string, ...lines: string[]) => {
+			const label = req.match(/label=(\d+)/)![1];
+			h.recv(
+				`@label=${label} :srv BATCH +b ${type}`,
+				...lines.map((l) => `@batch=b;${l}`),
+				":srv BATCH -b",
+			);
+		};
+		/** Answer the TARGETS request, returns the BETWEEN request for #c */
+		const replyTargets = async () => {
+			reply(
+				targets,
+				"draft/chathistory-targets",
+				":srv CHATHISTORY TARGETS #c 2030-01-02T00:00:00.000Z",
+			);
+			await flush();
+			return h.sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
+		};
+		return { ...h, reply, replyTargets };
+	}
+
+	it("applies the backlog with a single read marker for the buffer being read", async () => {
+		vi.spyOn(document, "hasFocus").mockReturnValue(true);
+		const { app, recv, sent, reply, replyTargets } = await withBacklog();
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+
+		const between = await replyTargets();
+		expect(between).toMatch(/BETWEEN #c timestamp=2030-01-01T00:00:00.000Z /);
+		const updates = vi.fn();
+		const unsubscribe = app.store.subscribe(updates);
+		reply(
+			between,
+			"chathistory #c",
+			...[1, 2, 3].map(
+				(s) => `time=2030-01-01T00:00:0${s}.000Z;msgid=m${s} :bob!u@h PRIVMSG #c :msg ${s}`,
+			),
+		);
+		await flush();
+		unsubscribe();
+
+		expect(buf(app, "#c")!.messages.map((m) => m.params[1])).toEqual(["msg 1", "msg 2", "msg 3"]);
+		expect(updates).toHaveBeenCalledTimes(1);
+		expect(sent()).toEqual(["MARKREAD #c timestamp=2030-01-01T00:00:03.000Z"]);
+	});
+
+	it("marks the backlog of other buffers unread", async () => {
+		const { app, recv, sent, reply, replyTargets } = await withBacklog();
+		recv(":me!u@h JOIN #c");
+		const between = await replyTargets();
+		reply(
+			between,
+			"chathistory #c",
+			"time=2030-01-01T00:00:01.000Z :bob!u@h PRIVMSG #c :hi",
+			"time=2030-01-01T00:00:02.000Z :bob!u@h PRIVMSG #c :hi me",
+		);
+		await flush();
+		expect(buf(app, "#c")!.messages).toHaveLength(2);
+		expect(buf(app, "#c")!.unread).toBe(Unread.HIGHLIGHT);
+		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
+	});
+});
