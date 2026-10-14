@@ -487,6 +487,13 @@ export default class AppController {
 		client.setReadMarker(storedBuffer.name, readReceipt.time);
 	}
 
+	/** Store the receipts of a buffer, and send its read marker if it moved. */
+	storeReceipts(client: Client, update: store.BufferUpdate): void {
+		if (this.bufferStore.put(update)) {
+			this.sendReadReceipt(client, update);
+		}
+	}
+
 	switchBuffer(id: BufferID): void {
 		const buf = S.getBuffer(this.state, id);
 		if (!buf) {
@@ -559,6 +566,18 @@ export default class AppController {
 		});
 	}
 
+	/** Close the notifications of a buffer, up to a read receipt if given. */
+	closeNotifications(serverID: number, client: Client, bufName: string, readReceipt?: Receipt): void {
+		for (const notif of this.messageNotifications) {
+			if (notif.data.server !== serverID || client.cm(notif.data.bufferName) !== client.cm(bufName)) {
+				continue;
+			}
+			if (!readReceipt || S.isMessageBeforeReceipt(notif.data.message, readReceipt)) {
+				notif.close();
+			}
+		}
+	}
+
 	markBufferAsRead(id: BufferID): void {
 		const buf = S.getBuffer(this.state, id);
 		if (!buf) {
@@ -571,26 +590,16 @@ export default class AppController {
 			return;
 		}
 
-		for (const notif of this.messageNotifications) {
-			if (
-				notif.data.server === buf.server &&
-				client.cm(notif.data.bufferName) === client.cm(buf.name)
-			) {
-				notif.close();
-			}
-		}
+		this.closeNotifications(buf.server, client, buf.name);
 
 		if (buf.messages.length > 0) {
 			const lastMsg = buf.messages[buf.messages.length - 1];
-			const stored = {
+			this.storeReceipts(client, {
 				name: buf.name,
 				server: client.params,
 				unread: Unread.NONE,
 				receipts: { [ReceiptType.READ]: S.receiptFromMessage(lastMsg) },
-			};
-			if (this.bufferStore.put(stored)) {
-				this.sendReadReceipt(client, stored);
-			}
+			});
 		}
 
 		this.updateDocumentTitle();
@@ -789,15 +798,7 @@ export default class AppController {
 			prevReadReceipt = S.receiptFromMessage(msg);
 		}
 
-		const update = {
-			name: buf.name,
-			server: client.params,
-			unread,
-			receipts,
-		};
-		if (this.bufferStore.put(update)) {
-			this.sendReadReceipt(client, update);
-		}
+		this.storeReceipts(client, { name: buf.name, server: client.params, unread, receipts });
 		this.setBufferState(buf.id, { unread, prevReadReceipt });
 
 		if (msgUnread === Unread.HIGHLIGHT) {
@@ -1679,14 +1680,7 @@ export default class AppController {
 		if (S.isReceiptBefore(readReceipt, getReceipt(stored, ReceiptType.READ))) {
 			return;
 		}
-		for (const notif of this.messageNotifications) {
-			if (notif.data.server !== serverID || client.cm(notif.data.bufferName) !== client.cm(target)) {
-				continue;
-			}
-			if (S.isMessageBeforeReceipt(notif.data.message, readReceipt)) {
-				notif.close();
-			}
-		}
+		this.closeNotifications(serverID, client, target, readReceipt);
 
 		const buf = S.getBuffer(this.state, { server: serverID, name: target });
 		let unread: Unread = Unread.NONE;
@@ -2316,14 +2310,7 @@ export default class AppController {
 			if (this.state.activeBuffer === buf.id) {
 				receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
 			}
-			const stored = {
-				name: buf.name,
-				server: client.params,
-				receipts,
-			};
-			if (this.bufferStore.put(stored)) {
-				this.sendReadReceipt(client, stored);
-			}
+			this.storeReceipts(client, { name: buf.name, server: client.params, receipts });
 			this.setBufferState(buf.id, ({ prevReadReceipt }) => {
 				if (!S.isMessageBeforeReceipt(msg, prevReadReceipt)) {
 					prevReadReceipt = S.receiptFromMessage(msg);
