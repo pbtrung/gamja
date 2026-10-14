@@ -1115,4 +1115,4 @@ function MessageList(props: MessageListProps) {
 	return <div className="logline-list">{children}</div>;
 }
 
-export default MessageList;
+export default memo(MessageList);

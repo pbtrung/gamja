@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
 import {
 	ArrowRightLeft,
 	CircleAlert,
@@ -38,6 +38,7 @@ import ErrorBoundary from "./ErrorBoundary";
 import IconButton from "./IconButton";
 import MemberList from "./MemberList";
 import MessageList, { type MessageActionHandlers } from "./MessageList";
+import type { LinkClickHandler } from "./RichText";
 import SelfStatus from "./SelfStatus";
 import TypingIndicator from "./TypingIndicator";
 import type { Message } from "../lib/irc";
@@ -306,6 +307,128 @@ function Dialogs({ state }: { state: AppState }) {
 	}
 }
 
+/**
+ * The messages of the active buffer. Only subscribes to the state they
+ * show: the scroller restores its position when they re-render.
+ */
+const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelClick: LinkClickHandler }) {
+	const app = useController();
+	const buffer = useAppState((s) =>
+		s.activeBuffer !== null ? (s.buffers.get(s.activeBuffer) ?? null) : null,
+	);
+	const server = useAppState((s) => (buffer ? (s.servers.get(buffer.server) ?? null) : null));
+	const bouncerNetwork = useAppState((s) =>
+		server?.bouncerNetID ? (s.bouncerNetworks.get(server.bouncerNetID) ?? null) : null,
+	);
+	const settings = useAppState((s) => s.settings);
+	const jumpTo = useAppState((s) => (s.jumpTo?.buffer === s.activeBuffer ? s.jumpTo.msgid : null));
+
+	const activeID = buffer?.id ?? null;
+	const myNick = server?.nick ?? null;
+	const canAct = server?.status === ServerStatus.REGISTERED;
+	const canReact = canAct && Boolean(server?.features.reactions);
+	const canReply = canAct && Boolean(server?.features.replies);
+	const canRedact = canAct && Boolean(server?.features.redaction);
+	// Stable, so that the memoized message list doesn't re-render for nothing
+	const actions = useMemo<MessageActionHandlers | undefined>(
+		() =>
+			activeID === null || (!canReact && !canReply && !canRedact)
+				? undefined
+				: {
+						myNick,
+						canReact,
+						canReply,
+						canRedact,
+						onReact: (msg: Message, emoji: string) => app.react(activeID, msg, emoji),
+						onReply: (msg: Message) => app.startReply(activeID, msg),
+						onRedact: (msg: Message) => app.redact(activeID, msg),
+					},
+		[app, activeID, myNick, canReact, canReply, canRedact],
+	);
+
+	const handleNickClick = useCallback((nick: string) => app.open(nick), [app]);
+	const handleScrollTop = useCallback(() => {
+		app.fetchOlderMessages().catch((err) => app.showError(err));
+	}, [app]);
+	const handleJumped = useCallback(() => app.update({ jumpTo: null }), [app]);
+	const handleRetryHistory = useCallback(() => {
+		app.fetchOlderMessages(true).catch((err) => app.showError(err));
+	}, [app]);
+	// The server is read when called, so that these stay the same
+	const handleAuthClick = useCallback(() => {
+		const serverID = activeServerID(app);
+		if (serverID !== undefined) {
+			app.handleAuthClick(serverID);
+		}
+	}, [app]);
+	const handleRegisterClick = useCallback(() => {
+		const serverID = activeServerID(app);
+		if (serverID !== undefined) {
+			app.handleRegisterClick(serverID);
+		}
+	}, [app]);
+	const handleVerifyClick = useCallback(
+		(account: string, message: string) => {
+			const serverID = activeServerID(app);
+			if (serverID !== undefined) {
+				app.handleVerifyClick(serverID, account, message);
+			}
+		},
+		[app],
+	);
+
+	return (
+		<ChatScroller
+			id="buffer"
+			scrollKey={activeID}
+			jumpTo={jumpTo}
+			onJumped={handleJumped}
+			stickTo=".logline"
+			unreadMarker=".unread-separator"
+			onScrollTop={handleScrollTop}
+			label={buffer ? `Messages in ${buffer.name}` : "Messages"}
+		>
+			<ErrorBoundary
+				// Another buffer may display fine: start over when switching
+				key={activeID ?? "none"}
+				fallback={(error, reset) => (
+					<div className="alert alert-danger inline-error" role="alert">
+						<CircleAlert aria-hidden="true" />
+						<div>
+							Failed to display messages: {error.message}{" "}
+							<button type="button" className="btn btn-sm" onClick={reset}>
+								Retry
+							</button>
+						</div>
+					</div>
+				)}
+			>
+				{buffer && server && (
+					<MessageList
+						buffer={buffer}
+						server={server}
+						bouncerNetwork={bouncerNetwork}
+						settings={settings}
+						actions={actions}
+						onChannelClick={onChannelClick}
+						onNickClick={handleNickClick}
+						onAuthClick={handleAuthClick}
+						onRegisterClick={handleRegisterClick}
+						onVerifyClick={handleVerifyClick}
+						onRetryHistory={handleRetryHistory}
+					/>
+				)}
+			</ErrorBoundary>
+		</ChatScroller>
+	);
+});
+
+/** The server of the active buffer */
+function activeServerID(app: AppController): number | undefined {
+	const id = app.state.activeBuffer;
+	return id !== null ? app.state.buffers.get(id)?.server : undefined;
+}
+
 function Chat({ state }: { state: AppState }) {
 	const app = useController();
 	const composer = useRef<ComposerHandle>(null);
@@ -327,7 +450,6 @@ function Chat({ state }: { state: AppState }) {
 		},
 		[app],
 	);
-	const handleNickClick = useCallback((nick: string) => app.open(nick), [app]);
 	// Stable, so that the memoized member list doesn't re-render on every message
 	const handleMemberClick = useCallback(
 		(nick: string) => {
@@ -346,14 +468,10 @@ function Chat({ state }: { state: AppState }) {
 		(buf: Buffer, all: boolean) => app.toggleCollapsed(buf.server, all),
 		[app],
 	);
-	const handleScrollTop = useCallback(() => {
-		app.fetchOlderMessages().catch((err) => app.showError(err));
-	}, [app]);
 	const handleComposerSubmit = useCallback((text: string) => app.handleComposerSubmit(text), [app]);
 	const autocomplete = useCallback((prefix: string) => app.autocomplete(prefix), [app]);
 	const handleTextChange = useCallback((text: string) => app.notifyTyping(text), [app]);
 	const handleCancelReply = useCallback(() => app.cancelReply(), [app]);
-	const handleJumped = useCallback(() => app.update({ jumpTo: null }), [app]);
 
 	const activeID = activeBuffer?.id ?? null;
 	const myNick = activeServer?.nick ?? null;
@@ -362,36 +480,6 @@ function Chat({ state }: { state: AppState }) {
 		selfNick ??= server.nick;
 	}
 	const canAct = activeServer?.status === ServerStatus.REGISTERED;
-	const canReact = canAct && Boolean(activeServer?.features.reactions);
-	const canReply = canAct && Boolean(activeServer?.features.replies);
-	const canRedact = canAct && Boolean(activeServer?.features.redaction);
-	// LogLine compares the flags rather than this object's identity
-	const actions: MessageActionHandlers | undefined =
-		activeID === null || (!canReact && !canReply && !canRedact)
-			? undefined
-			: {
-					myNick,
-					canReact,
-					canReply,
-					canRedact,
-					onReact: (msg: Message, emoji: string) => app.react(activeID, msg, emoji),
-					onReply: (msg: Message) => app.startReply(activeID, msg),
-					onRedact: (msg: Message) => app.redact(activeID, msg),
-				};
-
-	const handlers = useMemo(
-		() => ({
-			onChannelClick: handleChannelClick,
-			onNickClick: handleNickClick,
-			onVerifyClick: (account: string, message: string) => {
-				const serverID = state.activeBuffer ? state.buffers.get(state.activeBuffer)?.server : null;
-				if (serverID) {
-					app.handleVerifyClick(serverID, account, message);
-				}
-			},
-		}),
-		[app, handleChannelClick, handleNickClick, state.activeBuffer, state.buffers],
-	);
 
 	let unreadElsewhere: Unread = Unread.NONE;
 	for (const buf of state.buffers.values()) {
@@ -507,50 +595,7 @@ function Chat({ state }: { state: AppState }) {
 				</header>
 			)}
 
-			<ChatScroller
-				id="buffer"
-				scrollKey={state.activeBuffer}
-				jumpTo={state.jumpTo?.buffer === state.activeBuffer ? state.jumpTo.msgid : null}
-				onJumped={handleJumped}
-				stickTo=".logline"
-				unreadMarker=".unread-separator"
-				onScrollTop={handleScrollTop}
-				label={activeBuffer ? `Messages in ${activeBuffer.name}` : "Messages"}
-			>
-				<ErrorBoundary
-					// Another buffer may display fine: start over when switching
-					key={state.activeBuffer ?? "none"}
-					fallback={(error, reset) => (
-						<div className="alert alert-danger inline-error" role="alert">
-							<CircleAlert aria-hidden="true" />
-							<div>
-								Failed to display messages: {error.message}{" "}
-								<button type="button" className="btn btn-sm" onClick={reset}>
-									Retry
-								</button>
-							</div>
-						</div>
-					)}
-				>
-					{activeBuffer && activeServer && (
-						<MessageList
-							buffer={activeBuffer}
-							server={activeServer}
-							bouncerNetwork={activeBouncerNetwork}
-							settings={state.settings}
-							actions={actions}
-							onChannelClick={handlers.onChannelClick}
-							onNickClick={handlers.onNickClick}
-							onAuthClick={() => app.handleAuthClick(activeBuffer.server)}
-							onRegisterClick={() => app.handleRegisterClick(activeBuffer.server)}
-							onVerifyClick={handlers.onVerifyClick}
-							onRetryHistory={() =>
-								app.fetchOlderMessages(true).catch((err) => app.showError(err))
-							}
-						/>
-					)}
-				</ErrorBoundary>
-			</ChatScroller>
+			<ChatMessages onChannelClick={handleChannelClick} />
 
 			{activeBuffer?.type === BufferType.CHANNEL && activeServer && (
 				<aside id="member-list" className={memberListClass} aria-label="Members list">
