@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import {
+	useLayoutEffect,
+	useRef,
+	useState,
+	type CSSProperties,
+	type KeyboardEvent,
+	type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import { Reply, SmilePlus, Trash2 } from "lucide-react";
 import { EMOJIS, QUICK_REACTIONS } from "../format";
@@ -27,9 +34,64 @@ function searchEmoji(query: string): string[] {
 	).map(([emoji]) => emoji);
 }
 
+/** Columns of the reaction grids, as in the styles */
+const COLUMNS = 8;
+
+/**
+ * Move the focus in a grid of reactions with the arrow keys, Home and End.
+ * Up and down cross to the previous and next grids, up from the first one
+ * goes back to the search field.
+ */
+function handleGridKeyDown(event: KeyboardEvent<HTMLElement>, picker: HTMLElement | null) {
+	const grid = event.currentTarget;
+	const items = [...grid.querySelectorAll<HTMLElement>("[role=menuitem]")];
+	const i = items.indexOf(document.activeElement as HTMLElement);
+	if (!picker || i < 0) {
+		return;
+	}
+	const grids = [...picker.querySelectorAll<HTMLElement>("[role=menu]")];
+	const g = grids.indexOf(grid);
+	const itemsOf = (el: HTMLElement | undefined) => [
+		...(el?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []),
+	];
+	let next: HTMLElement | null | undefined;
+	switch (event.key) {
+		case "ArrowLeft":
+			next = items[i - 1];
+			break;
+		case "ArrowRight":
+			next = items[i + 1];
+			break;
+		case "ArrowUp":
+			next =
+				i >= COLUMNS
+					? items[i - COLUMNS]
+					: (itemsOf(grids[g - 1]).at(-1) ?? picker.querySelector<HTMLElement>("input"));
+			break;
+		case "ArrowDown":
+			// To the last item if the next row is shorter
+			next =
+				i - (i % COLUMNS) + COLUMNS < items.length
+					? items[Math.min(i + COLUMNS, items.length - 1)]
+					: itemsOf(grids[g + 1])[0];
+			break;
+		case "Home":
+			next = items[0];
+			break;
+		case "End":
+			next = items.at(-1);
+			break;
+		default:
+			return;
+	}
+	event.preventDefault();
+	next?.focus();
+}
+
 interface ReactionPickerProps {
 	onPick: (emoji: string) => void;
-	onClose: () => void;
+	/** How: picked from the keyboard, with Escape or with a pointer */
+	onClose: (how: "keyboard" | "escape" | "pointer") => void;
 	/** The button toggling the picker, which handles its own clicks */
 	toggleRef: RefObject<HTMLButtonElement | null>;
 }
@@ -56,17 +118,22 @@ function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 		);
 	}, [toggleRef]);
 
-	usePopover(true, ref, toggleRef, () => onClose());
+	usePopover(true, ref, toggleRef, (reason) => onClose(reason === "escape" ? "escape" : "pointer"));
 
-	function pick(emoji: string) {
+	function pick(emoji: string, fromKeyboard: boolean) {
 		rememberReaction(emoji);
 		onPick(emoji);
-		onClose();
+		onClose(fromKeyboard ? "keyboard" : "pointer");
 	}
 
 	const results = query.trim() ? searchEmoji(query) : null;
 	const choices = (emojis: string[], label: string) => (
-		<div className="reaction-choices" role="menu" aria-label={label}>
+		<div
+			className="reaction-choices"
+			role="menu"
+			aria-label={label}
+			onKeyDown={(event) => handleGridKeyDown(event, ref.current)}
+		>
 			{emojis.map((emoji) => (
 				<button
 					key={emoji}
@@ -74,7 +141,7 @@ function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 					role="menuitem"
 					className="reaction-choice"
 					aria-label={`React with ${emoji}`}
-					onClick={() => pick(emoji)}
+					onClick={(event) => pick(emoji, event.detail === 0)}
 				>
 					{emoji}
 				</button>
@@ -101,7 +168,7 @@ function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 				onKeyDown={(event) => {
 					if (event.key === "Enter" && results?.[0]) {
 						event.preventDefault();
-						pick(results[0]);
+						pick(results[0], true);
 					} else if (event.key === "ArrowDown") {
 						event.preventDefault();
 						ref.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
@@ -150,6 +217,18 @@ export default function MessageActions({
 }: MessageActionsProps) {
 	const [picking, setPicking] = useState(false);
 	const toggleRef = useRef<HTMLButtonElement>(null);
+	const openedFromKeyboard = useRef(false);
+
+	// The focus was in the picker, which unmounts: give it back to keyboard
+	// users. Like menus, Escape only does when opened from the keyboard,
+	// the toolbar would stay shown otherwise.
+	function close(how: "keyboard" | "escape" | "pointer") {
+		setPicking(false);
+		if (how === "keyboard" || (how === "escape" && openedFromKeyboard.current)) {
+			toggleRef.current?.focus();
+		}
+	}
+
 	if (!canReact && !canReply && !canRedact) {
 		return null;
 	}
@@ -166,7 +245,10 @@ export default function MessageActions({
 					hasPopup="menu"
 					expanded={picking}
 					ref={toggleRef}
-					onClick={() => setPicking((p) => !p)}
+					onClick={(event) => {
+						openedFromKeyboard.current = event.detail === 0;
+						setPicking((p) => !p);
+					}}
 				/>
 			)}
 			{canReply && <IconButton icon={Reply} label="Reply" onClick={onReply} />}
@@ -182,9 +264,7 @@ export default function MessageActions({
 					}}
 				/>
 			)}
-			{picking && (
-				<ReactionPicker onPick={onReact} onClose={() => setPicking(false)} toggleRef={toggleRef} />
-			)}
+			{picking && <ReactionPicker onPick={onReact} onClose={close} toggleRef={toggleRef} />}
 		</div>
 	);
 }

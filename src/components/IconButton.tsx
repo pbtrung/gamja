@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { MouseEvent, Ref } from "react";
 import type { LucideIcon } from "lucide-react";
 
 interface IconButtonProps {
@@ -14,7 +14,7 @@ interface IconButtonProps {
 	/** Buttons opening a menu: whether it's open */
 	expanded?: boolean;
 	hasPopup?: "menu";
-	onClick?: () => void;
+	onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 /** A button showing only an icon. */

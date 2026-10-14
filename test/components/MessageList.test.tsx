@@ -399,6 +399,46 @@ describe("MessageList interactions", () => {
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
+	it("navigates the reaction picker with the keyboard", async () => {
+		localStorage.clear();
+		const { actions } = renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], { actions: true });
+		const toggle = screen.getByRole("button", { name: "Add reaction" });
+		toggle.focus();
+		await userEvent.keyboard("{Enter}");
+		const search = screen.getByRole("searchbox", { name: "Search emoji" });
+		expect(search).toHaveFocus();
+		// Escape gives the focus back to the toggle
+		await userEvent.keyboard("{Escape}");
+		expect(screen.queryByRole("dialog")).toBeNull();
+		expect(toggle).toHaveFocus();
+
+		await userEvent.keyboard("{Enter}");
+		const quick = within(screen.getByRole("menu", { name: "Frequently used" })).getAllByRole("menuitem");
+		const all = within(screen.getByRole("menu", { name: "All reactions" })).getAllByRole("menuitem");
+		await userEvent.keyboard("{ArrowDown}");
+		expect(quick[0]).toHaveFocus();
+		await userEvent.keyboard("{ArrowRight}{ArrowRight}{ArrowLeft}");
+		expect(quick[1]).toHaveFocus();
+		await userEvent.keyboard("{End}");
+		expect(quick.at(-1)).toHaveFocus();
+		// Up and down cross between the grids and back to the search field
+		await userEvent.keyboard("{ArrowDown}");
+		expect(all[0]).toHaveFocus();
+		await userEvent.keyboard("{ArrowDown}");
+		expect(all[8]).toHaveFocus();
+		await userEvent.keyboard("{ArrowUp}{ArrowUp}");
+		expect(quick.at(-1)).toHaveFocus();
+		await userEvent.keyboard("{ArrowUp}");
+		expect(screen.getByRole("searchbox", { name: "Search emoji" })).toHaveFocus();
+
+		// Picking with the keyboard gives the focus back to the toggle too
+		await userEvent.keyboard("{ArrowDown}{Enter}");
+		expect(actions.onReact).toHaveBeenCalledWith(expect.anything(), quick[0].textContent);
+		expect(screen.queryByRole("dialog")).toBeNull();
+		expect(toggle).toHaveFocus();
+		localStorage.clear();
+	});
+
 	it("closes the reaction picker with its toggle button", async () => {
 		renderList([msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello")], { actions: true });
 		const toggle = screen.getByRole("button", { name: "Add reaction" });
