@@ -311,6 +311,14 @@ describe("AppController messaging", () => {
 		expect(app.state.dialog).toMatchObject({ kind: "confirm-open-buffer", name: "newnick" });
 	});
 
+	it("switches to the channel a JOIN was forwarded to", async () => {
+		const { app, recv } = await connectedApp();
+		app.open("#old");
+		recv(":srv 470 me #old ##new :Forwarding to another channel", ":me!u@h JOIN ##new");
+		await flush();
+		expect(app.state.activeBuffer).toBe(buf(app, "##new")!.id);
+	});
+
 	it("updates the window hash on buffer switch", async () => {
 		const { app, recv } = await connectedApp();
 		recv(":me!u@h JOIN #c");

@@ -166,35 +166,10 @@ const MAX_JOIN_LENGTH = 400;
  * Join channels with as few JOIN commands as possible, each short enough
  * and with no more channels than the server accepts (TARGMAX).
  */
-// TODO: use the target chunking helpers of lib/irc once available
 function joinChannels(client: Client, channels: string[]): void {
-	let maxTargets = Infinity;
-	for (const entry of client.isupport.raw.get("TARGMAX")?.split(",") ?? []) {
-		const [cmd, n] = entry.split(":");
-		if (cmd.toUpperCase() === "JOIN" && Number(n) > 0) {
-			maxTargets = Number(n);
-		}
+	for (const chunk of irc.chunkTargets(channels, client.isupport.targMax("JOIN"), MAX_JOIN_LENGTH)) {
+		client.send({ command: "JOIN", params: [chunk.join(",")] });
 	}
-
-	const encoder = new TextEncoder();
-	let chunk: string[] = [];
-	let length = 0;
-	const flush = () => {
-		if (chunk.length > 0) {
-			client.send({ command: "JOIN", params: [chunk.join(",")] });
-		}
-		chunk = [];
-		length = 0;
-	};
-	for (const channel of channels) {
-		const n = encoder.encode(channel).length;
-		if (chunk.length >= maxTargets || (chunk.length > 0 && length + 1 + n > MAX_JOIN_LENGTH)) {
-			flush();
-		}
-		length += (chunk.length > 0 ? 1 : 0) + n;
-		chunk.push(channel);
-	}
-	flush();
 }
 
 /** Changes gathered while handling a page of history, applied at once */
@@ -1651,7 +1626,14 @@ export default class AppController {
 				this.handleTagMessage(serverID, msg);
 				break;
 			default:
-				if (irc.isError(msg.command) && msg.command !== irc.ERR_NOMOTD && !msg.internal) {
+				// A forward (ERR_LINKCHANNEL) is followed by a JOIN elsewhere,
+				// it's not a failure
+				if (
+					irc.isError(msg.command) &&
+					msg.command !== irc.ERR_NOMOTD &&
+					msg.command !== irc.ERR_LINKCHANNEL &&
+					!msg.internal
+				) {
 					const description = msg.params[msg.params.length - 1];
 					this.showError(description);
 				}
@@ -2098,10 +2080,21 @@ export default class AppController {
 				this.switchBuffer(buf.id);
 				return;
 			}
-			this.switchToChannel = { server: serverID, name: target };
-			client.join(target, password).catch((err) => {
-				this.showError(err);
-			});
+			const switchTo = { server: serverID, name: target };
+			this.switchToChannel = switchTo;
+			client
+				.join(target, password)
+				.then((joined) => {
+					// Forwarded to another channel (ERR_LINKCHANNEL): its JOIN
+					// didn't match, switch to it now
+					if (this.switchToChannel === switchTo) {
+						this.switchToChannel = null;
+						this.switchBuffer({ server: serverID, name: joined });
+					}
+				})
+				.catch((err) => {
+					this.showError(err);
+				});
 		} else {
 			this.whoUserBuffer(target, serverID);
 			this.createBuffer(serverID, target);
