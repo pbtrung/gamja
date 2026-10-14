@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Reply, SmilePlus, Trash2 } from "lucide-react";
 import { EMOJIS, QUICK_REACTIONS } from "../format";
 import * as store from "../store";
 import IconButton from "./IconButton";
+import usePopover from "./usePopover";
 
 const QUICK_COUNT = QUICK_REACTIONS.length;
 
@@ -38,11 +39,6 @@ function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 	const [query, setQuery] = useState("");
 	const [quick] = useState(quickReactions);
 	const [position, setPosition] = useState<CSSProperties>({ opacity: 0 });
-	// onClose changes on every render of the parent: don't re-run the effects
-	const onCloseRef = useRef(onClose);
-	useEffect(() => {
-		onCloseRef.current = onClose;
-	});
 
 	// Below the toggle, or above it when there's no room, e.g. on the last
 	// message. Positioned fixed: the chat log would clip it
@@ -60,26 +56,7 @@ function ReactionPicker({ onPick, onClose, toggleRef }: ReactionPickerProps) {
 		);
 	}, [toggleRef]);
 
-	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				event.stopPropagation();
-				onCloseRef.current();
-			}
-		};
-		const handlePointer = (event: PointerEvent) => {
-			const target = event.target as Node;
-			if (!ref.current?.contains(target) && !toggleRef.current?.contains(target)) {
-				onCloseRef.current();
-			}
-		};
-		window.addEventListener("keydown", handleKeyDown, true);
-		window.addEventListener("pointerdown", handlePointer, true);
-		return () => {
-			window.removeEventListener("keydown", handleKeyDown, true);
-			window.removeEventListener("pointerdown", handlePointer, true);
-		};
-	}, [toggleRef]);
+	usePopover(true, ref, toggleRef, () => onClose());
 
 	function pick(emoji: string) {
 		rememberReaction(emoji);

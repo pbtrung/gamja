@@ -5,12 +5,14 @@ import {
 	useRef,
 	useState,
 	type CSSProperties,
+	type KeyboardEvent,
 	type MouseEvent,
 	type ReactNode,
 	type Ref,
 } from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
+import usePopover from "./usePopover";
 
 export interface MenuItem {
 	key: string;
@@ -102,44 +104,31 @@ export default function Menu({
 		}
 	}, [position]);
 
+	const menuItems = () =>
+		Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]") ?? []);
+
 	useEffect(() => {
-		if (!open) {
-			return;
+		if (open) {
+			menuItems()[0]?.focus({ preventScroll: true });
 		}
-		const menuItems = () =>
-			Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]") ?? []);
-		menuItems()[0]?.focus({ preventScroll: true });
-		const close = () => {
-			setPosition(null);
-			if (fromKeyboard.current) {
-				toggleRef.current?.focus();
-			}
-		};
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				event.stopPropagation();
-				close();
-			} else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-				event.preventDefault();
-				const l = menuItems();
-				const i = l.indexOf(document.activeElement as HTMLElement);
-				const next = event.key === "ArrowDown" ? i + 1 : i - 1;
-				l[(next + l.length) % l.length]?.focus();
-			}
-		};
-		const handlePointer = (event: PointerEvent) => {
-			const target = event.target as Node;
-			if (!menuRef.current?.contains(target) && !toggleRef.current?.contains(target)) {
-				setPosition(null);
-			}
-		};
-		window.addEventListener("keydown", handleKeyDown, true);
-		window.addEventListener("pointerdown", handlePointer, true);
-		return () => {
-			window.removeEventListener("keydown", handleKeyDown, true);
-			window.removeEventListener("pointerdown", handlePointer, true);
-		};
 	}, [open]);
+
+	usePopover(open, menuRef, toggleRef, (reason) => {
+		setPosition(null);
+		if (reason === "escape" && fromKeyboard.current) {
+			toggleRef.current?.focus();
+		}
+	});
+
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			const l = menuItems();
+			const i = l.indexOf(document.activeElement as HTMLElement);
+			const next = event.key === "ArrowDown" ? i + 1 : i - 1;
+			l[(next + l.length) % l.length]?.focus();
+		}
+	}
 
 	return (
 		<>
@@ -164,6 +153,7 @@ export default function Menu({
 						aria-label={label}
 						ref={menuRef}
 						style={position}
+						onKeyDown={handleKeyDown}
 					>
 						{items.map(({ key, icon: Icon, label, danger, checked, onClick }) => (
 							<button
