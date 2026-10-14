@@ -955,6 +955,75 @@ describe("AppController notifications", () => {
 	});
 });
 
+describe("AppController with several servers", () => {
+	/** Connect to another server, feeding it the given lines once registered. */
+	function connectAnother(app: AppController, ...lines: string[]): number {
+		const serverID = app.connect({ nick: "me", url: "wss://irc.test/socket" });
+		const ws = FakeWebSocket.last();
+		ws.open();
+		ws.receive(":srv CAP * LS :batch", ":srv 001 me :Welcome", ":srv 005 me CHANTYPES=# :ok");
+		ws.receive(":srv 376 me :End", ...lines);
+		return serverID;
+	}
+
+	const openBuffer = (app: AppController, target: string) =>
+		app.handleWorkerMessage({ type: "open-buffer", target });
+	const active = (app: AppController) => getBuffer(app.state, app.state.activeBuffer)!;
+
+	it("opens push notifications on the active server first, without joining", async () => {
+		const { app, recv, serverID, sent } = await connectedApp();
+		recv(":me!u@h JOIN #c");
+		const second = connectAnother(app, ":me!u@h JOIN #c", ":me!u@h JOIN #d", ":me!u@h JOIN #e");
+		const third = connectAnother(app, ":me!u@h JOIN #e", ":bob!u@h PRIVMSG #e :hi me");
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		sent();
+
+		openBuffer(app, "#C");
+		expect(active(app)).toMatchObject({ server: serverID, name: "#c" });
+		app.switchBuffer({ server: second, name: "#d" });
+		openBuffer(app, "#c");
+		expect(active(app)).toMatchObject({ server: second, name: "#c" });
+		// Not on the active server: the one with a highlight
+		app.switchBuffer({ server: serverID, name: "#c" });
+		openBuffer(app, "#e");
+		expect(active(app)).toMatchObject({ server: third, name: "#e" });
+
+		openBuffer(app, "#unknown");
+		expect(active(app)).toMatchObject({ server: third, name: "#e" });
+		expect(sent()).toEqual([]);
+	});
+
+	it("looks for hash routes without a host on all servers", async () => {
+		const { app } = await connectedApp();
+		const second = connectAnother(app, ":me!u@h JOIN #d");
+		window.history.replaceState(null, "", "#/#d");
+		app.handleWindowHashChange();
+		expect(active(app)).toMatchObject({ server: second, name: "#d" });
+		window.history.replaceState(null, "", "/");
+	});
+
+	it("keeps an initial route without a host until a server has its buffer", async () => {
+		const pong = async (ws: FakeWebSocket) => {
+			const ping = ws.sent.find((l) => l.startsWith("PING "))!;
+			ws.receive(`:srv PONG srv ${ping.split(" ")[1]}`);
+			await flush();
+		};
+		window.history.replaceState(null, "", "/#/#d");
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const { app, ws } = await connectedApp({ register: false });
+		ws.receive(":srv CAP * LS :batch", ":srv 001 me :Welcome", ":srv 005 me CHANTYPES=# :ok");
+		ws.receive(":srv 376 me :End");
+		await pong(ws);
+		expect(app.initialRoute).not.toBeNull();
+
+		const second = connectAnother(app, ":me!u@h JOIN #d");
+		await pong(FakeWebSocket.last());
+		expect(active(app)).toMatchObject({ server: second, name: "#d" });
+		expect(app.initialRoute).toBeNull();
+		window.history.replaceState(null, "", "/");
+	});
+});
+
 describe("AppController chat history", () => {
 	const caps =
 		"batch server-time echo-message message-tags labeled-response draft/chathistory draft/read-marker";

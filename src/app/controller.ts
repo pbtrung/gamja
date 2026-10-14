@@ -1712,12 +1712,25 @@ export default class AppController {
 				.ping()
 				.then(() => this.openURL(url))
 				.catch(() => {});
-		} else if (this.initialRoute && serverHost === (this.initialRoute.host || "")) {
-			this.initialRoute = null;
+		} else if (this.initialRoute && (!this.initialRoute.host || serverHost === this.initialRoute.host)) {
+			const route = this.initialRoute;
+			if (route.host) {
+				this.initialRoute = null;
+			}
 
 			client
 				.ping()
-				.then(() => this.handleWindowHashChange())
+				.then(() => {
+					// Without a host, e.g. when opened from a push notification,
+					// the buffer may be on any server: try again as the others
+					// connect, until found
+					if (!route.host && this.initialRoute !== route) {
+						return;
+					}
+					if (this.openRoute(route)) {
+						this.initialRoute = null;
+					}
+				})
 				.catch(() => {});
 		}
 	}
@@ -1925,6 +1938,20 @@ export default class AppController {
 		return null;
 	}
 
+	/** Find the server of the bouncer network with the given host. */
+	serverIDFromHost(host: string): number | null {
+		const bouncerNetID = this.findBouncerNetIDByHost(host);
+		if (!bouncerNetID) {
+			return null;
+		}
+		for (const [id, server] of this.state.servers) {
+			if (server.bouncerNetID === bouncerNetID) {
+				return id;
+			}
+		}
+		return null;
+	}
+
 	/** Open an irc:// URL. Returns false if the URL couldn't be handled. */
 	openURL(url: string | irc.IRCURL | null): boolean {
 		if (typeof url === "string") {
@@ -1936,12 +1963,11 @@ export default class AppController {
 
 		const { host, port } = splitHostPort(url.host);
 
-		let serverID: number | null = null;
+		let serverID: number | null;
 		if (!url.host) {
 			serverID = S.getActiveServerID(this.state);
 		} else {
-			const bouncerNetID = this.findBouncerNetIDByHost(host);
-			if (!bouncerNetID) {
+			if (!this.findBouncerNetIDByHost(host)) {
 				// Open dialog to create network if bouncer
 				const client = this.clients.values().next().value;
 				if (!client || !client.caps.enabled.has("soju.im/bouncer-networks")) {
@@ -1956,12 +1982,7 @@ export default class AppController {
 				return true;
 			}
 
-			for (const [id, server] of this.state.servers) {
-				if (server.bouncerNetID === bouncerNetID) {
-					serverID = id;
-					break;
-				}
-			}
+			serverID = this.serverIDFromHost(host);
 		}
 		if (!serverID) {
 			return false;
@@ -2686,38 +2707,43 @@ export default class AppController {
 			return;
 		}
 
-		const { host, entity } = parseWindowHash(window.location.hash);
+		// The user navigated, a pending route is stale
+		this.initialRoute = null;
+		this.openRoute(parseWindowHash(window.location.hash));
+	}
 
-		let serverID: number | undefined;
+	/** Switch to the buffer of a window hash route. Returns false if not found. */
+	openRoute({ host, entity }: { host?: string; entity: string }): boolean {
+		let buf: Buffer | undefined;
 		if (host) {
-			const bouncerNetID = this.findBouncerNetIDByHost(host);
-			if (!bouncerNetID) {
+			const serverID = this.serverIDFromHost(host);
+			if (serverID === null) {
 				console.error(`No network found with host "${host}"`);
-				return;
+				return false;
 			}
-
-			for (const [id, server] of this.state.servers) {
-				if (server.bouncerNetID === bouncerNetID) {
-					serverID = id;
-					break;
-				}
-			}
+			buf = S.getBuffer(this.state, { server: serverID, name: entity });
 		} else {
+			// Without a host, it's on the server not bound to a bouncer
+			// network, or on any server for links which don't know the host
+			// (e.g. push notifications)
+			let rootID: number | undefined;
 			for (const [id, server] of this.state.servers) {
 				if (!server.bouncerNetID) {
-					serverID = id;
+					rootID = id;
 					break;
 				}
 			}
+			buf =
+				S.getBuffer(this.state, { server: rootID, name: entity }) ??
+				this.findBufferOnAnyServer(entity);
 		}
 
-		const buf = S.getBuffer(this.state, { server: serverID, name: entity });
 		if (!buf) {
 			console.error(`No buffer found with entity "${entity || "<none>"}"`);
-			return;
+			return false;
 		}
-
 		this.switchBuffer(buf.id);
+		return true;
 	}
 
 	/** Install window event listeners. Returns a cleanup function. */
@@ -2778,14 +2804,36 @@ export default class AppController {
 		if (!target) {
 			return;
 		}
-		for (const buf of this.state.buffers.values()) {
-			const client = this.clients.get(buf.server);
-			if (client && client.cm(buf.name) === client.cm(target)) {
-				this.switchBuffer(buf.id);
-				return;
+		// Push notifications don't say which network they're from. Don't join
+		// or open anything: the notification may be from another network.
+		const buf = this.findBufferOnAnyServer(target);
+		if (!buf) {
+			console.warn(`No buffer found for push notification target "${target}"`);
+			return;
+		}
+		this.switchBuffer(buf.id);
+	}
+
+	/**
+	 * Find a buffer by name when its server isn't known: on the active server
+	 * first, otherwise the one with the most important unread state.
+	 */
+	findBufferOnAnyServer(name: string): Buffer | undefined {
+		const activeServerID = S.getActiveServerID(this.state);
+		let found: Buffer | undefined;
+		for (const serverID of this.state.servers.keys()) {
+			const buf = S.getBuffer(this.state, { server: serverID, name });
+			if (!buf) {
+				continue;
+			}
+			if (serverID === activeServerID) {
+				return buf;
+			}
+			if (!found || S.compareUnread(buf.unread, found.unread) > 0) {
+				found = buf;
 			}
 		}
-		this.open(target);
+		return found;
 	}
 
 	destroy(): void {
