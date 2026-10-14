@@ -1776,8 +1776,7 @@ li.unread-highlight .unread-indicator,
 }
 
 #buffer .talk,
-#buffer .motd,
-#buffer .nag {
+#buffer .motd {
 	color: var(--fg);
 }
 
