@@ -1004,6 +1004,15 @@ export default class Client extends EventTarget {
 				this.requestCaps();
 
 				if (this.status !== ClientStatus.REGISTERED) {
+					// soju.im/account-required: the server would refuse to
+					// register us, say why up front
+					if (!this.wantsSASL() && this.caps.available.has("soju.im/account-required")) {
+						this.dispatchError(
+							new Error("This server requires an account: log in with a password"),
+						);
+						this.disconnect();
+						break;
+					}
 					if (!this.wantsSASL()) {
 						this.endRegistration();
 						break;

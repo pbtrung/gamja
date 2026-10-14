@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Client, { Backoff, IRCError } from "../../src/lib/client";
+import Client, { Backoff, ClientStatus, IRCError } from "../../src/lib/client";
 import { FakeWebSocket, installFakeWebSocket } from "../helpers/fake-ws";
 import { flush } from "../helpers/app";
 
@@ -189,6 +189,17 @@ describe("Client registration", () => {
 		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
 		ws.receive("FAIL * ACCOUNT_REQUIRED :Authentication required");
 		expect(errors[0].message).toBe("Authentication required");
+	});
+
+	it("doesn't register without credentials when an account is required", () => {
+		const { client, ws } = connect();
+		const errors: Error[] = [];
+		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
+		ws.sent = [];
+		ws.receive(":srv CAP * LS :sasl soju.im/account-required");
+		expect(errors[0].message).toMatch(/requires an account/);
+		expect(ws.sent.some((l) => l.startsWith("CAP END"))).toBe(false);
+		expect(client.status).toBe(ClientStatus.DISCONNECTED);
 	});
 
 	it("rejects non-text frames", () => {
