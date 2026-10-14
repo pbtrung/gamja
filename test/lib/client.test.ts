@@ -69,6 +69,22 @@ describe("Client registration", () => {
 		expect(ws.sent).toEqual(["CAP REQ away-notify"]);
 	});
 
+	it("doesn't request rejected or pending caps again on CAP NEW", () => {
+		const { ws } = connect();
+		ws.takeSent();
+		ws.receive(":srv CAP * LS :batch server-time");
+		expect(ws.takeSent()[0].params).toEqual(["REQ", "batch server-time"]);
+		ws.receive(":srv CAP me NAK :batch server-time");
+		ws.receive(":srv CAP me NEW :away-notify=x");
+		expect(ws.takeSent().map((m) => m.params[1])).toEqual(["away-notify"]);
+		// Still pending
+		ws.receive(":srv CAP me NEW :away-notify");
+		expect(ws.sent).toEqual([]);
+		// Advertised anew after the rejection
+		ws.receive(":srv CAP me NEW :batch");
+		expect(ws.takeSent().map((m) => m.params[1])).toEqual(["batch"]);
+	});
+
 	it("ends negotiation once, even on NAK", () => {
 		const { ws } = connect();
 		ws.takeSent();

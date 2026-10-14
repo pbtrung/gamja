@@ -1017,6 +1017,8 @@ export function formatURL({ host, enttype, entity }: Partial<IRCURL> = {}): stri
 export class CapRegistry {
 	available = new Map<string, string>();
 	enabled = new Set<string>();
+	/** Caps requested and not rejected nor removed since, maybe pending */
+	requested = new Set<string>();
 
 	addAvailable(s: string): void {
 		for (const item of s.split(" ")) {
@@ -1053,6 +1055,7 @@ export class CapRegistry {
 					cap = cap.toLowerCase();
 					this.available.delete(cap);
 					this.enabled.delete(cap);
+					this.requested.delete(cap);
 				}
 				break;
 			case "ACK":
@@ -1063,23 +1066,33 @@ export class CapRegistry {
 					}
 					if (cap.startsWith("-")) {
 						this.enabled.delete(cap.slice(1));
+						this.requested.delete(cap.slice(1));
 					} else {
 						this.enabled.add(cap);
 					}
+				}
+				break;
+			case "NAK":
+				// Can be requested again if the server advertises it anew
+				for (const cap of args[0].split(" ")) {
+					this.requested.delete(cap.toLowerCase());
 				}
 				break;
 		}
 	}
 
 	/**
-	 * CAP REQ messages for the available caps not enabled yet. A REQ is all or
-	 * nothing: sasl gets its own so that another rejected cap can't take it
-	 * down, and long lists are split to stay well below the line length.
+	 * CAP REQ messages for the available caps not requested yet. A REQ is all
+	 * or nothing: sasl gets its own so that another rejected cap can't take
+	 * it down, and long lists are split to stay well below the line length.
 	 */
 	requestAvailable(l: string[]): OutgoingMessage[] {
 		l = l.filter((cap) => {
-			return this.available.has(cap) && !this.enabled.has(cap);
+			return this.available.has(cap) && !this.enabled.has(cap) && !this.requested.has(cap);
 		});
+		for (const cap of l) {
+			this.requested.add(cap);
+		}
 
 		const groups: string[][] = [];
 		if (l.includes("sasl")) {

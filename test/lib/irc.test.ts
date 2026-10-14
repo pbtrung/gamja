@@ -346,6 +346,20 @@ describe("CapRegistry", () => {
 		expect(caps.available.has("server-time")).toBe(false);
 		expect(caps.enabled.has("server-time")).toBe(false);
 	});
+
+	it("tracks requested caps", () => {
+		const caps = new irc.CapRegistry();
+		caps.parse(irc.parseMessage("CAP * LS :batch server-time"));
+		expect(caps.requestAvailable(["batch", "server-time"])).toHaveLength(1);
+		// Pending
+		expect(caps.requestAvailable(["batch", "server-time"])).toEqual([]);
+		caps.parse(irc.parseMessage("CAP * NAK :batch server-time"));
+		expect(caps.requestAvailable(["batch"])).toEqual([{ command: "CAP", params: ["REQ", "batch"] }]);
+		caps.parse(irc.parseMessage("CAP * ACK :batch"));
+		caps.parse(irc.parseMessage("CAP * DEL :batch"));
+		caps.parse(irc.parseMessage("CAP * NEW :batch"));
+		expect(caps.requestAvailable(["batch"])).toEqual([{ command: "CAP", params: ["REQ", "batch"] }]);
+	});
 });
 
 describe("misc helpers", () => {

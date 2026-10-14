@@ -926,13 +926,17 @@ export default class Client extends EventTarget {
 		return v.split(",").includes(k);
 	}
 
-	requestCaps(): void {
-		const wantCaps = [...permanentCaps];
+	/** Request the caps we want, among `only` if given. */
+	requestCaps(only?: string[]): void {
+		let wantCaps = [...permanentCaps];
 		if (!this.params.bouncerNetwork) {
 			wantCaps.push("soju.im/bouncer-networks-notify");
 		}
 		if (this.params.eventPlayback) {
 			wantCaps.push("draft/event-playback");
+		}
+		if (only) {
+			wantCaps = wantCaps.filter((cap) => only.includes(cap));
 		}
 
 		for (const msg of this.caps.requestAvailable(wantCaps)) {
@@ -985,10 +989,13 @@ export default class Client extends EventTarget {
 					);
 				}
 				break;
-			case "NEW":
+			case "NEW": {
 				console.log("Server added available caps:", args[0]);
-				this.requestCaps();
+				// Only the new caps: the server rejected some of the others
+				const newCaps = args[0].split(" ").map((item) => item.split("=")[0].toLowerCase());
+				this.requestCaps(newCaps);
 				break;
+			}
 			case "DEL":
 				console.log("Server removed available caps:", args[0]);
 				break;
