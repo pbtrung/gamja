@@ -8,7 +8,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import prettier from "eslint-config-prettier/flat";
 
 export default defineConfig([
-	globalIgnores(["dist/", "coverage/", "playwright-report/", "test-results/"]),
+	globalIgnores([".claude/", "dist/", "coverage/", "playwright-report/", "test-results/"]),
 	{
 		files: ["**/*.{js,ts,tsx}"],
 		languageOptions: {
