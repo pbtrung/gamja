@@ -116,6 +116,32 @@ describe("oauth2", () => {
 		).rejects.toThrow("Authentication failed: invalid_grant");
 	});
 
+	it("reports token errors sent with an HTTP error status", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValue(
+					jsonResponse({ error: "invalid_grant", error_description: "Code expired" }, 400),
+				),
+		);
+		await expect(
+			oauth2.exchangeCode({ serverMetadata: metadata, redirectUri: "x", code: "c", clientId: "id" }),
+		).rejects.toThrow("Authentication failed: Code expired");
+
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("oops", { status: 502 })));
+		await expect(
+			oauth2.exchangeCode({ serverMetadata: metadata, redirectUri: "x", code: "c", clientId: "id" }),
+		).rejects.toThrow("HTTP error: 502");
+	});
+
+	it("strips trailing slashes from the server URL", async () => {
+		const fetch = vi.fn().mockResolvedValue(jsonResponse(metadata));
+		vi.stubGlobal("fetch", fetch);
+		await oauth2.fetchServerMetadata("https://auth.example//");
+		expect(fetch.mock.calls[0][0]).toBe("https://auth.example/.well-known/oauth-authorization-server");
+	});
+
 	it("introspects tokens", async () => {
 		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ active: true, username: "alice" })));
 		await expect(

@@ -42,23 +42,46 @@ function formatQueryString(params: Record<string, string>): string {
 	return new URLSearchParams(params).toString();
 }
 
+function checkResponse(resp: Response): void {
+	if (!resp.ok) {
+		throw new Error(`HTTP error: ${resp.status} ${resp.statusText}`);
+	}
+}
+
+/**
+ * Read the JSON body of a token or introspection endpoint response. Errors
+ * come with a JSON body too, which tells more than the HTTP status, see
+ * RFC 6749 section 5.2.
+ */
+async function readEndpointResponse(resp: Response) {
+	let data;
+	try {
+		data = await resp.json();
+	} catch (err) {
+		checkResponse(resp);
+		throw err;
+	}
+	if (data?.error) {
+		throw new Error("Authentication failed: " + (data.error_description || data.error));
+	}
+	checkResponse(resp);
+	return data;
+}
+
 export async function fetchServerMetadata(url: string): Promise<ServerMetadata> {
 	// TODO: handle path in config.oauth2.url
+	url = url.replace(/\/+$/, "");
 	let resp: Response;
 	try {
 		resp = await fetch(url + "/.well-known/oauth-authorization-server");
-		if (!resp.ok) {
-			throw new Error(`HTTP error: ${resp.status} ${resp.statusText}`);
-		}
+		checkResponse(resp);
 	} catch (err) {
 		console.warn(
 			"OAuth 2.0 server doesn't support Authorization Server Metadata (retrying with OpenID Connect Discovery): ",
 			err,
 		);
 		resp = await fetch(url + "/.well-known/openid-configuration");
-	}
-	if (!resp.ok) {
-		throw new Error(`HTTP error: ${resp.status} ${resp.statusText}`);
+		checkResponse(resp);
 	}
 
 	const data = await resp.json();
@@ -179,17 +202,7 @@ export async function exchangeCode({
 		headers: buildPostHeaders(clientId, clientSecret),
 		body: formatQueryString(params),
 	});
-
-	if (!resp.ok) {
-		throw new Error(`HTTP error: ${resp.status} ${resp.statusText}`);
-	}
-	const data = await resp.json();
-
-	if (data.error) {
-		throw new Error("Authentication failed: " + (data.error_description || data.error));
-	}
-
-	return data;
+	return readEndpointResponse(resp);
 }
 
 export async function introspectToken({
@@ -211,10 +224,7 @@ export async function introspectToken({
 		headers: buildPostHeaders(clientId, clientSecret),
 		body: formatQueryString({ token }),
 	});
-	if (!resp.ok) {
-		throw new Error(`HTTP error: ${resp.status} ${resp.statusText}`);
-	}
-	const data = await resp.json();
+	const data = await readEndpointResponse(resp);
 	if (!data.active) {
 		throw new Error("Expired token");
 	}
