@@ -1,4 +1,4 @@
-import { memo, useRef, type MouseEvent } from "react";
+import { memo, useCallback, useRef, useState, type MouseEvent } from "react";
 import {
 	Ban,
 	EllipsisVertical,
@@ -15,7 +15,9 @@ import * as irc from "../lib/irc";
 import type { BouncerNetwork, MemberAction, User } from "../state";
 import { getNickColorIndex, meaningfulRealname, nickInitial, sortMembers } from "../format";
 import Membership from "./Membership";
+import IconButton from "./IconButton";
 import Menu, { type MenuHandle, type MenuItem } from "./Menu";
+import useMediaQuery from "./useMediaQuery";
 
 function memberActions(
 	nick: string,
@@ -47,14 +49,20 @@ function memberActions(
 	return items;
 }
 
+/** Open the actions of a member, at the pointer or next to the opener */
+type MenuOpener = (nick: string, event: MouseEvent<HTMLElement>, atPointer: boolean) => void;
+
 interface MemberItemProps {
 	nick: string;
 	membership: string;
 	user: User | undefined;
 	bouncerNetwork: BouncerNetwork | null;
-	canModerate: boolean;
+	/** Whether tapping the nick opens its actions */
+	tapForActions: boolean;
+	/** Whether the actions menu is open for this member */
+	menuOpen: boolean;
 	onClick: (nick: string) => void;
-	onAction: (nick: string, action: MemberAction) => void;
+	onMenu: MenuOpener;
 }
 
 const MemberItem = memo(function MemberItem({
@@ -62,26 +70,23 @@ const MemberItem = memo(function MemberItem({
 	membership,
 	user,
 	bouncerNetwork,
-	canModerate,
+	tapForActions,
+	menuOpen,
 	onClick,
-	onAction,
+	onMenu,
 }: MemberItemProps) {
-	const menu = useRef<MenuHandle>(null);
-
-	function handleClick(event: MouseEvent) {
+	function handleClick(event: MouseEvent<HTMLElement>) {
 		event.preventDefault();
-		// Touch screens have no room for a button per nick: tapping opens the
-		// actions instead, which start with sending a message
-		if (window.matchMedia?.("(hover: none)").matches) {
-			menu.current?.openAt(event.clientX, event.clientY);
+		if (tapForActions) {
+			onMenu(nick, event, true);
 		} else {
 			onClick(nick);
 		}
 	}
 
-	function handleContextMenu(event: MouseEvent) {
+	function handleContextMenu(event: MouseEvent<HTMLElement>) {
 		event.preventDefault();
-		menu.current?.openAt(event.clientX, event.clientY);
+		onMenu(nick, event, true);
 	}
 
 	const lines: string[] = [];
@@ -128,13 +133,13 @@ const MemberItem = memo(function MemberItem({
 					{nick}
 				</span>
 			</a>
-			<Menu
-				ref={menu}
-				items={memberActions(nick, membership, canModerate, onAction)}
+			<IconButton
+				icon={EllipsisVertical}
 				label={`Actions for ${nick}`}
-				toggleLabel={`Actions for ${nick}`}
-				toggleIcon={EllipsisVertical}
-				toggleClassName="icon-btn member-menu"
+				className="member-menu"
+				hasPopup="menu"
+				expanded={menuOpen}
+				onClick={(event) => onMenu(nick, event, false)}
 			/>
 		</li>
 	);
@@ -183,6 +188,35 @@ function MemberList({
 	onNickClick,
 	onAction,
 }: MemberListProps) {
+	// Members share one menu, rather than mounting one each
+	const menu = useRef<MenuHandle>(null);
+	const [menuNick, setMenuNick] = useState<string | null>(null);
+	// Read by the stable handlers below
+	const menuNickRef = useRef<string | null>(null);
+	// Touch screens have no room for a button per nick: tapping opens the
+	// actions instead, which start with sending a message
+	const tapForActions = useMediaQuery("(hover: none)");
+
+	const handleMenu = useCallback<MenuOpener>((nick, event, atPointer) => {
+		const opener = event.currentTarget;
+		if (!atPointer && menuNickRef.current === nick) {
+			// The toggle again
+			menu.current?.close();
+			return;
+		}
+		menuNickRef.current = nick;
+		setMenuNick(nick);
+		if (atPointer) {
+			menu.current?.openAt(event.clientX, event.clientY, opener);
+		} else {
+			menu.current?.openFrom(opener, event.detail === 0);
+		}
+	}, []);
+	const handleMenuClose = useCallback(() => {
+		menuNickRef.current = null;
+		setMenuNick(null);
+	}, []);
+
 	const groups = groupMembers(sortMembers(members, prefixes));
 	return (
 		<div className="member-items">
@@ -203,14 +237,25 @@ function MemberList({
 								membership={membership}
 								user={users.get(nick)}
 								bouncerNetwork={bouncerNetwork}
-								canModerate={canModerate}
+								tapForActions={tapForActions}
+								menuOpen={menuNick === nick}
 								onClick={onNickClick}
-								onAction={onAction}
+								onMenu={handleMenu}
 							/>
 						))}
 					</ul>
 				</section>
 			))}
+			<Menu
+				ref={menu}
+				items={
+					menuNick !== null
+						? memberActions(menuNick, members.get(menuNick) ?? "", canModerate, onAction)
+						: []
+				}
+				label={`Actions for ${menuNick}`}
+				onClose={handleMenuClose}
+			/>
 		</div>
 	);
 }

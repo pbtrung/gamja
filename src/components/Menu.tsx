@@ -28,8 +28,14 @@ export interface MenuItem {
 export type MenuPlacement = "below-end" | "above-start";
 
 export interface MenuHandle {
-	/** Open the menu at a point, e.g. for a context menu */
-	openAt(x: number, y: number): void;
+	/**
+	 * Open the menu at a point, e.g. for a context menu. The opener gets
+	 * the focus back, and handles its own clicks.
+	 */
+	openAt(x: number, y: number, opener?: HTMLElement): void;
+	/** Open the menu next to a button, e.g. one of several sharing it */
+	openFrom(opener: HTMLElement, fromKeyboard: boolean): void;
+	close(): void;
 }
 
 interface MenuProps {
@@ -37,12 +43,14 @@ interface MenuProps {
 	items: MenuItem[];
 	/** Accessible name of the menu */
 	label: string;
-	toggleLabel: string;
+	/** Without one, there's no toggle: the menu is opened through its ref */
+	toggleLabel?: string;
 	toggleIcon?: LucideIcon;
 	toggleClassName?: string;
 	/** Shown in the toggle after its icon */
 	children?: ReactNode;
 	placement?: MenuPlacement;
+	onClose?: () => void;
 }
 
 /**
@@ -58,37 +66,50 @@ export default function Menu({
 	toggleClassName = "btn btn-sm",
 	placement = "below-end",
 	children,
+	onClose,
 }: MenuProps) {
 	const [position, setPosition] = useState<CSSProperties | null>(null);
 	const open = position !== null;
-	const toggleRef = useRef<HTMLButtonElement>(null);
+	// The toggle, or the element the menu was opened from
+	const openerRef = useRef<HTMLElement | null>(null);
 	const menuRef = useRef<HTMLDivElement>(null);
-	// Only give the focus back to the toggle for keyboard users: after a
+	// Only give the focus back to the opener for keyboard users: after a
 	// click, it would keep showing toggles only visible on focus or hover
 	const fromKeyboard = useRef(false);
 
-	function toggle(event: MouseEvent) {
-		fromKeyboard.current = event.detail === 0;
-		const rect = toggleRef.current?.getBoundingClientRect();
-		if (open || !rect) {
-			setPosition(null);
-		} else if (placement === "above-start") {
+	function openFrom(opener: HTMLElement, keyboard: boolean) {
+		openerRef.current = opener;
+		fromKeyboard.current = keyboard;
+		const rect = opener.getBoundingClientRect();
+		if (placement === "above-start") {
 			setPosition({ bottom: window.innerHeight - rect.top + 6, left: rect.left });
 		} else {
 			setPosition({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
 		}
 	}
 
-	useImperativeHandle(
-		ref,
-		() => ({
-			openAt: (x, y) => {
-				fromKeyboard.current = false;
-				setPosition({ top: y, left: x });
-			},
-		}),
-		[],
-	);
+	function close() {
+		setPosition(null);
+		onClose?.();
+	}
+
+	function toggle(event: MouseEvent<HTMLButtonElement>) {
+		if (open) {
+			close();
+		} else {
+			openFrom(event.currentTarget, event.detail === 0);
+		}
+	}
+
+	useImperativeHandle(ref, () => ({
+		openAt: (x, y, opener) => {
+			openerRef.current = opener ?? null;
+			fromKeyboard.current = false;
+			setPosition({ top: y, left: x });
+		},
+		openFrom,
+		close,
+	}));
 
 	// Keep menus opened at a point inside the viewport
 	useLayoutEffect(() => {
@@ -113,18 +134,18 @@ export default function Menu({
 		}
 	}, [open]);
 
-	usePopover(open, menuRef, toggleRef, (reason) => {
-		setPosition(null);
+	usePopover(open, menuRef, openerRef, (reason) => {
+		close();
 		if (reason === "escape" && fromKeyboard.current) {
-			toggleRef.current?.focus();
+			openerRef.current?.focus();
 		}
 	});
 
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === "Tab") {
-			// Leave the menu from its toggle: the focus moves on from there
-			setPosition(null);
-			toggleRef.current?.focus();
+			// Leave the menu from its opener: the focus moves on from there
+			close();
+			openerRef.current?.focus();
 		} else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 			event.preventDefault();
 			const l = menuItems();
@@ -136,19 +157,20 @@ export default function Menu({
 
 	return (
 		<>
-			<button
-				type="button"
-				ref={toggleRef}
-				className={toggleClassName}
-				title={toggleLabel}
-				aria-label={toggleLabel}
-				aria-haspopup="menu"
-				aria-expanded={open}
-				onClick={toggle}
-			>
-				{ToggleIcon && <ToggleIcon aria-hidden="true" />}
-				{children}
-			</button>
+			{toggleLabel && (
+				<button
+					type="button"
+					className={toggleClassName}
+					title={toggleLabel}
+					aria-label={toggleLabel}
+					aria-haspopup="menu"
+					aria-expanded={open}
+					onClick={toggle}
+				>
+					{ToggleIcon && <ToggleIcon aria-hidden="true" />}
+					{children}
+				</button>
+			)}
 			{open &&
 				createPortal(
 					<div
@@ -167,12 +189,12 @@ export default function Menu({
 								aria-checked={checked}
 								className={"action-menu-item" + (danger ? " danger" : "")}
 								onClick={(event) => {
-									setPosition(null);
+									close();
 									// The item unmounts: keyboard users would be left
 									// with the focus on the page. Before onClick(), which
 									// may move it elsewhere, e.g. to a dialog.
 									if (event.detail === 0) {
-										toggleRef.current?.focus();
+										openerRef.current?.focus();
 									}
 									onClick();
 								}}
