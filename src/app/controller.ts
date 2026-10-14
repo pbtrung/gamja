@@ -2322,9 +2322,11 @@ export default class AppController {
 
 		const client = this.getActiveClient();
 		if (client?.isChannel(prefix)) {
+			// Channels of other servers can't be referred to here
+			const serverID = S.getActiveServerID(this.state);
 			const chanNames: string[] = [];
 			for (const buf of this.state.buffers.values()) {
-				if (buf.type === BufferType.CHANNEL) {
+				if (buf.type === BufferType.CHANNEL && buf.server === serverID) {
 					chanNames.push(buf.name);
 				}
 			}

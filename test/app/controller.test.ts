@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { connectedApp, flush } from "../helpers/app";
-import { getBuffer, SERVER_BUFFER, Unread, BufferType } from "../../src/state";
+import { getBuffer, createBuffer, createServer, SERVER_BUFFER, Unread, BufferType } from "../../src/state";
 import * as store from "../../src/store";
 import AppController from "../../src/app/controller";
 import { FakeWebSocket, installFakeWebSocket } from "../helpers/fake-ws";
@@ -248,6 +248,14 @@ describe("AppController messaging", () => {
 		expect(app.autocomplete("/jo")).toEqual(["/join"]);
 		expect(app.autocomplete("#ch")).toEqual(["#chan"]);
 		expect(app.autocomplete("bo")).toEqual(["bob", "bobby"]);
+
+		// Not the channels of other servers
+		app.update((state) => {
+			const [id, update] = createServer(state);
+			const [, buffers] = createBuffer({ ...state, ...update }, "#chat", id, app.getActiveClient()!);
+			return { ...update, ...buffers };
+		});
+		expect(app.autocomplete("#ch")).toEqual(["#chan"]);
 	});
 
 	it("completes recent speakers first and our own nick last", async () => {
