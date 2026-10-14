@@ -25,7 +25,7 @@ import {
 import Membership from "./Membership";
 import Nick from "./Nick";
 import { useAppState } from "../app/context";
-import useMediaQuery from "./useMediaQuery";
+import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import RichText, { type LinkClickHandler } from "./RichText";
 import MessageActions, { Reactions } from "./MessageActions";
 import { strip as stripANSI } from "../lib/ansi";
@@ -912,9 +912,6 @@ interface MessageListProps extends MessageListHandlers {
 	bouncerNetwork: BouncerNetwork | null;
 	settings: Settings;
 }
-
-/** Same breakpoint as the small screen styles */
-const SMALL_SCREEN = "(max-width: 640px)";
 
 function MessageList(props: MessageListProps) {
 	const { buffer: buf, server } = props;

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import useMediaQuery from "./useMediaQuery";
+import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import {
 	CirclePlus,
 	EllipsisVertical,
@@ -95,9 +95,6 @@ interface ActionButtonProps {
 	children?: ReactNode;
 }
 
-/** Small screens only show the panel toggles and a menu with the rest */
-const SMALL_SCREEN = "(max-width: 640px)";
-
 /** A header action: a button on wide screens, a menu item on small ones */
 interface Action extends MenuItem {
 	iconOnly?: boolean;
@@ -162,6 +159,7 @@ export interface BufferHeaderProps {
 
 export default function BufferHeader(props: BufferHeaderProps) {
 	const { buffer, server, bouncerNetwork, user } = props;
+	// Small screens only show the panel toggles and a menu with the rest
 	const smallScreen = useMediaQuery(SMALL_SCREEN);
 
 	let fullyConnected = server.status === ServerStatus.REGISTERED;
