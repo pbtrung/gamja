@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
 import {
 	ArrowRightLeft,
-	CircleAlert,
 	CircleHelp,
 	ExternalLink,
 	Moon,
@@ -29,6 +28,7 @@ import { setup as setupKeybindings } from "../keybindings";
 import { ControllerContext, useAppState, useController } from "../app/context";
 import type AppController from "../app/controller";
 import type { AppState } from "../app/store";
+import Alert from "./Alert";
 import BufferHeader from "./BufferHeader";
 import BufferList from "./BufferList";
 import ChatScroller from "./ChatScroller";
@@ -57,11 +57,13 @@ import VerifyForm from "./forms/VerifyForm";
 
 function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void }) {
 	return (
-		<div id="error-msg" className="alert alert-danger toast" role="alert">
-			<CircleAlert aria-hidden="true" />
-			<div className="toast-text">{error}</div>
-			<IconButton icon={X} label="Dismiss" onClick={onDismiss} />
-		</div>
+		<Alert
+			id="error-msg"
+			className="toast"
+			action={<IconButton icon={X} label="Dismiss" onClick={onDismiss} />}
+		>
+			{error}
+		</Alert>
 	);
 }
 
@@ -392,15 +394,12 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 				// Another buffer may display fine: start over when switching
 				key={activeID ?? "none"}
 				fallback={(error, reset) => (
-					<div className="alert alert-danger inline-error" role="alert">
-						<CircleAlert aria-hidden="true" />
-						<div>
-							Failed to display messages: {error.message}{" "}
-							<button type="button" className="btn btn-sm" onClick={reset}>
-								Retry
-							</button>
-						</div>
-					</div>
+					<Alert className="inline-error">
+						Failed to display messages: {error.message}{" "}
+						<button type="button" className="btn btn-sm" onClick={reset}>
+							Retry
+						</button>
+					</Alert>
 				)}
 			>
 				{buffer && server && (
@@ -662,10 +661,7 @@ function Root() {
 		return (
 			<main id="connect">
 				{state.error ? (
-					<div className="alert alert-danger loading-error" role="alert">
-						<CircleAlert aria-hidden="true" />
-						<div>{state.error}</div>
-					</div>
+					<Alert className="loading-error">{state.error}</Alert>
 				) : (
 					<div className="spinner spinner-lg" role="status" aria-label="Loading" />
 				)}

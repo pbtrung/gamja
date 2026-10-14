@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import {
 	ChevronRight,
-	CircleAlert,
 	Eye,
 	EyeOff,
 	History,
@@ -16,6 +15,7 @@ import {
 import type { ConnectParams } from "../../app/store";
 import { resolveServerURL } from "../../app/config";
 import { Linkified } from "../RichText";
+import Alert from "../Alert";
 import IconButton from "../IconButton";
 import Field from "./Field";
 import { SwitchRow } from "./Switch";
@@ -253,12 +253,9 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 				</button>
 
 				{!connecting && error && (
-					<div className="alert alert-danger" role="alert">
-						<CircleAlert aria-hidden="true" />
-						<div>
-							<Linkified text={error} />
-						</div>
-					</div>
+					<Alert>
+						<Linkified text={error} />
+					</Alert>
 				)}
 			</form>
 		</div>

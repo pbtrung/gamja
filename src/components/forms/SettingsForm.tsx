@@ -17,6 +17,7 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import DialogActions from "./DialogActions";
+import Alert from "../Alert";
 import Dialog from "../Dialog";
 import Menu from "../Menu";
 import Switch from "./Switch";
@@ -445,9 +446,7 @@ export default function SettingsForm(props: SettingsFormProps) {
 						)}
 						{pushError && (
 							<div className="settings-row">
-								<div className="alert alert-danger" role="alert">
-									{pushError}
-								</div>
+								<Alert>{pushError}</Alert>
 							</div>
 						)}
 						{showProtocolHandler && (

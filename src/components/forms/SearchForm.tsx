@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import type { Message } from "../../lib/irc";
 import { strip as stripANSI } from "../../lib/ansi";
 import { getNickColorIndex } from "../../format";
+import Alert from "../Alert";
 
 interface SearchResult {
 	buffer: string;
@@ -105,11 +106,7 @@ export default function SearchForm({ buffer, initialQuery, onSearch, onSelect }:
 				</button>
 			</div>
 
-			{error && (
-				<div className="alert alert-danger" role="alert">
-					{error}
-				</div>
-			)}
+			{error && <Alert>{error}</Alert>}
 
 			{results && (
 				<div className="search-results">

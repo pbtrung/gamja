@@ -2704,7 +2704,7 @@ mark {
 	animation: pop-in 0.14s ease-out;
 }
 
-.toast-text {
+.toast .alert-text {
 	flex: 1;
 	align-self: center;
 }
