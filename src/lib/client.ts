@@ -573,7 +573,9 @@ export default class Client extends EventTarget {
 				const maxMonitorTargets = this.isupport.monitor();
 				if (prevMaxMonitorTargets === 0 && this.monitored.size > 0 && maxMonitorTargets > 0) {
 					const targets = Array.from(this.monitored.keys()).slice(0, maxMonitorTargets);
-					this.send({ command: "MONITOR", params: ["+", targets.join(",")] });
+					for (const chunk of irc.chunkTargets(targets, this.isupport.targMax("MONITOR"))) {
+						this.send({ command: "MONITOR", params: ["+", chunk.join(",")] });
+					}
 				}
 				break;
 			}

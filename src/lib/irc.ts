@@ -520,6 +520,26 @@ export class Isupport {
 		return parseInt(v, 10);
 	}
 
+	/** Maximum number of targets of a command, from TARGMAX */
+	targMax(cmd: string): number {
+		const v = this.raw.get("TARGMAX");
+		if (!v) {
+			return Infinity;
+		}
+		cmd = cmd.toUpperCase();
+		for (const item of v.split(",")) {
+			const i = item.indexOf(":");
+			const k = i < 0 ? item : item.slice(0, i);
+			if (k.toUpperCase() !== cmd) {
+				continue;
+			}
+			// An empty limit means there is none
+			const n = parseInt(item.slice(i + 1), 10);
+			return n > 0 ? n : Infinity;
+		}
+		return Infinity;
+	}
+
 	whox(): boolean {
 		return this.raw.has("WHOX");
 	}
@@ -657,6 +677,38 @@ export function getMaxPrivmsgLen(isupport: Isupport, nick: string, target: strin
 	const msg = { prefix, command: "PRIVMSG", params: [target, ""] };
 	const raw = formatMessage(msg) + "\r\n";
 	return isupport.lineLen() - raw.length;
+}
+
+const textEncoder = new TextEncoder();
+
+/** Length of a string on the wire, in bytes */
+function byteLength(s: string): number {
+	return textEncoder.encode(s).length;
+}
+
+/**
+ * Split targets into groups to send as one comma-separated parameter each,
+ * with at most `maxTargets` targets and `maxBytes` bytes per group.
+ */
+export function chunkTargets(targets: string[], maxTargets = Infinity, maxBytes = 400): string[][] {
+	const chunks: string[][] = [];
+	let chunk: string[] = [];
+	let len = 0;
+	for (const target of targets) {
+		const n = byteLength(target);
+		// A target too long on its own still gets a group: the server judges
+		if (chunk.length > 0 && (chunk.length >= maxTargets || len + 1 + n > maxBytes)) {
+			chunks.push(chunk);
+			chunk = [];
+			len = 0;
+		}
+		len += (chunk.length > 0 ? 1 : 0) + n;
+		chunk.push(target);
+	}
+	if (chunk.length > 0) {
+		chunks.push(chunk);
+	}
+	return chunks;
 }
 
 function caseMapWith(table: Record<string, string>): CaseMapFn {

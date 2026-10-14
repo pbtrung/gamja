@@ -210,6 +210,17 @@ describe("Isupport", () => {
 		expect(irc.isClientTagAllowed(is, "draft/react")).toBe(false);
 	});
 
+	it("parses TARGMAX", () => {
+		const is = new irc.Isupport();
+		expect(is.targMax("JOIN")).toBe(Infinity);
+		is.parse(["TARGMAX=PRIVMSG:4,NOTICE:3,JOIN:,whois:1"]);
+		expect(is.targMax("PRIVMSG")).toBe(4);
+		expect(is.targMax("privmsg")).toBe(4);
+		expect(is.targMax("WHOIS")).toBe(1);
+		expect(is.targMax("JOIN")).toBe(Infinity);
+		expect(is.targMax("MONITOR")).toBe(Infinity);
+	});
+
 	it("falls back on unknown case-mapping", () => {
 		const is = new irc.Isupport();
 		is.parse(["CASEMAPPING=rfc7613"]);
@@ -350,6 +361,22 @@ describe("misc helpers", () => {
 		const is = new irc.Isupport();
 		const len = irc.getMaxPrivmsgLen(is, "nick", "#chan");
 		expect(len).toBe(512 - ":nick!".length - 20 - 1 - 63 - " PRIVMSG #chan :\r\n".length);
+	});
+
+	it("chunks targets by count and byte length", () => {
+		expect(irc.chunkTargets([])).toEqual([]);
+		expect(irc.chunkTargets(["a", "b", "c"])).toEqual([["a", "b", "c"]]);
+		expect(irc.chunkTargets(["a", "b", "c"], 2)).toEqual([["a", "b"], ["c"]]);
+		// "aaa,bbb" is 7 bytes
+		expect(irc.chunkTargets(["aaa", "bbb", "ccc"], Infinity, 7)).toEqual([["aaa", "bbb"], ["ccc"]]);
+		// "é" is 2 bytes in UTF-8
+		expect(irc.chunkTargets(["éé", "bb"], Infinity, 6)).toEqual([["éé"], ["bb"]]);
+		// Oversized targets still get sent, on their own
+		expect(irc.chunkTargets(["x".repeat(10), "y"], Infinity, 5)).toEqual([["x".repeat(10)], ["y"]]);
+		const many = Array.from({ length: 100 }, (_, i) => "nick" + i);
+		const chunks = irc.chunkTargets(many);
+		expect(chunks.flat()).toEqual(many);
+		expect(chunks.every((c) => c.join(",").length <= 400)).toBe(true);
 	});
 
 	it("splits target prefixes", () => {

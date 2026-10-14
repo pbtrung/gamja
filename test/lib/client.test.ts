@@ -580,6 +580,15 @@ describe("commands", () => {
 		expect(ws.sent).toEqual(["MONITOR + alice"]);
 	});
 
+	it("splits the re-sent MONITOR list by TARGMAX", () => {
+		const { client, ws } = register();
+		client.monitor("alice");
+		client.monitor("bob");
+		client.monitor("carol");
+		ws.receive(":srv 005 me MONITOR=5 TARGMAX=MONITOR:2 :are supported");
+		expect(ws.sent).toEqual(["MONITOR + alice,bob", "MONITOR + carol"]);
+	});
+
 	it("sends read markers", () => {
 		const { client, ws } = register("draft/read-marker");
 		expect(client.supportsReadMarker()).toBe(true);
