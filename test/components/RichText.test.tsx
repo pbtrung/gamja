@@ -33,16 +33,6 @@ describe("RichText", () => {
 		expect(container.textContent).toBe("bold red italic");
 	});
 
-	it("can strip formatting", () => {
-		const { container } = render(
-			<p>
-				<RichText text={"\x02bold"} formatting={false} />
-			</p>,
-		);
-		expect(container.querySelector(".fmt-bold")).toBeNull();
-		expect(container.textContent).toBe("bold");
-	});
-
 	it("linkifies plain text", () => {
 		render(
 			<p>

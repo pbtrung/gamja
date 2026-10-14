@@ -25,7 +25,7 @@ export interface MenuItem {
 }
 
 /** Where to show the menu relative to its toggle */
-export type MenuPlacement = "below-end" | "above-start";
+type MenuPlacement = "below-end" | "above-start";
 
 export interface MenuHandle {
 	/**

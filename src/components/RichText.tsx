@@ -62,14 +62,12 @@ export function Linkified({ text, onLinkClick }: { text: string; onLinkClick?: L
 interface RichTextProps {
 	text: string;
 	onLinkClick?: LinkClickHandler;
-	/** Render IRC formatting (colors, bold…), otherwise strip it */
-	formatting?: boolean;
 }
 
 /** Render IRC-formatted text with links. */
-function RichText({ text, onLinkClick, formatting = true }: RichTextProps) {
+function RichText({ text, onLinkClick }: RichTextProps) {
 	const segments = parseFormatting(text);
-	if (!formatting || segments.every((seg) => !seg.style || Object.values(seg.style).every((v) => !v))) {
+	if (segments.every((seg) => !seg.style || Object.values(seg.style).every((v) => !v))) {
 		return <Linkified text={segments.map((s) => s.text).join("")} onLinkClick={onLinkClick} />;
 	}
 	return (
