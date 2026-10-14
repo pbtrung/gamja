@@ -152,6 +152,57 @@ describe("buffers", () => {
 		]);
 	});
 
+	it("merges pages of messages, skipping duplicates", () => {
+		const m = (time: string, msgid?: string) => ({
+			...irc.parseMessage("PRIVMSG #c :x"),
+			tags: msgid ? { time, msgid } : { time },
+		});
+		const ids = (l: irc.Message[]) => l.map((x) => x.tags.msgid);
+		const list = [m("2020-01-02", "b"), m("2020-01-04", "d")];
+		expect(S.mergeMessages(list, [])).toBe(list);
+		expect(S.mergeMessages(list, [m("2020-01-02", "b")])).toBe(list);
+		expect(
+			S.mergeMessages([], [m("2020-01-02", "b"), m("2020-01-01", "a")]).map((x) => x.tags.msgid),
+		).toEqual(["a", "b"]);
+		// Older history goes before messages sharing its time
+		expect(ids(S.mergeMessages(list, [m("2020-01-01", "a"), m("2020-01-02", "a2")]))).toEqual([
+			"a",
+			"a2",
+			"b",
+			"d",
+		]);
+		// Otherwise new messages sharing a time go after the existing ones
+		expect(
+			ids(
+				S.mergeMessages(list, [
+					m("2020-01-02", "c"),
+					m("2020-01-03", "c2"),
+					m("2020-01-04", "d"),
+					m("2020-01-05", "e"),
+					m("2020-01-05", "e"),
+				]),
+			),
+		).toEqual(["b", "c", "c2", "d", "e"]);
+		// Messages without msgid are never duplicates
+		expect(S.mergeMessages(list, [m("2020-01-03"), m("2020-01-03")])).toHaveLength(4);
+	});
+
+	it("adds pages of messages in one update", () => {
+		const t = setup(["#c"]);
+		const msg = (text: string, s: number) => ({
+			...irc.parseMessage("PRIVMSG #c :" + text),
+			tags: { time: `2020-01-01T00:00:0${s}.000Z` },
+		});
+		const bufID = { server: t.serverID, name: "#c" };
+		const state = { ...t.state, ...S.addMessage(t.state, msg("b", 2), bufID) };
+		const state2 = { ...state, ...S.addMessages(state, [msg("a", 1), msg("c", 3)], bufID) };
+		const msgs = S.getBuffer(state2, bufID)!.messages;
+		expect(msgs.map((m) => m.params[1])).toEqual(["a", "b", "c"]);
+		expect(new Set(msgs.map((m) => m.key)).size).toBe(3);
+		expect(S.addMessages(state2, [], bufID)).toBeUndefined();
+		expect(S.addMessages(state2, [msg("x", 1)], { server: t.serverID, name: "#none" })).toBeUndefined();
+	});
+
 	it("adds messages with unique keys", () => {
 		const t = setup(["#c"]);
 		const a = { ...irc.parseMessage("PRIVMSG #c :a"), tags: { time: "2020-01-01T00:00:00.000Z" } };
