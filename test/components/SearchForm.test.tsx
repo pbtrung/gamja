@@ -28,6 +28,23 @@ describe("SearchForm", () => {
 		expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ buffer: "#c" }));
 	});
 
+	it("shows results as searched, not as the form is now", async () => {
+		const onSearch = vi
+			.fn()
+			.mockResolvedValue([result("#c", "@msgid=1 :bob!u@h PRIVMSG #c :the needle here")]);
+		render(<SearchForm buffer="#c" initialQuery="needle" onSearch={onSearch} onSelect={() => {}} />);
+		await userEvent.selectOptions(screen.getByLabelText("In"), "all");
+		await userEvent.click(screen.getByRole("button", { name: "Search" }));
+		const list = screen.getByRole("list", { name: "Search results" });
+		expect(list.querySelector(".search-result-buffer")).toHaveTextContent("#c");
+		expect(list.querySelector("mark")).toHaveTextContent("needle");
+		await userEvent.selectOptions(screen.getByLabelText("In"), "buffer");
+		await userEvent.clear(screen.getByRole("searchbox"));
+		await userEvent.type(screen.getByRole("searchbox"), "here");
+		expect(list.querySelector(".search-result-buffer")).toHaveTextContent("#c");
+		expect(list.querySelector("mark")).toHaveTextContent("needle");
+	});
+
 	it("searches everywhere and reports errors and empty results", async () => {
 		const onSearch = vi.fn().mockRejectedValueOnce(new Error("Search failed")).mockResolvedValueOnce([]);
 		render(<SearchForm buffer={null} onSearch={onSearch} onSelect={() => {}} />);

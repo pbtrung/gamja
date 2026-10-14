@@ -36,7 +36,11 @@ export default function SearchForm({ buffer, initialQuery, onSearch, onSelect }:
 	const [from, setFrom] = useState("");
 	const [scope, setScope] = useState<"buffer" | "all">(buffer ? "buffer" : "all");
 	const [results, setResults] = useState<SearchResult[] | null>(null);
-	const [searchedText, setSearchedText] = useState("");
+	// What the results were searched for: the form may have changed since
+	const [searched, setSearched] = useState<{ text: string; scope: "buffer" | "all" }>({
+		text: "",
+		scope: "all",
+	});
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +54,7 @@ export default function SearchForm({ buffer, initialQuery, onSearch, onSelect }:
 		try {
 			const res = await onSearch({ text, in: scope === "buffer" ? buffer : null, from: from || null });
 			setResults(res);
-			setSearchedText(text);
+			setSearched({ text, scope });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 			setResults(null);
@@ -131,7 +135,7 @@ export default function SearchForm({ buffer, initialQuery, onSearch, onSelect }:
 											<span className={`nick nick-${getNickColorIndex(nick)}`}>
 												{nick}
 											</span>
-											{scope === "all" && (
+											{searched.scope === "all" && (
 												<span className="search-result-buffer">{result.buffer}</span>
 											)}
 											{date && (
@@ -143,7 +147,7 @@ export default function SearchForm({ buffer, initialQuery, onSearch, onSelect }:
 										<span className="search-result-text">
 											<Highlight
 												text={stripANSI(msg.params[1] ?? "")}
-												query={searchedText}
+												query={searched.text}
 											/>
 										</span>
 									</button>
