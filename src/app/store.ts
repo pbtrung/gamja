@@ -53,7 +53,7 @@ export interface ReplyTo {
 }
 
 /** Message to scroll to once rendered */
-export interface JumpTo {
+interface JumpTo {
 	buffer: number;
 	msgid: string;
 }

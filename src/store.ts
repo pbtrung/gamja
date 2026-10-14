@@ -42,7 +42,7 @@ export class Item<T> {
 }
 
 /** Connection parameters stored by "Remember me". */
-export interface StoredConnectParams {
+interface StoredConnectParams {
 	url?: string | null;
 	pass?: string | null;
 	username?: string | null;

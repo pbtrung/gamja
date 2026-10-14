@@ -1,7 +1,7 @@
 import { Unread, BufferType, compareUnread, type Buffer } from "./state";
 import type AppController from "./app/controller";
 
-export interface KeyBinding {
+interface KeyBinding {
 	key: string;
 	altKey?: boolean;
 	ctrlKey?: boolean;

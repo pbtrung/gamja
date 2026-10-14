@@ -7,7 +7,7 @@ import { formatWindowHash } from "./app/config";
 
 declare const self: ServiceWorkerGlobalScope;
 
-export interface PushNotification {
+interface PushNotification {
 	title: string;
 	body: string;
 	tag: string;

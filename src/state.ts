@@ -193,7 +193,7 @@ function computeFeatures(client: Pick<Client, "caps" | "isupport">): Features {
 	};
 }
 
-export interface ServerInfo {
+interface ServerInfo {
 	name: string;
 	version: string;
 }
@@ -226,7 +226,7 @@ export interface Buffer {
 	prevReadReceipt: Receipt | null;
 }
 
-export interface TypingState {
+interface TypingState {
 	status: "active" | "paused";
 	/** When the status was received, in milliseconds since the epoch */
 	time: number;
@@ -248,7 +248,7 @@ export interface State {
 /** Identifies a buffer, either by ID or by server and name. */
 export type BufferID = number | { id?: number; server?: number | null; name?: string | null } | Buffer;
 
-export type Update<S> = Partial<S> | undefined | null | void;
+type Update<S> = Partial<S> | undefined | null | void;
 export type Updater<S> = Update<S> | ((s: S) => Update<S>);
 
 export function getBufferURL(

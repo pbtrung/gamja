@@ -3,7 +3,7 @@ import type Client from "./lib/client";
 import { SERVER_BUFFER, BufferType, Unread, getBuffer, unionUnread, type TargetMetadata } from "./state";
 import type AppController from "./app/controller";
 
-export interface Command {
+interface Command {
 	name: string;
 	usage?: string;
 	description: string;
