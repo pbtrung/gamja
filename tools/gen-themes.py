@@ -80,7 +80,6 @@ def theme(scheme, bg, sidebar, elevated, subtle, fg, emphasis, muted, faint, bor
         "--danger-soft": mix(danger, 14),
         "--warning": warning,
         "--warning-fg": warning,
-        "--warning-soft": mix(warning, 15),
         "--success": success,
         "--info-fg": info,
         "--info-soft": mix(info, 13),

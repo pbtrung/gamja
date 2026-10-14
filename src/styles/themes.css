@@ -32,7 +32,6 @@
 	--danger-soft: color-mix(in srgb, #d6336c 14%, transparent);
 	--warning: #e8a317;
 	--warning-fg: #855e0d;
-	--warning-soft: color-mix(in srgb, #e8a317 15%, transparent);
 	--success: #2f9e44;
 	--info-fg: #1c5d8c;
 	--info-soft: color-mix(in srgb, #1c5d8c 13%, transparent);
@@ -88,7 +87,6 @@
 	--danger-soft: color-mix(in srgb, #f06595 14%, transparent);
 	--warning: #fcc419;
 	--warning-fg: #fcc419;
-	--warning-soft: color-mix(in srgb, #fcc419 15%, transparent);
 	--success: #51cf66;
 	--info-fg: #74c0fc;
 	--info-soft: color-mix(in srgb, #74c0fc 13%, transparent);
@@ -145,7 +143,6 @@
 		--danger-soft: color-mix(in srgb, #f06595 14%, transparent);
 		--warning: #fcc419;
 		--warning-fg: #fcc419;
-		--warning-soft: color-mix(in srgb, #fcc419 15%, transparent);
 		--success: #51cf66;
 		--info-fg: #74c0fc;
 		--info-soft: color-mix(in srgb, #74c0fc 13%, transparent);
@@ -202,7 +199,6 @@
 	--danger-soft: color-mix(in srgb, #ff5555 14%, transparent);
 	--warning: #f1fa8c;
 	--warning-fg: #f1fa8c;
-	--warning-soft: color-mix(in srgb, #f1fa8c 15%, transparent);
 	--success: #50fa7b;
 	--info-fg: #8be9fd;
 	--info-soft: color-mix(in srgb, #8be9fd 13%, transparent);
@@ -258,7 +254,6 @@
 	--danger-soft: color-mix(in srgb, #d20f39 14%, transparent);
 	--warning: #fe640b;
 	--warning-fg: #9f3e07;
-	--warning-soft: color-mix(in srgb, #fe640b 15%, transparent);
 	--success: #40a02b;
 	--info-fg: #156776;
 	--info-soft: color-mix(in srgb, #209fb5 13%, transparent);
@@ -314,7 +309,6 @@
 	--danger-soft: color-mix(in srgb, #e78284 14%, transparent);
 	--warning: #e5c890;
 	--warning-fg: #e5c890;
-	--warning-soft: color-mix(in srgb, #e5c890 15%, transparent);
 	--success: #a6d189;
 	--info-fg: #99d1db;
 	--info-soft: color-mix(in srgb, #99d1db 13%, transparent);
@@ -370,7 +364,6 @@
 	--danger-soft: color-mix(in srgb, #ed8796 14%, transparent);
 	--warning: #eed49f;
 	--warning-fg: #eed49f;
-	--warning-soft: color-mix(in srgb, #eed49f 15%, transparent);
 	--success: #a6da95;
 	--info-fg: #91d7e3;
 	--info-soft: color-mix(in srgb, #91d7e3 13%, transparent);
@@ -426,7 +419,6 @@
 	--danger-soft: color-mix(in srgb, #f38ba8 14%, transparent);
 	--warning: #f9e2af;
 	--warning-fg: #f9e2af;
-	--warning-soft: color-mix(in srgb, #f9e2af 15%, transparent);
 	--success: #a6e3a1;
 	--info-fg: #89dceb;
 	--info-soft: color-mix(in srgb, #89dceb 13%, transparent);
@@ -482,7 +474,6 @@
 	--danger-soft: color-mix(in srgb, #c42b28 14%, transparent);
 	--warning: #b58900;
 	--warning-fg: #7a5c00;
-	--warning-soft: color-mix(in srgb, #b58900 15%, transparent);
 	--success: #859900;
 	--info-fg: #1b6f69;
 	--info-soft: color-mix(in srgb, #1f7f78 13%, transparent);
@@ -538,7 +529,6 @@
 	--danger-soft: color-mix(in srgb, #e8615e 14%, transparent);
 	--warning: #b58900;
 	--warning-fg: #c09b26;
-	--warning-soft: color-mix(in srgb, #b58900 15%, transparent);
 	--success: #859900;
 	--info-fg: #4aafa7;
 	--info-soft: color-mix(in srgb, #2aa198 13%, transparent);
@@ -594,7 +584,6 @@
 	--danger-soft: color-mix(in srgb, #cc9393 14%, transparent);
 	--warning: #f0dfaf;
 	--warning-fg: #f0dfaf;
-	--warning-soft: color-mix(in srgb, #f0dfaf 15%, transparent);
 	--success: #9fc59f;
 	--info-fg: #93e0e3;
 	--info-soft: color-mix(in srgb, #93e0e3 13%, transparent);
