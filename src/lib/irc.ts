@@ -463,6 +463,12 @@ export function parseCTCP(msg: Message): CTCP | null {
 	return ctcp;
 }
 
+/** Split a "key=value" token of ISUPPORT or CAP LS, the value may be missing. */
+function splitKeyValue(tok: string): [string, string] {
+	const i = tok.indexOf("=");
+	return i < 0 ? [tok, ""] : [tok.slice(0, i), tok.slice(i + 1)];
+}
+
 function unescapeISUPPORTValue(s: string): string {
 	return s.replace(/\\x[0-9A-F]{2}/gi, (esc) => {
 		const hex = esc.slice(2);
@@ -485,15 +491,8 @@ export class Isupport {
 				continue;
 			}
 
-			const i = tok.indexOf("=");
-			let k = tok,
-				v = "";
-			if (i >= 0) {
-				k = tok.slice(0, i);
-				v = unescapeISUPPORTValue(tok.slice(i + 1));
-			}
-
-			this.raw.set(k.toUpperCase(), v);
+			const [k, v] = splitKeyValue(tok);
+			this.raw.set(k.toUpperCase(), unescapeISUPPORTValue(v));
 		}
 	}
 
@@ -839,13 +838,24 @@ function parseMembershipModes(str: string): MembershipMode[] {
 	return memberships;
 }
 
+/** The batch of a message, then the batches enclosing it. */
+export function* batchAncestry(msg: Message): Generator<Batch> {
+	for (let batch = msg.batch; batch; batch = batch.parent) {
+		yield batch;
+	}
+}
+
+/** Parse the reference tag of a BATCH message, "+name" or "-name". */
+export function parseBatchRef(msg: Message): { start: boolean; name: string } {
+	const ref = msg.params[0] ?? "";
+	return { start: ref.startsWith("+"), name: ref.slice(1) };
+}
+
 export function findBatchByType(msg: Message, type: string): Batch | null {
-	let batch = msg.batch;
-	while (batch) {
+	for (const batch of batchAncestry(msg)) {
 		if (batch.type === type) {
 			return batch;
 		}
-		batch = batch.parent;
 	}
 	return null;
 }
@@ -854,15 +864,11 @@ export function getMessageLabel(msg: Message): string | null {
 	if (msg.tags.label) {
 		return msg.tags.label;
 	}
-
-	let batch = msg.batch;
-	while (batch) {
+	for (const batch of batchAncestry(msg)) {
 		if (batch.tags.label) {
 			return batch.tags.label;
 		}
-		batch = batch.parent;
 	}
-
 	return null;
 }
 
@@ -1025,13 +1031,7 @@ export class CapRegistry {
 			if (!item) {
 				continue;
 			}
-			const i = item.indexOf("=");
-			let k = item,
-				v = "";
-			if (i >= 0) {
-				k = item.slice(0, i);
-				v = item.slice(i + 1);
-			}
+			const [k, v] = splitKeyValue(item);
 			this.available.set(k.toLowerCase(), v);
 		}
 	}

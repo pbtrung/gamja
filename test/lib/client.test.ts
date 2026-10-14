@@ -599,6 +599,16 @@ describe("commands", () => {
 		expect(ws.sent).toEqual(["BOUNCER ADDNETWORK host=irc.oftc.net;tls=1"]);
 		ws.receive(":srv BOUNCER ADDNETWORK 2");
 		await expect(p2).resolves.toBe("2");
+
+		ws.takeSent();
+		const p3 = client.changeBouncerNetwork("2", { name: "OFTC" });
+		ws.receive(":srv BOUNCER DELNETWORK 2", ":srv BOUNCER CHANGENETWORK 3");
+		ws.receive(":srv BOUNCER CHANGENETWORK 2");
+		await expect(p3).resolves.toBeUndefined();
+		const p4 = client.deleteBouncerNetwork("2");
+		ws.receive("FAIL BOUNCER INVALID_NETID DELNETWORK 2 :Unknown network");
+		await expect(p4).rejects.toThrow("Unknown network");
+		expect(ws.sent).toEqual(["BOUNCER CHANGENETWORK 2 name=OFTC", "BOUNCER DELNETWORK 2"]);
 	});
 
 	it("registers and verifies accounts", async () => {

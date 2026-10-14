@@ -1,11 +1,15 @@
-/** Base64-encode a string as UTF-8 (btoa() only handles Latin-1). */
-export function encode(data: string): string {
-	const bytes = new TextEncoder().encode(data);
+/** Base64-encode bytes, btoa() only takes a binary string. */
+function encodeBytes(bytes: Uint8Array): string {
 	let binary = "";
 	for (const b of bytes) {
 		binary += String.fromCharCode(b);
 	}
 	return btoa(binary);
+}
+
+/** Base64-encode a string as UTF-8 (btoa() only handles Latin-1). */
+export function encode(data: string): string {
+	return encodeBytes(new TextEncoder().encode(data));
 }
 
 /** Base64url-decode into bytes, e.g. a VAPID public key. */
@@ -25,9 +29,5 @@ export function encodeURL(buf: ArrayBuffer | null): string {
 	if (!buf) {
 		return "";
 	}
-	let binary = "";
-	for (const b of new Uint8Array(buf)) {
-		binary += String.fromCharCode(b);
-	}
-	return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+	return encodeBytes(new Uint8Array(buf)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

@@ -672,9 +672,8 @@ export default class Client extends EventTarget {
 				break;
 			}
 			case "BATCH": {
-				const enter = msg.params[0].startsWith("+");
-				const name = msg.params[0].slice(1);
-				if (enter) {
+				const { start, name } = irc.parseBatchRef(msg);
+				if (start) {
 					const batch: Batch = {
 						name,
 						type: msg.params[1],
@@ -1306,14 +1305,10 @@ export default class Client extends EventTarget {
 		let batchName: string | null = null;
 		const messages: Message[] = [];
 		return this.roundtrip(msg, (msg) => {
-			if (batchName) {
-				let batch = msg.batch;
-				while (batch) {
-					if (batch.name === batchName) {
-						messages.push(msg);
-						break;
-					}
-					batch = batch.parent;
+			for (const batch of batchName ? irc.batchAncestry(msg) : []) {
+				if (batch.name === batchName) {
+					messages.push(msg);
+					break;
 				}
 			}
 
@@ -1321,13 +1316,12 @@ export default class Client extends EventTarget {
 				return;
 			}
 
-			const enter = msg.params[0].startsWith("+");
-			const name = msg.params[0].slice(1);
-			if (enter && batchTypes.includes(msg.params[1])) {
+			const { start, name } = irc.parseBatchRef(msg);
+			if (start && batchTypes.includes(msg.params[1])) {
 				batchName = name;
 				return;
 			}
-			if (!enter && name === batchName) {
+			if (!start && name === batchName) {
 				return { ...this.batches.get(name)!, messages };
 			}
 		});
@@ -1506,21 +1500,22 @@ export default class Client extends EventTarget {
 
 	/** Change a bouncer network's attributes, rejects with soju's error. */
 	changeBouncerNetwork(id: string, attrs: BouncerNetworkAttrs): Promise<void> {
-		const msg = { command: "BOUNCER", params: ["CHANGENETWORK", id, irc.formatTags(attrs)] };
-		return this.roundtrip(msg, (msg) => {
-			if (msg.command === "BOUNCER" && msg.params[0] === "CHANGENETWORK" && msg.params[1] === id) {
-				return true;
-			}
-		}).then(() => {});
+		return this.roundtripSubcommand("BOUNCER", ["CHANGENETWORK", id, irc.formatTags(attrs)]);
 	}
 
 	deleteBouncerNetwork(id: string): Promise<void> {
-		const msg = { command: "BOUNCER", params: ["DELNETWORK", id] };
-		return this.roundtrip(msg, (msg) => {
-			if (msg.command === "BOUNCER" && msg.params[0] === "DELNETWORK" && msg.params[1] === id) {
-				return true;
-			}
-		}).then(() => {});
+		return this.roundtripSubcommand("BOUNCER", ["DELNETWORK", id]);
+	}
+
+	/**
+	 * Send a command with a subcommand and an ID, e.g. BOUNCER DELNETWORK
+	 * <id>, the server replies with the same three words on success.
+	 */
+	async roundtripSubcommand(command: string, params: [string, string, ...string[]]): Promise<void> {
+		const [subCmd, id] = params;
+		await this.roundtrip({ command, params }, (msg) => {
+			return msg.command === command && msg.params[0] === subCmd && msg.params[1] === id;
+		});
 	}
 
 	registerAccount(
@@ -1630,18 +1625,12 @@ export default class Client extends EventTarget {
 	}
 
 	/** Subscribe to Web Push notifications (soju.im/webpush). */
-	async registerWebPush(endpoint: string, keys: Record<string, string>): Promise<void> {
-		const msg = { command: "WEBPUSH", params: ["REGISTER", endpoint, irc.formatTags(keys)] };
-		await this.roundtrip(msg, (msg) => {
-			return msg.command === "WEBPUSH" && msg.params[0] === "REGISTER" && msg.params[1] === endpoint;
-		});
+	registerWebPush(endpoint: string, keys: Record<string, string>): Promise<void> {
+		return this.roundtripSubcommand("WEBPUSH", ["REGISTER", endpoint, irc.formatTags(keys)]);
 	}
 
-	async unregisterWebPush(endpoint: string): Promise<void> {
-		const msg = { command: "WEBPUSH", params: ["UNREGISTER", endpoint] };
-		await this.roundtrip(msg, (msg) => {
-			return msg.command === "WEBPUSH" && msg.params[0] === "UNREGISTER" && msg.params[1] === endpoint;
-		});
+	unregisterWebPush(endpoint: string): Promise<void> {
+		return this.roundtripSubcommand("WEBPUSH", ["UNREGISTER", endpoint]);
 	}
 
 	async ping(): Promise<void> {
