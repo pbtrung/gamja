@@ -177,8 +177,13 @@ export function parseTags(s: string): Tags {
 
 export function formatTags(tags: Tags): string {
 	const l: string[] = [];
-	for (const k in tags) {
-		const v = tags[k];
+	for (let k in tags) {
+		const v = tags[k]?.replace(/\0/g, "");
+		// Escaping can't help in keys
+		k = k.replace(/[\0\r\n]/g, "");
+		if (/[= ;]/.test(k)) {
+			throw new Error(`Invalid IRC tag key "${k}"`);
+		}
 		if (v === undefined || v === null || v === "") {
 			l.push(k);
 			continue;
@@ -299,7 +304,13 @@ export function formatMessage(msg: OutgoingMessage): string {
 	s += msg.command;
 	if (msg.params && msg.params.length > 0) {
 		for (let i = 0; i < msg.params.length - 1; i++) {
-			s += " " + msg.params[i];
+			// Only the last parameter can be empty, contain spaces or start
+			// with a colon, the others would be split or merged
+			const param = String(msg.params[i]);
+			if (param === "" || param.startsWith(":") || param.includes(" ")) {
+				throw new Error(`Invalid IRC message parameter "${param}" for ${msg.command}`);
+			}
+			s += " " + param;
 		}
 
 		const last = String(msg.params[msg.params.length - 1]);

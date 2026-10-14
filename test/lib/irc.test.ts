@@ -47,6 +47,24 @@ describe("formatMessage", () => {
 		expect(irc.parseURL("irc:///%23a%0D%0AQUIT")).toBeNull();
 	});
 
+	it("refuses middle params that would be split or merged", () => {
+		expect(() => irc.formatMessage({ command: "KICK", params: ["", "nick"] })).toThrow(/parameter/);
+		expect(() => irc.formatMessage({ command: "KICK", params: ["#a b", "nick"] })).toThrow(/parameter/);
+		expect(() => irc.formatMessage({ command: "KICK", params: [":x", "nick"] })).toThrow(/parameter/);
+		expect(irc.formatMessage({ command: "TOPIC", params: ["#c", ""] })).toBe("TOPIC #c :");
+		expect(irc.formatMessage({ command: "CMD", params: ["a:b", ":c"] })).toBe("CMD a:b ::c");
+	});
+
+	it("sanitizes tags", () => {
+		expect(irc.formatMessage({ tags: { "+a\r\n": "x\0y" }, command: "TAGMSG", params: ["#c"] })).toBe(
+			"@+a=xy TAGMSG #c",
+		);
+		expect(irc.formatTags({ a: "line\r\nbreak" })).toBe("a=line\\r\\nbreak");
+		for (const key of ["a=b", "a;b", "a b"]) {
+			expect(() => irc.formatTags({ [key]: "x" })).toThrow(/tag key/);
+		}
+	});
+
 	it("round-trips messages", () => {
 		const lines = [
 			"PING",
