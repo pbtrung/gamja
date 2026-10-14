@@ -46,6 +46,8 @@ interface BufferItemProps {
 	server: Server;
 	bouncerNetwork: BouncerNetwork | null;
 	active: boolean;
+	/** Whether Tab reaches the item: only one does, arrow keys move between them */
+	tabStop: boolean;
 	/** For server buffers: whether the network's buffers are collapsed */
 	collapsed?: boolean;
 	/** For collapsed server buffers: how many hidden buffers are unread */
@@ -61,6 +63,7 @@ const BufferItem = memo(function BufferItem({
 	server,
 	bouncerNetwork,
 	active,
+	tabStop,
 	collapsed,
 	hiddenUnread,
 	onClick,
@@ -85,6 +88,10 @@ const BufferItem = memo(function BufferItem({
 		) {
 			event.preventDefault();
 			onToggleCollapse(buffer, event.altKey);
+		} else if (event.key === " ") {
+			// Links only activate on Enter, tabs on Space too
+			event.preventDefault();
+			onClick(buffer);
 		}
 	}
 	function handleMouseDown(event: MouseEvent) {
@@ -141,9 +148,9 @@ const BufferItem = memo(function BufferItem({
 				href={getBufferURL(buffer, bouncerNetwork)}
 				title={title}
 				role="tab"
+				tabIndex={tabStop ? 0 : -1}
 				aria-selected={active}
 				aria-expanded={onToggleCollapse ? !collapsed : undefined}
-				aria-current={active ? "page" : undefined}
 				aria-description={
 					[
 						buffer.type === BufferType.SERVER
@@ -263,9 +270,33 @@ function displayGroups(
 
 const noneCollapsed: ReadonlySet<string> = new Set();
 
+/**
+ * Move the focus between tabs with the arrow keys, Home and End. Unlike
+ * the settings tabs, this doesn't switch buffers: switching moves the
+ * focus to the composer, and marks the buffers passed by as read.
+ */
+function handleListKeyDown(event: KeyboardEvent<HTMLUListElement>) {
+	const tabs = [...event.currentTarget.querySelectorAll<HTMLElement>("[role=tab]")];
+	const i = tabs.indexOf(document.activeElement as HTMLElement);
+	const moves: Record<string, number> = {
+		ArrowDown: i + 1,
+		ArrowUp: i - 1,
+		Home: 0,
+		End: tabs.length - 1,
+	};
+	if (i < 0 || !(event.key in moves) || event.altKey || event.ctrlKey || event.metaKey) {
+		return;
+	}
+	event.preventDefault();
+	tabs[(moves[event.key] + tabs.length) % tabs.length].focus();
+}
+
 export default function BufferList(props: BufferListProps) {
 	const collapsed = props.collapsed ?? noneCollapsed;
 	const groups = displayGroups(props.buffers, props.servers, collapsed, props.activeBuffer);
+	const shown = groups.flatMap((group) => [...group.server, ...group.shown]);
+	// The active buffer is the one Tab reaches, or the first one if none
+	const tabStop = shown.some((buf) => buf.id === props.activeBuffer) ? props.activeBuffer : shown[0]?.id;
 	const items = groups.flatMap((group) =>
 		[...group.server, ...group.shown].map((buf) => {
 			const server = props.servers.get(buf.server);
@@ -289,6 +320,7 @@ export default function BufferList(props: BufferListProps) {
 					onClick={props.onBufferClick}
 					onClose={props.onBufferClose}
 					active={props.activeBuffer === buf.id}
+					tabStop={tabStop === buf.id}
 					collapsed={isServer ? isCollapsed : undefined}
 					hiddenUnread={isCollapsed ? group.hiddenUnread : undefined}
 					onToggleCollapse={isServer ? props.onToggleCollapse : undefined}
@@ -298,7 +330,13 @@ export default function BufferList(props: BufferListProps) {
 	);
 
 	return (
-		<ul className="buffer-items" role="tablist" aria-label="Buffer list" aria-orientation="vertical">
+		<ul
+			className="buffer-items"
+			role="tablist"
+			aria-label="Buffer list"
+			aria-orientation="vertical"
+			onKeyDown={handleListKeyDown}
+		>
 			{items}
 		</ul>
 	);

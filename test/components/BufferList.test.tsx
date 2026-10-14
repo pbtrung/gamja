@@ -37,6 +37,53 @@ describe("BufferList", () => {
 		expect(tabs[3].closest("li")).toHaveClass("muted");
 	});
 
+	it("moves between buffers with the arrow keys, from a single Tab stop", async () => {
+		const client = {
+			isChannel: (name: string) => name.startsWith("#"),
+			cm: irc.CaseMapping.RFC1459,
+		} as unknown as Client;
+		let state = S.createState();
+		const [serverID, update] = S.createServer(state);
+		state = { ...state, ...update };
+		for (const name of [S.SERVER_BUFFER, "#a", "#b"]) {
+			state = { ...state, ...S.createBuffer(state, name, serverID, client)[1] };
+		}
+		const ids = [...state.buffers.keys()];
+		const onBufferClick = vi.fn();
+		const props = {
+			buffers: state.buffers,
+			servers: state.servers,
+			bouncerNetworks: new Map(),
+			onBufferClick,
+			onBufferClose: vi.fn(),
+		};
+		const { rerender } = render(<BufferList {...props} activeBuffer={null} />);
+		const tabs = () => within(screen.getByRole("tablist")).getAllByRole("tab");
+		const tabIndexes = () => tabs().map((t) => t.tabIndex);
+		// Without an active buffer, the first one
+		expect(tabIndexes()).toEqual([0, -1, -1]);
+		rerender(<BufferList {...props} activeBuffer={ids[1]} />);
+		expect(tabIndexes()).toEqual([-1, 0, -1]);
+		expect(tabs()[1]).not.toHaveAttribute("aria-current");
+
+		await userEvent.tab();
+		expect(tabs()[1]).toHaveFocus();
+		await userEvent.keyboard("{ArrowDown}");
+		expect(tabs()[2]).toHaveFocus();
+		await userEvent.keyboard("{ArrowDown}");
+		expect(tabs()[0]).toHaveFocus();
+		await userEvent.keyboard("{End}");
+		expect(tabs()[2]).toHaveFocus();
+		await userEvent.keyboard("{Home}{ArrowUp}");
+		expect(tabs()[2]).toHaveFocus();
+		// Moving doesn't switch buffers, Enter and Space do
+		expect(onBufferClick).not.toHaveBeenCalled();
+		await userEvent.keyboard(" ");
+		expect(onBufferClick).toHaveBeenLastCalledWith(state.buffers.get(ids[2]));
+		await userEvent.keyboard("{ArrowUp}{Enter}");
+		expect(onBufferClick).toHaveBeenLastCalledWith(state.buffers.get(ids[1]));
+	});
+
 	it("collapses a network to its pinned, active and highlighted buffers", async () => {
 		const client = {
 			isChannel: (name: string) => name.startsWith("#"),
