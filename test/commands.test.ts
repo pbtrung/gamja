@@ -203,7 +203,12 @@ describe("commands", () => {
 		const { app } = await inChannel();
 		app.handleComposerSubmit("/buffer *");
 		expect(getBuffer(app.state, app.state.activeBuffer)!.name).toBe("*");
-		app.handleComposerSubmit("/buffer #c");
+		// Names are case-insensitive
+		app.handleComposerSubmit("/buffer #C");
+		expect(getBuffer(app.state, app.state.activeBuffer)!.name).toBe("#c");
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.handleComposerSubmit("/buffer #none");
+		expect(app.state.error).toBe("Unknown buffer");
 		app.handleComposerSubmit("/close");
 		expect(getBuffer(app.state, { name: "#c" })).toBeUndefined();
 		app.handleComposerSubmit("/help");

@@ -214,13 +214,15 @@ const commandList: Command[] = [
 		description: "Switch to a buffer",
 		execute: (app, args) => {
 			const name = requireArg(args, 0, "buffer name");
-			for (const buf of app.state.buffers.values()) {
-				if (buf.name === name) {
-					app.switchBuffer(buf.id);
-					return;
-				}
+			// Prefer the active server, then look for it on the others
+			let buf = getBuffer(app.state, { name });
+			for (const serverID of app.state.servers.keys()) {
+				buf ??= getBuffer(app.state, { server: serverID, name });
 			}
-			throw new Error("Unknown buffer");
+			if (!buf) {
+				throw new Error("Unknown buffer");
+			}
+			app.switchBuffer(buf.id);
 		},
 	},
 	{
