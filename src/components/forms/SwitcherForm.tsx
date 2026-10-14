@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Search } from "lucide-react";
 import BufferTypeIcon from "../BufferTypeIcon";
 import { getBufferURL, getServerName, type Buffer, type BouncerNetwork, type Server } from "../../state";
@@ -14,8 +14,15 @@ interface SwitcherFormProps {
 export default function SwitcherForm({ buffers, servers, bouncerNetworks, onSubmit }: SwitcherFormProps) {
 	const [query, setQuery] = useState("");
 	const [selected, setSelected] = useState(0);
+	const listRef = useRef<HTMLUListElement>(null);
 
 	const suggestions = matchBuffers(buffers, servers, query);
+	const selectedID = suggestions[selected]?.id;
+
+	// Keep the option selected with the arrow keys in view
+	useEffect(() => {
+		listRef.current?.querySelector("[aria-selected=true]")?.scrollIntoView?.({ block: "nearest" });
+	}, [selectedID]);
 
 	function handleSubmit(event: FormEvent) {
 		event.preventDefault();
@@ -69,7 +76,7 @@ export default function SwitcherForm({ buffers, servers, bouncerNetworks, onSubm
 					autoFocus
 				/>
 			</div>
-			<ul className="switcher-list" id="switcher-list" role="listbox">
+			<ul className="switcher-list" id="switcher-list" role="listbox" ref={listRef}>
 				{suggestions.map((buf, i) => {
 					const server = servers.get(buf.server)!;
 					const bouncerNetwork = server.bouncerNetID

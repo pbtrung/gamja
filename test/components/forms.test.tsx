@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import * as irc from "../../src/lib/irc";
 import SwitcherForm from "../../src/components/forms/SwitcherForm";
 import ConnectForm from "../../src/components/forms/ConnectForm";
@@ -45,6 +45,29 @@ describe("SwitcherForm", () => {
 		expect(screen.getAllByRole("option")).toHaveLength(1);
 		await userEvent.keyboard("{Enter}");
 		expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "#beta" }));
+	});
+
+	it("scrolls the selected option into view", async () => {
+		// Not implemented by jsdom
+		const scrolled: string[] = [];
+		HTMLElement.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {
+			expect(options).toEqual({ block: "nearest" });
+			scrolled.push(this.textContent ?? "");
+		};
+		onTestFinished(() => {
+			delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+		});
+		render(
+			<SwitcherForm
+				buffers={buffers}
+				servers={new Map([[1, server]])}
+				bouncerNetworks={new Map()}
+				onSubmit={vi.fn()}
+			/>,
+		);
+		scrolled.length = 0;
+		await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+		expect(scrolled).toEqual([expect.stringContaining("#beta"), expect.stringContaining("bob")]);
 	});
 
 	it("submits on click and handles no results", async () => {
