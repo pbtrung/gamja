@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { Check, ChevronRight, Plus, Server, Trash } from "lucide-react";
+import DialogActions from "./DialogActions";
 import type { BouncerNetwork } from "../../state";
 import Field from "./Field";
 
@@ -112,17 +113,13 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 				</div>
 			</details>
 
-			<div className="dialog-actions">
+			<DialogActions label={isNew ? "Add network" : "Save network"} icon={isNew ? Plus : Check}>
 				{!isNew && (
 					<button type="button" className="btn btn-danger-outline me-auto" onClick={onRemove}>
 						<Trash aria-hidden="true" /> Remove network
 					</button>
 				)}
-				<button type="submit" className="btn btn-primary">
-					{isNew ? <Plus aria-hidden="true" /> : <Check aria-hidden="true" />}
-					{isNew ? "Add network" : "Save network"}
-				</button>
-			</div>
+			</DialogActions>
 		</form>
 	);
 }

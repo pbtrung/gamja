@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Moon } from "lucide-react";
+import DialogActions from "./DialogActions";
 import Field from "./Field";
 
 export default function AwayForm({
@@ -27,11 +28,7 @@ export default function AwayForm({
 				autoFocus
 			/>
 
-			<div className="dialog-actions">
-				<button type="submit" className="btn btn-primary">
-					<Moon aria-hidden="true" /> Set away
-				</button>
-			</div>
+			<DialogActions label="Set away" icon={Moon} />
 		</form>
 	);
 }

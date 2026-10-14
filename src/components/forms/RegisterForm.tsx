@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { KeyRound, Mail, UserPlus } from "lucide-react";
+import DialogActions from "./DialogActions";
 import Field from "./Field";
 
 export default function RegisterForm({
@@ -41,11 +42,7 @@ export default function RegisterForm({
 				required
 			/>
 
-			<div className="dialog-actions">
-				<button type="submit" className="btn btn-primary">
-					<UserPlus aria-hidden="true" /> Create account
-				</button>
-			</div>
+			<DialogActions label="Create account" icon={UserPlus} />
 		</form>
 	);
 }

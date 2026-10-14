@@ -16,6 +16,7 @@ import {
 	Settings as SettingsIcon,
 	type LucideIcon,
 } from "lucide-react";
+import DialogActions from "./DialogActions";
 import Dialog from "../Dialog";
 import Menu from "../Menu";
 import {
@@ -509,14 +510,11 @@ export default function SettingsForm(props: SettingsFormProps) {
 				</div>
 			</div>
 
-			<div className="dialog-actions">
+			<DialogActions label="Done">
 				<button type="button" className="btn btn-danger-outline me-auto" onClick={onDisconnect}>
 					<LogOut aria-hidden="true" /> Disconnect
 				</button>
-				<button type="submit" className="btn btn-primary">
-					Done
-				</button>
-			</div>
+			</DialogActions>
 		</form>
 	);
 }

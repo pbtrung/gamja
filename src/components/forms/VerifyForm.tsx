@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { KeyRound, ShieldCheck } from "lucide-react";
+import DialogActions from "./DialogActions";
 import { Linkified } from "../RichText";
 import Field from "./Field";
 
@@ -40,11 +41,7 @@ export default function VerifyForm({
 				autoComplete="one-time-code"
 			/>
 
-			<div className="dialog-actions">
-				<button type="submit" className="btn btn-primary">
-					<ShieldCheck aria-hidden="true" /> Verify account
-				</button>
-			</div>
+			<DialogActions label="Verify account" icon={ShieldCheck} />
 		</form>
 	);
 }

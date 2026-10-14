@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { KeyRound, LogIn, User } from "lucide-react";
+import DialogActions from "./DialogActions";
 import Field from "./Field";
 
 export default function AuthForm({
@@ -39,11 +40,7 @@ export default function AuthForm({
 				autoFocus
 			/>
 
-			<div className="dialog-actions">
-				<button type="submit" className="btn btn-primary">
-					<LogIn aria-hidden="true" /> Log in
-				</button>
-			</div>
+			<DialogActions label="Log in" icon={LogIn} />
 		</form>
 	);
 }

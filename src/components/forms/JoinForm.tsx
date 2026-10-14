@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { LogIn, MessagesSquare } from "lucide-react";
+import DialogActions from "./DialogActions";
 import Field from "./Field";
 
 export default function JoinForm({
@@ -28,11 +29,7 @@ export default function JoinForm({
 				required
 			/>
 
-			<div className="dialog-actions">
-				<button type="submit" className="btn btn-primary">
-					<LogIn aria-hidden="true" /> Join
-				</button>
-			</div>
+			<DialogActions label="Join" icon={LogIn} />
 		</form>
 	);
 }
