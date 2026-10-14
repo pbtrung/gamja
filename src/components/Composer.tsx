@@ -25,7 +25,8 @@ interface ComposerProps {
 	readOnly: boolean;
 	commandOnly: boolean;
 	maxLen?: number;
-	onSubmit: (text: string) => void;
+	/** Returns false to keep the text, e.g. when it couldn't be sent */
+	onSubmit: (text: string) => boolean | void;
 	autocomplete: (prefix: string) => string[];
 	replyTo?: ReplyTo | null;
 	onCancelReply?: () => void;
@@ -117,7 +118,9 @@ export default function Composer({
 		if (!text || tooLong) {
 			return;
 		}
-		onSubmit(text);
+		if (onSubmit(text) === false) {
+			return;
+		}
 		setText("");
 		lastAutocomplete.current = null;
 	}

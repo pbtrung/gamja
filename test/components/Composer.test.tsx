@@ -27,6 +27,12 @@ describe("Composer", () => {
 		expect(input).toHaveValue("");
 	});
 
+	it("keeps the text when it couldn't be sent", async () => {
+		const { input } = setup({ onSubmit: () => false });
+		await userEvent.type(input, "hello{Enter}");
+		expect(input).toHaveValue("hello");
+	});
+
 	it("submits with the send button", async () => {
 		const { input, onSubmit } = setup();
 		await userEvent.type(input, "hi");

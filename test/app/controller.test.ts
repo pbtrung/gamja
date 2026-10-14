@@ -592,7 +592,7 @@ describe("reactions, replies, redaction and typing", () => {
 		app.startReply(id, msg);
 		app.disconnect();
 		vi.spyOn(console, "error").mockImplementation(() => {});
-		app.handleComposerSubmit("hi bob");
+		expect(app.handleComposerSubmit("hi bob")).toBe(false);
 		expect(app.state.error).toBe("Not connected to the server");
 		expect(app.state.replyTo).not.toBeNull();
 		for (const action of [

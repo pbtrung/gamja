@@ -2238,22 +2238,25 @@ export default class AppController {
 		}
 	}
 
-	privmsg(target: string, text: string): void {
-		this.sendChatMessage("PRIVMSG", target, text);
+	privmsg(target: string, text: string): boolean {
+		return this.sendChatMessage("PRIVMSG", target, text);
 	}
 
-	/** Send a PRIVMSG or NOTICE, and show it if the server won't echo it. */
-	sendChatMessage(command: "PRIVMSG" | "NOTICE", target: string, text: string): void {
+	/**
+	 * Send a PRIVMSG or NOTICE, and show it if the server won't echo it.
+	 * Returns false if it couldn't be sent.
+	 */
+	sendChatMessage(command: "PRIVMSG" | "NOTICE", target: string, text: string): boolean {
 		if (target === SERVER_BUFFER) {
 			this.showError("Cannot send message in server buffer");
-			return;
+			return false;
 		}
 
 		const serverID = S.getActiveServerID(this.state);
 		// Before clearing the reply, so that it's kept for a retry
 		const client = this.getConnectedClient(serverID);
 		if (!client || !serverID) {
-			return;
+			return false;
 		}
 
 		const msg: Message = { tags: {}, prefix: null, command, params: [target, text] };
@@ -2278,26 +2281,28 @@ export default class AppController {
 				this.handleChatMessage(serverID, bufName, msg);
 			}
 		}
+		return true;
 	}
 
-	handleComposerSubmit(text: string): void {
+	/** Returns false if the text should stay in the composer, e.g. offline. */
+	handleComposerSubmit(text: string): boolean {
 		if (!text) {
-			return;
+			return true;
 		}
 
 		if (text.startsWith("//")) {
 			text = text.slice(1);
 		} else if (text.startsWith("/")) {
 			this.executeCommand(text);
-			return;
+			return true;
 		}
 
 		const buf = S.getBuffer(this.state, this.state.activeBuffer);
 		if (!buf) {
-			return;
+			return false;
 		}
 
-		this.privmsg(buf.name, text);
+		return this.privmsg(buf.name, text);
 	}
 
 	/** Run an action from the member list on the active channel. */
