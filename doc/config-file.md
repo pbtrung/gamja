@@ -35,7 +35,8 @@ The `server` object configures the IRC server.
 - `nick` (string): default nickname. If it contains a `*` character, it will be
   replaced with a random string.
 - `autoconnect` (boolean): don't display the login UI, immediately connect to
-  the server
+  the server. If no nick is set, `user-*` is used. Can't be combined with
+  `auth: "mandatory"`.
 - `ping` (number): interval in seconds to send PING commands. Set to 0 to
   disable, this is the default. Enabling PINGs can have an impact on client
   power usage and should only be enabled if necessary.
@@ -45,7 +46,8 @@ The `server` object configures the IRC server.
 The `oauth2` object configures OAuth 2.0 authentication.
 
 - `url` (string): OAuth 2.0 server URL. The server must support OAuth 2.0
-  Authorization Server Metadata (RFC 8414) or OpenID Connect Discovery.
+  Authorization Server Metadata (RFC 8414) or OpenID Connect Discovery. Must
+  not end with a slash; a path is kept as a prefix of `/.well-known/…`.
 - `client_id` (string): OAuth 2.0 client ID.
 - `client_secret` (string): OAuth 2.0 client secret.
 - `scope` (string): OAuth 2.0 scope.

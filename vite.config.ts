@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import ircProxy from "./tools/irc-proxy.js";
+import ircProxy from "./tools/irc-proxy.ts";
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 

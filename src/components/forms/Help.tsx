@@ -36,6 +36,24 @@ function KeyBindingsHelp() {
 				</dt>
 				<dd>Automatically complete nickname or channel</dd>
 			</div>
+			<div>
+				<dt>
+					<kbd>Shift</kbd> <kbd>Tab</kbd>
+				</dt>
+				<dd>Go back to the previous completion</dd>
+			</div>
+			<div>
+				<dt>
+					<kbd>Shift</kbd> <kbd>Enter</kbd>
+				</dt>
+				<dd>Insert a new line</dd>
+			</div>
+			<div>
+				<dt>
+					<kbd>Escape</kbd>
+				</dt>
+				<dd>Cancel the reply being written</dd>
+			</div>
 			{hasPointer && (
 				<div>
 					<dt>Middle mouse click</dt>

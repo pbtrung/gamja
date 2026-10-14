@@ -41,7 +41,6 @@
 	},
 	"scripts": {
 		"dev": "vite",
-		"start": "vite",
 		"build": "vite build",
 		"preview": "vite preview",
 		"typecheck": "node node_modules/typescript7/bin/tsc --noEmit -p .",
@@ -52,7 +51,7 @@
 		"test:watch": "vitest",
 		"coverage": "vitest run --coverage",
 		"check": "npm run typecheck && npm run lint -- --max-warnings 0 && npm run format:check && npm test",
-		"clean": "rm -rf dist coverage",
+		"clean": "rm -rf dist coverage playwright-report test-results",
 		"e2e": "playwright test"
 	},
 	"private": true,

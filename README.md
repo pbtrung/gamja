@@ -1,7 +1,7 @@
 # [gamja]
 
 A modern IRC web client, built with React, TypeScript and Vite. Works best
-with the [soju] IRC bouncer.
+with the [soju] IRC bouncer. Fork of [upstream gamja].
 
 ## Usage
 
@@ -12,15 +12,17 @@ Build gamja with [Vite]:
     npm install
     npm run build
 
-Then [configure an HTTP server] to serve the files in `dist/`.
+Then [configure an HTTP server] to serve the files in `dist/`. The version
+shown in the UI comes from `git describe`; set `GAMJA_VERSION` to override it
+when building outside a git checkout.
 
 ### Development server
 
     npm run dev
 
 If you don't have an IRC WebSocket server at hand, the development server can
-proxy `/socket` to an IRC server over TLS. For instance, to run gamja on Libera
-Chat:
+proxy `/socket` to an IRC server over TLS (`host` or `host:port`, port 6697 by
+default; `npm run dev` only). For instance, to run gamja on Libera Chat:
 
     GAMJA_IRC_SERVER=irc.libera.chat npm run dev
 
@@ -54,6 +56,9 @@ you away once all your clients are.
     npm run check       # typecheck, lint, format:check and test
     npm run e2e         # Playwright end-to-end tests against a fake IRC server
 
+`typecheck` uses TypeScript 7, while ESLint's type-aware rules still run on
+TypeScript 6 until typescript-eslint supports 7.
+
 The end-to-end tests use the system Chromium (`/usr/bin/chromium`,
 `chromium-browser` or `google-chrome`) when present, otherwise Playwright's
 Chromium (override with `CHROMIUM_PATH`).
@@ -68,7 +73,8 @@ AGPLv3, see LICENSE.
 
 Copyright (C) 2020 The gamja Contributors
 
-[gamja]: https://codeberg.org/emersion/gamja
+[gamja]: https://github.com/pbtrung/gamja
+[upstream gamja]: https://codeberg.org/emersion/gamja
 [soju]: https://soju.im
 [Vite]: https://vite.dev
 [configure an HTTP server]: doc/setup.md
