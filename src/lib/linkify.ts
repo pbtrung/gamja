@@ -35,7 +35,7 @@ linkifyjs.registerPlugin("ircChannel", ({ scanner, parser }) => {
 	Divider.ta(alphanumeric, Channel);
 });
 
-export type LinkSegment = { text: string; href?: undefined } | { text: string; href: string; type: string };
+type LinkSegment = { text: string; href?: undefined } | { text: string; href: string; type: string };
 
 /** Split text into plain text and link segments. */
 export function findLinks(text: string): LinkSegment[] {

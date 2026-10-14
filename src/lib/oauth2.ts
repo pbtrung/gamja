@@ -1,4 +1,4 @@
-export interface ServerMetadata {
+interface ServerMetadata {
 	issuer: string;
 	authorization_endpoint: string;
 	token_endpoint: string;

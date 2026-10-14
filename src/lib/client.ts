@@ -92,9 +92,9 @@ const WHOX_FIELDS = {
 	realname: "r",
 } as const;
 
-export type WhoxField = keyof typeof WHOX_FIELDS;
+type WhoxField = keyof typeof WHOX_FIELDS;
 
-export interface WhoReply {
+interface WhoReply {
 	channel?: string;
 	username?: string;
 	hostname?: string;
@@ -214,7 +214,7 @@ export interface SASLOAuthBearer {
 	username?: string | null;
 }
 
-export interface ClientParams {
+interface ClientParams {
 	url: string;
 	username: string;
 	realname: string;
@@ -234,16 +234,16 @@ export interface MessageEventDetail {
 	batch: Batch | null;
 }
 
-export interface BatchResult extends Batch {
+interface BatchResult extends Batch {
 	messages: Message[];
 }
 
-export interface ChatHistoryTarget {
+interface ChatHistoryTarget {
 	name: string;
 	latestMessage: string;
 }
 
-export type BouncerNetworkAttrs = Record<string, string | null | undefined>;
+type BouncerNetworkAttrs = Record<string, string | null | undefined>;
 
 export default class Client extends EventTarget {
 	static Status = ClientStatus;

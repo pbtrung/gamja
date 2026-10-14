@@ -31,7 +31,7 @@ export interface Style {
 	bg?: number | string;
 }
 
-export interface Segment {
+interface Segment {
 	text: string;
 	style: Style;
 }
@@ -145,7 +145,7 @@ export function strip(text: string): string {
 }
 
 /** The 99 standard mIRC colors. */
-export const COLORS: readonly string[] = [
+const COLORS: readonly string[] = [
 	"#ffffff",
 	"#000000",
 	"#00007f",
