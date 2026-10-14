@@ -520,9 +520,12 @@ input.switch::after {
 	width: 0.875rem;
 	height: 0.875rem;
 	border-radius: 50%;
-	background-color: #ffffff;
-	box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
-	transition: transform var(--transition);
+	/* Dimmed when off, like the other inactive controls */
+	background-color: var(--fg-muted);
+	box-shadow: var(--shadow-sm);
+	transition:
+		transform var(--transition),
+		background-color var(--transition);
 }
 
 input.switch:checked {
@@ -530,6 +533,7 @@ input.switch:checked {
 }
 
 input.switch:checked::after {
+	background-color: var(--accent-fg);
 	transform: translateX(1rem);
 }
 
