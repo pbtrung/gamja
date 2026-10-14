@@ -689,6 +689,82 @@ export default class AppController {
 	}
 
 	/**
+	 * Unread state brought by a PRIVMSG or NOTICE not read yet: nothing for
+	 * our own messages and blocked users (soju's metadata), a highlight for
+	 * mentions and private messages, unless the buffer is muted.
+	 */
+	chatMessageUnread(client: Client, server: Server | undefined, bufName: string, msg: Message): Unread {
+		const from = msg.prefix?.name ?? "*";
+		if (client.isMyNick(from) || S.getTargetMetadata(server, from).blocked) {
+			return Unread.NONE;
+		}
+		if (S.getTargetMetadata(server, bufName).muted) {
+			return Unread.MESSAGE;
+		}
+		const isPrivate = bufName !== SERVER_BUFFER && !client.isChannel(bufName);
+		if (msg.isHighlight || isPrivate || client.isMyNick(msg.params[0])) {
+			return Unread.HIGHLIGHT;
+		}
+		return Unread.MESSAGE;
+	}
+
+	/** Show a desktop notification for a new PRIVMSG or NOTICE, if enabled. */
+	notifyChatMessage(serverID: number, bufName: string, msg: Message, unread: Unread): void {
+		const client = this.clients.get(serverID)!;
+		const muted = S.getTargetMetadata(this.state.servers.get(serverID), bufName).muted;
+		const level = this.state.settings.notifications;
+		const notify = level === "all" ? !muted : level === "mentions" && unread === Unread.HIGHLIGHT;
+		if (unread === Unread.NONE || !notify || irc.parseCTCP(msg)) {
+			return;
+		}
+
+		const from = msg.prefix?.name ?? "*";
+		let kind = "message";
+		if (msg.isHighlight) {
+			kind = "highlight";
+		} else if (unread === Unread.HIGHLIGHT) {
+			kind = "private message";
+		}
+		let title = "New " + kind + " from " + from;
+		if (client.isChannel(bufName)) {
+			title += " in " + bufName;
+		}
+		const notif = showNotification(title, {
+			body: stripANSI(msg.params[1]),
+			requireInteraction: true,
+			tag: "msg,server=" + serverID + ",from=" + from + ",to=" + bufName,
+			data: { server: serverID, bufferName: bufName, message: msg },
+		});
+		if (notif) {
+			notif.addEventListener("click", () => {
+				window.focus();
+				this.switchBuffer({ server: serverID, name: bufName });
+			});
+			notif.addEventListener("close", () => {
+				this.messageNotifications.delete(notif);
+			});
+			this.messageNotifications.add(notif);
+		}
+	}
+
+	notifyInvite(serverID: number, bufName: string, msg: Message): void {
+		if (this.state.settings.notifications === "none") {
+			return;
+		}
+		const from = msg.prefix?.name ?? "*";
+		const channel = msg.params[1];
+		const notif = showNotification("Invitation to " + channel, {
+			body: from + " has invited you to " + channel,
+			requireInteraction: true,
+			tag: "invite,server=" + serverID + ",from=" + from + ",channel=" + channel,
+		});
+		notif?.addEventListener("click", () => {
+			window.focus();
+			this.switchBuffer({ server: serverID, name: bufName });
+		});
+	}
+
+	/**
 	 * Show a message in a buffer, as new: it may mark the buffer unread and
 	 * notify. With a batch, the message is only added once the whole batch is
 	 * handled, see applyHistory().
@@ -698,88 +774,29 @@ export default class AppController {
 
 		this.prepareChatMessage(serverID, msg);
 
-		const stored = this.bufferStore.get({ name: bufName, server: client.params });
-		const deliveryReceipt = getReceipt(stored, ReceiptType.DELIVERED);
-		const readReceipt = getReceipt(stored, ReceiptType.READ);
-		const isDelivered = S.isMessageBeforeReceipt(msg, deliveryReceipt);
-		let isRead = S.isMessageBeforeReceipt(msg, readReceipt);
 		const from = msg.prefix?.name ?? "*";
-
-		if (client.isMyNick(from)) {
-			isRead = true;
-		}
-
-		// soju's metadata: blocked users are ignored, muted buffers are quiet
 		const server = this.state.servers.get(serverID);
-		const blocked = Boolean(S.getTargetMetadata(server, from).blocked);
-		const muted = Boolean(S.getTargetMetadata(server, bufName).muted);
-		if (blocked) {
-			if (!S.getBuffer(this.state, { server: serverID, name: bufName })) {
-				return; // Don't open a conversation for a blocked user
-			}
-			isRead = true;
+		if (
+			S.getTargetMetadata(server, from).blocked &&
+			!S.getBuffer(this.state, { server: serverID, name: bufName })
+		) {
+			return; // Don't open a conversation for a blocked user
 		}
 
+		const stored = this.bufferStore.get({ name: bufName, server: client.params });
 		let msgUnread: Unread = Unread.NONE;
-		if ((msg.command === "PRIVMSG" || msg.command === "NOTICE") && !isRead) {
-			const target = msg.params[0];
-			const text = msg.params[1];
-
-			let kind;
-			if (msg.isHighlight) {
-				msgUnread = Unread.HIGHLIGHT;
-				kind = "highlight";
-			} else if (client.isMyNick(target)) {
-				msgUnread = Unread.HIGHLIGHT;
-				kind = "private message";
-			} else {
-				msgUnread = Unread.MESSAGE;
-			}
-			if (muted) {
-				msgUnread = Unread.MESSAGE;
-			}
-
-			const level = this.state.settings.notifications;
-			const notify = level === "all" ? !muted : level === "mentions" && msgUnread === Unread.HIGHLIGHT;
-			if (notify && !isDelivered && !irc.parseCTCP(msg)) {
-				let title = "New " + (kind ?? "message") + " from " + from;
-				if (client.isChannel(bufName)) {
-					title += " in " + bufName;
-				}
-				const notif = showNotification(title, {
-					body: stripANSI(text),
-					requireInteraction: true,
-					tag: "msg,server=" + serverID + ",from=" + from + ",to=" + bufName,
-					data: { server: serverID, bufferName: bufName, message: msg },
-				});
-				if (notif) {
-					notif.addEventListener("click", () => {
-						window.focus();
-						this.switchBuffer({ server: serverID, name: bufName });
-					});
-					notif.addEventListener("close", () => {
-						this.messageNotifications.delete(notif);
-					});
-					this.messageNotifications.add(notif);
-				}
+		if (
+			(msg.command === "PRIVMSG" || msg.command === "NOTICE") &&
+			!S.isMessageBeforeReceipt(msg, getReceipt(stored, ReceiptType.READ))
+		) {
+			msgUnread = this.chatMessageUnread(client, server, bufName, msg);
+			if (!S.isMessageBeforeReceipt(msg, getReceipt(stored, ReceiptType.DELIVERED))) {
+				this.notifyChatMessage(serverID, bufName, msg, msgUnread);
 			}
 		}
 		if (msg.command === "INVITE" && client.isMyNick(msg.params[0])) {
 			msgUnread = Unread.HIGHLIGHT;
-
-			const channel = msg.params[1];
-			const notif =
-				this.state.settings.notifications === "none"
-					? null
-					: showNotification("Invitation to " + channel, {
-							body: from + " has invited you to " + channel,
-							requireInteraction: true,
-							tag: "invite,server=" + serverID + ",from=" + from + ",channel=" + channel,
-						});
-			notif?.addEventListener("click", () => {
-				window.focus();
-				this.switchBuffer({ server: serverID, name: bufName });
-			});
+			this.notifyInvite(serverID, bufName, msg);
 		}
 
 		if (
@@ -1759,7 +1776,8 @@ export default class AppController {
 		let unread: Unread = Unread.NONE;
 		if (buf) {
 			// Re-compute unread status
-			for (let i = buf.messages.length - 1; i >= 0; i--) {
+			const server = this.state.servers.get(serverID);
+			for (let i = buf.messages.length - 1; i >= 0 && unread !== Unread.HIGHLIGHT; i--) {
 				const m = buf.messages[i];
 				if (m.command !== "PRIVMSG" && m.command !== "NOTICE") {
 					continue;
@@ -1767,13 +1785,7 @@ export default class AppController {
 				if (S.isMessageBeforeReceipt(m, readReceipt)) {
 					break;
 				}
-
-				if (m.isHighlight || client.isMyNick(buf.name)) {
-					unread = Unread.HIGHLIGHT;
-					break;
-				}
-
-				unread = Unread.MESSAGE;
+				unread = S.unionUnread(unread, this.chatMessageUnread(client, server, buf.name, m));
 			}
 			this.setBufferState(buf.id, { unread });
 		}

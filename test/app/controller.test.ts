@@ -295,6 +295,23 @@ describe("AppController messaging", () => {
 		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
 	});
 
+	it("recomputes unread state on MARKREAD like for new messages", async () => {
+		const { app, recv } = await connectedApp();
+		recv(":me!u@h JOIN #c");
+		recv("@time=2030-01-01T00:00:00.000Z :bob!u@h PRIVMSG me :one");
+		recv("@time=2030-01-01T00:00:01.000Z :bob!u@h PRIVMSG me :two");
+		expect(buf(app, "bob")!.unread).toBe(Unread.HIGHLIGHT);
+		recv(":srv MARKREAD bob timestamp=2030-01-01T00:00:00.000Z");
+		// Still a private message left
+		expect(buf(app, "bob")!.unread).toBe(Unread.HIGHLIGHT);
+
+		recv("@time=2030-01-01T00:00:00.000Z :bob!u@h PRIVMSG #c :one");
+		recv("@time=2030-01-01T00:00:01.000Z :me!u@h PRIVMSG #c :mine");
+		recv(":srv MARKREAD #c timestamp=2030-01-01T00:00:00.000Z");
+		// Our own messages don't count
+		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
+	});
+
 	it("keeps renamed channels and their stored state", async () => {
 		const { app, recv } = await connectedApp();
 		recv(":me!u@h JOIN #old");
