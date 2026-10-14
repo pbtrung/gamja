@@ -16,7 +16,14 @@ interface DialogProps {
 }
 
 const FOCUSABLE =
-	'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+	'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** The elements Tab can reach, leaving out the ones hidden by CSS */
+function focusables(el: HTMLElement): HTMLElement[] {
+	return Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+		(child) => child.checkVisibility?.() ?? true,
+	);
+}
 
 export default function Dialog({
 	title,
@@ -32,12 +39,17 @@ export default function Dialog({
 	const ref = useRef<HTMLDivElement>(null);
 	// Captured on first render, before any autoFocus field steals focus
 	const [prevFocus] = useState(() => document.activeElement as HTMLElement | null);
+	// Read by the key handler, so that it isn't added again on every render
+	const onDismissRef = useRef(onDismiss);
+	useEffect(() => {
+		onDismissRef.current = onDismiss;
+	});
 
 	useEffect(() => {
 		const el = ref.current!;
 		// React focuses autoFocus fields itself, keep that focus if any
 		if (!el.contains(document.activeElement)) {
-			(el.querySelector<HTMLElement>(FOCUSABLE) ?? el).focus();
+			(focusables(el)[0] ?? el).focus();
 		}
 		return () => prevFocus?.focus?.();
 	}, [prevFocus]);
@@ -45,16 +57,17 @@ export default function Dialog({
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			// A menu opened from the dialog closes first
-			if (event.key === "Escape" && onDismiss && !document.querySelector("[role=menu]")) {
+			const dismiss = onDismissRef.current;
+			if (event.key === "Escape" && dismiss && !document.querySelector("[role=menu]")) {
 				event.stopPropagation();
-				onDismiss();
+				dismiss();
 				return;
 			}
 			if (event.key !== "Tab") {
 				return;
 			}
 			// Trap focus inside the dialog
-			const focusable = Array.from(ref.current!.querySelectorAll<HTMLElement>(FOCUSABLE));
+			const focusable = focusables(ref.current!);
 			if (focusable.length === 0) {
 				return;
 			}
@@ -77,7 +90,7 @@ export default function Dialog({
 		};
 		window.addEventListener("keydown", handleKeyDown, true);
 		return () => window.removeEventListener("keydown", handleKeyDown, true);
-	}, [onDismiss]);
+	}, []);
 
 	return (
 		<div

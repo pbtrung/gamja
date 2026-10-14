@@ -648,7 +648,8 @@ function Root() {
 	return (
 		<>
 			<Chat state={state} />
-			<Dialogs state={state} />
+			{/* A new dialog, not an update of the previous one: it takes the focus */}
+			<Dialogs key={state.dialog?.kind} state={state} />
 			{state.error && <ErrorToast error={state.error} onDismiss={() => app.dismissError()} />}
 		</>
 	);

@@ -34,7 +34,12 @@ test("chat and dialogs are accessible", async ({ page, connect, bot }) => {
 
 	await page.getByRole("tab", { name: "FakeNet" }).click();
 	await page.getByRole("button", { name: "Settings" }).click();
-	await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+	const settings = page.getByRole("dialog", { name: "Settings" });
+	await expect(settings).toBeVisible();
+	// The focus goes in the dialog, and Tab moves it between visible controls
+	await expect(settings.locator(":focus")).toBeVisible();
+	await page.keyboard.press("Tab");
+	await expect(settings.locator(":focus")).toBeVisible();
 	await audit(page);
 	await page.keyboard.press("Escape");
 
