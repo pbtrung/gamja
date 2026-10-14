@@ -2400,11 +2400,12 @@ export default class AppController {
 			return;
 		}
 
-		let before;
-		if (buf.messages.length > 0) {
-			before = buf.messages[0].tags["time"]!;
-		} else {
-			before = irc.formatDate(new Date());
+		// Bounds are exclusive: start from the first message's ID if the server
+		// accepts it, its timestamp would skip the messages sharing it
+		const first = buf.messages[0];
+		let before = "timestamp=" + (first?.tags.time ?? irc.formatDate(new Date()));
+		if (first?.tags.msgid && client.isupport.msgRefTypes().includes("msgid")) {
+			before = "msgid=" + first.tags.msgid;
 		}
 
 		// Avoids sending multiple CHATHISTORY commands in parallel
@@ -2417,7 +2418,10 @@ export default class AppController {
 
 		let result;
 		try {
-			result = await client.fetchHistoryBefore(buf.name, before, limit);
+			// TODO: use Client.fetchHistoryBefore() once it takes message IDs
+			const max = Math.min(limit, client.isupport.chatHistory());
+			const messages = await client.roundtripChatHistory(["BEFORE", buf.name, before, max]);
+			result = { messages, more: max > 0 && messages.length >= max };
 		} catch (err) {
 			// Don't retry automatically, the user can retry from the UI
 			this.setBufferState(buf.id, { history: "error" });

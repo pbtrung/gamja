@@ -371,6 +371,28 @@ describe("AppController messaging", () => {
 		expect(sent()).toEqual([]);
 	});
 
+	it("fetches older messages before a message ID when supported", async () => {
+		const { app, recv, sent, sentRaw } = await connectedApp({
+			isupport: "CASEMAPPING=rfc1459 CHANTYPES=# CHATHISTORY=100 MSGREFTYPES=timestamp,msgid",
+		});
+		recv(":me!u@h JOIN #c", "@time=2030-01-02T00:00:00.000Z;msgid=new :bob!u@h PRIVMSG #c :new");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		const p = app.fetchOlderMessages();
+		await flush();
+		const [req] = sentRaw();
+		expect(req).toMatch(/ CHATHISTORY BEFORE #c msgid=new 100$/);
+		recv(
+			`@label=${req.match(/label=(\d+)/)![1]} :srv BATCH +h chathistory #c`,
+			// Same time as the first message, but older
+			"@batch=h;time=2030-01-02T00:00:00.000Z;msgid=old :bob!u@h PRIVMSG #c :old",
+			":srv BATCH -h",
+		);
+		await p;
+		expect(buf(app, "#c")!.messages.map((m) => m.params[1])).toEqual(["old", "new"]);
+	});
+
 	it("doesn't fetch history without CHATHISTORY ISUPPORT (soju bouncer connection)", async () => {
 		const { app, recv, sent } = await connectedApp({
 			caps: "batch server-time message-tags labeled-response draft/chathistory soju.im/bouncer-networks",
