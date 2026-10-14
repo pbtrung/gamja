@@ -350,6 +350,33 @@ describe("roundtrip", () => {
 		await expect(p2).rejects.toThrow("Unknown command");
 	});
 
+	it("times out and stops listening", async () => {
+		vi.useFakeTimers();
+		const { client } = register();
+		const done = vi.fn(() => false);
+		const p = client.roundtrip({ command: "FOO" }, done, 1000);
+		const rejected = expect(p).rejects.toThrow("Timed out waiting for FOO");
+		vi.advanceTimersByTime(1000);
+		await rejected;
+		expect(client.roundtripHandlers.size).toBe(0);
+	});
+
+	it("unblocks queued chat history requests after a timeout", async () => {
+		vi.useFakeTimers();
+		const { client, ws } = register("batch draft/chathistory", "CHATHISTORY=50 CHANTYPES=#");
+		const p1 = client.fetchHistoryBefore("#a", "2020-01-01T00:00:00.000Z", 10);
+		const p2 = client.fetchHistoryBefore("#b", "2020-01-01T00:00:00.000Z", 10);
+		const rejected = expect(p1).rejects.toThrow("Timed out waiting for CHATHISTORY");
+		await vi.advanceTimersByTimeAsync(0);
+		expect(ws.takeSent().map((m) => m.params[1])).toEqual(["#a"]);
+		await vi.advanceTimersByTimeAsync(60_000);
+		await rejected;
+		const sent = ws.takeSent().filter((m) => m.command === "CHATHISTORY");
+		expect(sent.map((m) => m.params[1])).toEqual(["#b"]);
+		ws.receive(":srv BATCH +b chathistory #b", ":srv BATCH -b");
+		await expect(p2).resolves.toEqual({ messages: [], more: false });
+	});
+
 	it("rejects when the connection closes", async () => {
 		const { client, ws } = register();
 		const p = client.ping();

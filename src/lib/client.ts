@@ -45,6 +45,7 @@ const LAG_TOKEN_PREFIX = "gamja-lag-";
 // Without a PONG by then, the connection is considered dead: browsers take a
 // long time to notice a TCP connection silently dropped by the network
 const PONG_TIMEOUT_MSEC = 60 * 1000;
+const ROUNDTRIP_TIMEOUT_MSEC = 60 * 1000;
 const RECONNECT_MAX_DELAY_MSEC = 10 * 60 * 1000; // 10min
 
 // WebSocket status codes
@@ -1104,8 +1105,13 @@ export default class Client extends EventTarget {
 	}
 
 	/* Execute a command that expects a response. `done` is called with message
-	 * events until it returns a truthy value. */
-	roundtrip<T>(msg: OutgoingMessage, done: (msg: Message) => T | undefined | void | false): Promise<T> {
+	 * events until it returns a truthy value. Gives up after `timeout` ms, so
+	 * that a lost reply can't block the commands queued behind it. */
+	roundtrip<T>(
+		msg: OutgoingMessage,
+		done: (msg: Message) => T | undefined | void | false,
+		timeout = ROUNDTRIP_TIMEOUT_MSEC,
+	): Promise<T> {
 		const cmd = msg.command;
 
 		let label: string | undefined;
@@ -1171,7 +1177,13 @@ export default class Client extends EventTarget {
 				}
 			};
 
+			const timeoutID = setTimeout(() => {
+				removeEventListeners();
+				reject(new Error(`Timed out waiting for ${cmd}`));
+			}, timeout);
+
 			const removeEventListeners = () => {
+				clearTimeout(timeoutID);
 				this.roundtripHandlers.delete(handleMessage);
 				this.removeEventListener("status", handleStatus);
 			};
