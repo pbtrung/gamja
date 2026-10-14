@@ -80,6 +80,12 @@ if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWo
 		event.waitUntil(self.clients.claim());
 	});
 
+	// The subscription is userVisibleOnly: browsers expect each push to show
+	// a notification. Some of them don't (MARKREAD, unparsable payloads,
+	// soju's own NOTEs, messages while a window is focused). Chrome tolerates
+	// a few such silent pushes, then shows a generic "site updated in the
+	// background" notification. Showing a notification for these would be
+	// worse, e.g. one for every buffer read on another device, so accept it.
 	self.addEventListener("push", (event) => {
 		const raw = event.data?.text();
 		if (!raw) {
