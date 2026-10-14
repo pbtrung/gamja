@@ -646,6 +646,56 @@ describe("connection status", () => {
 		}
 	});
 
+	it("drops the connection when the PONG doesn't come", () => {
+		vi.useFakeTimers();
+		try {
+			const { client, ws } = register();
+			const errors: Error[] = [];
+			client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
+			vi.spyOn(console, "warn").mockImplementation(() => {});
+			vi.setSystemTime(Date.now() + 60_000);
+			vi.advanceTimersByTime(2000);
+			expect(ws.sent).toEqual([expect.stringMatching(/^PING gamja-lag-/)]);
+			vi.advanceTimersByTime(59_999);
+			expect(client.status).toBe("registered");
+			vi.advanceTimersByTime(1);
+			// Handled at once, without waiting for the close event
+			expect(ws.closeCode).toBe(1000);
+			expect(client.status).toBe("disconnected");
+			expect(errors.map((err) => err.message)).toEqual(["Connection error (abnormal closure)"]);
+			expect(client.reconnectAt).not.toBeNull();
+			vi.advanceTimersToNextTimer();
+			const ws2 = FakeWebSocket.last();
+			expect(ws2).not.toBe(ws);
+			ws2.open();
+			// The late close event of the dead socket is ignored
+			ws.dispatchEvent(new CloseEvent("close", { code: 1006 }));
+			expect(client.ws).toBe(ws2);
+			expect(client.status).toBe("registering");
+			expect(errors).toHaveLength(1);
+			client.disconnect();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("keeps checking the connection after each PONG", () => {
+		vi.useFakeTimers();
+		try {
+			const { client, ws } = register();
+			for (let i = 0; i < 3; i++) {
+				vi.advanceTimersByTime(i === 0 ? 2000 : 30_000);
+				const token = /^PING (gamja-lag-\d+)$/.exec(ws.sent.splice(0)[0])?.[1];
+				vi.advanceTimersByTime(59_000);
+				ws.receive(`:srv PONG srv ${token}`);
+			}
+			expect(client.status).toBe("registered");
+			client.disconnect();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("tells when it reconnects", () => {
 		vi.useFakeTimers();
 		try {

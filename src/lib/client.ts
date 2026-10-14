@@ -42,6 +42,9 @@ const RECONNECT_MIN_DELAY_MSEC = 10 * 1000; // 10s
 const LAG_FIRST_DELAY_MSEC = 2 * 1000;
 const LAG_INTERVAL_MSEC = 30 * 1000;
 const LAG_TOKEN_PREFIX = "gamja-lag-";
+// Without a PONG by then, the connection is considered dead: browsers take a
+// long time to notice a TCP connection silently dropped by the network
+const PONG_TIMEOUT_MSEC = 60 * 1000;
 const RECONNECT_MAX_DELAY_MSEC = 10 * 60 * 1000; // 10min
 
 // WebSocket status codes
@@ -326,42 +329,48 @@ export default class Client extends EventTarget {
 		});
 
 		ws.addEventListener("close", (event) => {
-			if (this.ws !== ws) {
-				return;
-			}
-			console.log("Connection closed (code: " + event.code + ")");
-
-			if (
-				event.code !== WEBSOCKET_CLOSE_CODES.NORMAL_CLOSURE &&
-				event.code !== WEBSOCKET_CLOSE_CODES.GOING_AWAY
-			) {
-				this.dispatchError(new WebSocketError(event.code));
-			}
-
-			this.resetConnection();
-
-			if (this.autoReconnect) {
-				globalThis.addEventListener?.("online", this.handleOnline);
-
-				if (!navigator.onLine) {
-					console.info("Waiting for network to go back online");
-				} else {
-					let delay = this.reconnectBackoff.next();
-					const sinceLastReconnect = Date.now() - this.lastReconnectDate.getTime();
-					if (sinceLastReconnect < RECONNECT_MIN_DELAY_MSEC) {
-						delay = Math.max(delay, RECONNECT_MIN_DELAY_MSEC);
-					}
-					console.info("Reconnecting to server in " + delay / 1000 + " seconds");
-					if (this.reconnectTimeoutID) {
-						clearTimeout(this.reconnectTimeoutID);
-					}
-					this.reconnectTimeoutID = setTimeout(() => {
-						this.reconnect();
-					}, delay);
-					this.setReconnectAt(Date.now() + delay);
-				}
-			}
+			this.handleClose(ws, event.code);
 		});
+	}
+
+	/**
+	 * Handle the end of a connection. Called on the close event, or directly
+	 * when the socket is deemed dead: the close event may then come much
+	 * later, if ever.
+	 */
+	handleClose(ws: WebSocket, code: number): void {
+		if (this.ws !== ws) {
+			return;
+		}
+		console.log("Connection closed (code: " + code + ")");
+
+		if (code !== WEBSOCKET_CLOSE_CODES.NORMAL_CLOSURE && code !== WEBSOCKET_CLOSE_CODES.GOING_AWAY) {
+			this.dispatchError(new WebSocketError(code));
+		}
+
+		this.resetConnection();
+
+		if (this.autoReconnect) {
+			globalThis.addEventListener?.("online", this.handleOnline);
+
+			if (!navigator.onLine) {
+				console.info("Waiting for network to go back online");
+			} else {
+				let delay = this.reconnectBackoff.next();
+				const sinceLastReconnect = Date.now() - this.lastReconnectDate.getTime();
+				if (sinceLastReconnect < RECONNECT_MIN_DELAY_MSEC) {
+					delay = Math.max(delay, RECONNECT_MIN_DELAY_MSEC);
+				}
+				console.info("Reconnecting to server in " + delay / 1000 + " seconds");
+				if (this.reconnectTimeoutID) {
+					clearTimeout(this.reconnectTimeoutID);
+				}
+				this.reconnectTimeoutID = setTimeout(() => {
+					this.reconnect();
+				}, delay);
+				this.setReconnectAt(Date.now() + delay);
+			}
+		}
 	}
 
 	/** Forget the state of the current connection, once its socket is gone. */
@@ -400,14 +409,33 @@ export default class Client extends EventTarget {
 		}
 	}
 
-	/** Measure the lag now and then, the PONG tells how long it took. */
+	/**
+	 * Measure the lag now and then, the PONG tells how long it took. This also
+	 * checks that the connection is alive: the PONG must come in time.
+	 */
 	scheduleLagCheck(delay: number): void {
 		clearTimeout(this.lagTimeoutID);
 		this.lagTimeoutID = setTimeout(() => {
-			if (this.status === ClientStatus.REGISTERED) {
-				this.send({ command: "PING", params: [LAG_TOKEN_PREFIX + Date.now()] });
+			const ws = this.ws;
+			if (this.status !== ClientStatus.REGISTERED || !ws) {
+				return;
 			}
+			this.send({ command: "PING", params: [LAG_TOKEN_PREFIX + Date.now()] });
+			// Cleared by the PONG, which schedules the next check
+			this.lagTimeoutID = setTimeout(() => {
+				this.handlePongTimeout(ws);
+			}, PONG_TIMEOUT_MSEC);
 		}, delay);
+	}
+
+	handlePongTimeout(ws: WebSocket): void {
+		if (this.ws !== ws) {
+			return;
+		}
+		console.warn(`No PONG in ${PONG_TIMEOUT_MSEC / 1000} seconds, dropping the connection`);
+		ws.close();
+		// The close event may never come on a dead connection
+		this.handleClose(ws, WEBSOCKET_CLOSE_CODES.ABNORMAL_CLOSURE);
 	}
 
 	disconnect(): void {
