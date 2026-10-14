@@ -676,7 +676,8 @@ export function getMaxPrivmsgLen(isupport: Isupport, nick: string, target: strin
 	const prefix = { name: nick, user, host };
 	const msg = { prefix, command: "PRIVMSG", params: [target, ""] };
 	const raw = formatMessage(msg) + "\r\n";
-	return isupport.lineLen() - raw.length;
+	// LINELEN counts bytes, nicks and channel names may be non-ASCII
+	return isupport.lineLen() - byteLength(raw);
 }
 
 const textEncoder = new TextEncoder();

@@ -361,6 +361,8 @@ describe("misc helpers", () => {
 		const is = new irc.Isupport();
 		const len = irc.getMaxPrivmsgLen(is, "nick", "#chan");
 		expect(len).toBe(512 - ":nick!".length - 20 - 1 - 63 - " PRIVMSG #chan :\r\n".length);
+		// "é" takes 2 bytes
+		expect(irc.getMaxPrivmsgLen(is, "nick", "#chané")).toBe(len - 2);
 	});
 
 	it("chunks targets by count and byte length", () => {
