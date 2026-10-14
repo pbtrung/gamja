@@ -885,6 +885,25 @@ describe("AppController notifications", () => {
 			vi.unstubAllGlobals();
 		}
 	});
+
+	it("doesn't notify for the buffer being read", async () => {
+		const shown = stubNotifications();
+		const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+		let t = Date.UTC(2040, 0, 1);
+		const at = (line: string) => `@time=${new Date(t++).toISOString()} ${line}`;
+		const { app, recv } = await connectedApp({ caps: "batch server-time message-tags" });
+		recv(":me!u@h JOIN #c", ":me!u@h JOIN #d");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		recv(at(":bob!u@h PRIVMSG #c :hi me"));
+		expect(shown).toEqual([]);
+		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
+		recv(at(":bob!u@h PRIVMSG #d :hi me"));
+		expect(shown).toEqual(["New highlight from bob in #d"]);
+		hasFocus.mockReturnValue(false);
+		recv(at(":bob!u@h PRIVMSG #c :me again"));
+		expect(shown).toHaveLength(2);
+	});
 });
 
 describe("AppController chat history", () => {

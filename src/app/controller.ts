@@ -708,6 +708,11 @@ export default class AppController {
 		return Unread.MESSAGE;
 	}
 
+	/** Whether the user is looking at a buffer right now. */
+	isBufferVisible(id: number): boolean {
+		return this.state.activeBuffer === id && document.hasFocus() && document.visibilityState !== "hidden";
+	}
+
 	/** Show a desktop notification for a new PRIVMSG or NOTICE, if enabled. */
 	notifyChatMessage(serverID: number, bufName: string, msg: Message, unread: Unread): void {
 		const client = this.clients.get(serverID)!;
@@ -716,6 +721,10 @@ export default class AppController {
 		const notify = level === "all" ? !muted : level === "mentions" && unread === Unread.HIGHLIGHT;
 		if (unread === Unread.NONE || !notify || irc.parseCTCP(msg)) {
 			return;
+		}
+		const buf = S.getBuffer(this.state, { server: serverID, name: bufName });
+		if (buf && this.isBufferVisible(buf.id)) {
+			return; // The user is reading it already
 		}
 
 		const from = msg.prefix?.name ?? "*";
@@ -830,7 +839,7 @@ export default class AppController {
 		let prevReadReceipt = buf.prevReadReceipt;
 		const receipts: store.Receipts = { [ReceiptType.DELIVERED]: S.receiptFromMessage(msg) };
 
-		if (this.state.activeBuffer !== buf.id || !document.hasFocus()) {
+		if (!this.isBufferVisible(buf.id)) {
 			unread = S.unionUnread(unread, msgUnread);
 		} else {
 			receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
