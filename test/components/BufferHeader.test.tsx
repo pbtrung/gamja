@@ -190,6 +190,14 @@ describe("BufferHeader", () => {
 		await userEvent.keyboard("{ArrowDown}{Enter}");
 		expect(props.onDetach).toHaveBeenCalled();
 		expect(screen.queryByRole("menu")).toBeNull();
+		// Choosing with the keyboard gives the focus back to the toggle
+		expect(more).toHaveFocus();
+		// Tab closes the menu and moves on from the toggle
+		await userEvent.keyboard("{Enter}");
+		expect(screen.getAllByRole("menuitem")[0]).toHaveFocus();
+		await userEvent.tab({ shift: true });
+		expect(screen.queryByRole("menu")).toBeNull();
+		expect(screen.getByRole("button", { name: "Open member list" })).toHaveFocus();
 		// Focus only goes back to the toggle for keyboard users
 		await userEvent.click(more);
 		await userEvent.keyboard("{Escape}");

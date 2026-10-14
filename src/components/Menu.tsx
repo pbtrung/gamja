@@ -121,7 +121,11 @@ export default function Menu({
 	});
 
 	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+		if (event.key === "Tab") {
+			// Leave the menu from its toggle: the focus moves on from there
+			setPosition(null);
+			toggleRef.current?.focus();
+		} else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 			event.preventDefault();
 			const l = menuItems();
 			const i = l.indexOf(document.activeElement as HTMLElement);
@@ -162,8 +166,14 @@ export default function Menu({
 								role={checked === undefined ? "menuitem" : "menuitemradio"}
 								aria-checked={checked}
 								className={"action-menu-item" + (danger ? " danger" : "")}
-								onClick={() => {
+								onClick={(event) => {
 									setPosition(null);
+									// The item unmounts: keyboard users would be left
+									// with the focus on the page. Before onClick(), which
+									// may move it elsewhere, e.g. to a dialog.
+									if (event.detail === 0) {
+										toggleRef.current?.focus();
+									}
 									onClick();
 								}}
 							>
