@@ -71,4 +71,13 @@ describe("config helpers", () => {
 		await expect(fetchConfig()).resolves.toEqual({ server: {} });
 		expect(err).toHaveBeenCalledTimes(2);
 	});
+
+	it("ignores a config.json that isn't an object", async () => {
+		const err = vi.spyOn(console, "error").mockImplementation(() => {});
+		for (const body of ["null", "42", '"x"', "[]", '{"server":null}']) {
+			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+			await expect(fetchConfig()).resolves.toEqual({ server: {} });
+		}
+		expect(err).toHaveBeenCalledTimes(4);
+	});
 });

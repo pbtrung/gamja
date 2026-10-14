@@ -20,14 +20,21 @@ export async function fetchConfig(url = "./config.json"): Promise<Config> {
 	try {
 		const resp = await fetch(url);
 		if (resp.ok) {
-			config = await resp.json();
+			const data: unknown = await resp.json();
+			// e.g. "null" would leave the UI loading forever
+			if (data && typeof data === "object" && !Array.isArray(data)) {
+				config = data;
+			} else {
+				console.error("Failed to fetch config: not a JSON object");
+			}
 		} else if (resp.status !== 404) {
 			console.error("Failed to fetch config: HTTP error:", resp.status, resp.statusText);
 		}
 	} catch (err) {
 		console.error("Failed to fetch config:", err);
 	}
-	return { ...config, server: { ...config.server } };
+	const server = config.server && typeof config.server === "object" ? config.server : {};
+	return { ...config, server: { ...server } };
 }
 
 export function parseQueryString(search: string): Record<string, string> {
