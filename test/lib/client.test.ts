@@ -643,6 +643,43 @@ describe("commands", () => {
 		expect(ws.sent).toEqual(["MONITOR + alice"]);
 	});
 
+	it("sends pending MONITOR targets when room is made", () => {
+		const { client, ws } = register("", "CASEMAPPING=rfc1459 CHANTYPES=# MONITOR=2");
+		client.monitor("a");
+		client.monitor("b");
+		client.monitor("c");
+		client.monitor("d");
+		ws.takeSent();
+		// Never sent, nothing to remove on the server
+		client.unmonitor("d");
+		expect(ws.sent).toEqual([]);
+		client.unmonitor("a");
+		expect(ws.sent).toEqual(["MONITOR - a", "MONITOR + c"]);
+		expect(client.monitored.get("c")).toBe(true);
+	});
+
+	it("handles a full monitor list", () => {
+		const { client, ws } = register("", "CASEMAPPING=rfc1459 CHANTYPES=# MONITOR=10");
+		client.monitor("a");
+		client.monitor("b");
+		ws.takeSent();
+		const errors = vi.fn();
+		client.addEventListener("error", errors);
+		const internal: boolean[] = [];
+		client.addEventListener("message", (e) => internal.push((e as CustomEvent).detail.message.internal));
+		ws.receive(":srv 734 me 10 b :Monitor list is full.");
+		expect(internal).toEqual([true]);
+		expect(client.monitored.get("b")).toBe(false);
+		expect(errors).not.toHaveBeenCalled();
+		// The server's list has room for a single target
+		client.monitor("c");
+		expect(ws.sent).toEqual([]);
+		client.unmonitor("b");
+		expect(ws.sent).toEqual([]);
+		client.unmonitor("a");
+		expect(ws.sent).toEqual(["MONITOR - a", "MONITOR + c"]);
+	});
+
 	it("splits the re-sent MONITOR list by TARGMAX", () => {
 		const { client, ws } = register();
 		client.monitor("alice");

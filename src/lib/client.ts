@@ -286,7 +286,10 @@ export default class Client extends EventTarget {
 		CHATHISTORY: Promise.resolve(null),
 	};
 	cm: irc.CaseMapFn = irc.CaseMapping.RFC1459;
+	/** Monitored targets, true once sent to the server, false while pending */
 	monitored = new irc.CaseMapMap<boolean>(null, irc.CaseMapping.RFC1459);
+	/** Size of the server's monitor list, if smaller than advertised */
+	monitorLimit = Infinity;
 	pendingLists = new irc.CaseMapMap<Message[]>(null, irc.CaseMapping.RFC1459);
 	whoxQueries = new Map<string, string>();
 	/** Message handlers of pending roundtrips */
@@ -411,6 +414,7 @@ export default class Client extends EventTarget {
 		this.isupport = new irc.Isupport();
 		this.cm = irc.CaseMapping.RFC1459;
 		this.monitored = new irc.CaseMapMap(null, this.cm);
+		this.monitorLimit = Infinity;
 		this.pendingLists = new irc.CaseMapMap(null, this.cm);
 		this.whoxQueries = new Map();
 		this.sentAway = null;
@@ -586,19 +590,23 @@ export default class Client extends EventTarget {
 				this.scheduleLagCheck(LAG_FIRST_DELAY_MSEC);
 				break;
 			case irc.RPL_ISUPPORT: {
-				const prevMaxMonitorTargets = this.isupport.monitor();
-
 				const tokens = msg.params.slice(1, -1);
 				this.isupport.parse(tokens);
 				this.updateCaseMapping();
-
-				const maxMonitorTargets = this.isupport.monitor();
-				if (prevMaxMonitorTargets === 0 && this.monitored.size > 0 && maxMonitorTargets > 0) {
-					const targets = Array.from(this.monitored.keys()).slice(0, maxMonitorTargets);
-					for (const chunk of irc.chunkTargets(targets, this.isupport.targMax("MONITOR"))) {
-						this.send({ command: "MONITOR", params: ["+", chunk.join(",")] });
+				// The server may have started supporting MONITOR
+				this.sendPendingMonitor();
+				break;
+			}
+			case irc.ERR_MONLISTFULL: {
+				// The list is shorter than advertised, e.g. shared with other
+				// clients by a bouncer: wait for unmonitor() to make room
+				for (const target of (msg.params[2] ?? "").split(",")) {
+					if (this.monitored.has(target)) {
+						this.monitored.set(target, false);
 					}
 				}
+				this.monitorLimit = Array.from(this.monitored.values()).filter((sent) => sent).length;
+				msg.internal = true;
 				break;
 			}
 			case irc.RPL_ENDOFMOTD:
@@ -1402,28 +1410,47 @@ export default class Client extends EventTarget {
 			return;
 		}
 
-		this.monitored.set(target, true);
-
 		// TODO: add poll-based fallback when MONITOR is not supported
-		if (this.monitored.size > this.isupport.monitor()) {
-			return;
-		}
-
-		this.send({ command: "MONITOR", params: ["+", target] });
+		this.monitored.set(target, false);
+		this.sendPendingMonitor();
 	}
 
 	unmonitor(target: string): void {
-		if (!this.monitored.has(target)) {
+		const sent = this.monitored.get(target);
+		if (sent === undefined) {
 			return;
 		}
 
 		this.monitored.delete(target);
 
-		if (this.isupport.monitor() <= 0) {
+		if (sent) {
+			this.send({ command: "MONITOR", params: ["-", target] });
+			// Make use of the freed slot
+			this.sendPendingMonitor();
+		}
+	}
+
+	/** Send the pending monitored targets, as far as the server's limit allows. */
+	sendPendingMonitor(): void {
+		let room = Math.min(this.isupport.monitor(), this.monitorLimit);
+		const pending: string[] = [];
+		for (const [target, sent] of this.monitored) {
+			if (sent) {
+				room--;
+			} else {
+				pending.push(target);
+			}
+		}
+		const targets = pending.slice(0, Math.max(0, room));
+		if (targets.length === 0) {
 			return;
 		}
-
-		this.send({ command: "MONITOR", params: ["-", target] });
+		for (const target of targets) {
+			this.monitored.set(target, true);
+		}
+		for (const chunk of irc.chunkTargets(targets, this.isupport.targMax("MONITOR"))) {
+			this.send({ command: "MONITOR", params: ["+", chunk.join(",")] });
+		}
 	}
 
 	createBouncerNetwork(attrs: BouncerNetworkAttrs): Promise<string> {
