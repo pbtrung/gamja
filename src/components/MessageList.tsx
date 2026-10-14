@@ -24,6 +24,7 @@ import {
 } from "../format";
 import Membership from "./Membership";
 import Nick from "./Nick";
+import { useAppState } from "../app/context";
 import useMediaQuery from "./useMediaQuery";
 import RichText, { type LinkClickHandler } from "./RichText";
 import MessageActions, { Reactions } from "./MessageActions";
@@ -95,7 +96,7 @@ function makeNick(ctx: Context) {
 			<Nick
 				key={key}
 				nick={nick}
-				user={ctx.server.users.get(nick)}
+				serverID={ctx.buffer.server}
 				bouncerNetwork={ctx.bouncerNetwork}
 				onClick={ctx.onNickClick}
 			/>
@@ -204,6 +205,12 @@ function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandl
 		a.canReply === b.canReply &&
 		a.canRedact === b.canRedact
 	);
+}
+
+/** Tagged as a bot by the message itself or by WHO replies */
+function BotBadge({ serverID, nick, tagged }: { serverID: number; nick: string; tagged: boolean }) {
+	const isBot = useAppState((s) => Boolean(s.servers.get(serverID)?.users.get(nick)?.bot));
+	return tagged || isBot ? <span className="tag-badge">bot</span> : null;
 }
 
 function Avatar({ nick }: { nick: string }) {
@@ -612,9 +619,11 @@ const LogLine = memo(
 						{isGroupedChat && group === "first" && (
 							<div className="logline-header">
 								{createNick(from)}
-								{(msg.tags.bot !== undefined || ctx.server.users.get(from)?.bot) && (
-									<span className="tag-badge">bot</span>
-								)}
+								<BotBadge
+									serverID={buf.server}
+									nick={from}
+									tagged={msg.tags.bot !== undefined}
+								/>
 								<Timestamp date={date} url={url} showSeconds={showSeconds} />
 							</div>
 						)}
@@ -648,8 +657,7 @@ const LogLine = memo(
 		prev.ctx.bouncerNetwork === next.ctx.bouncerNetwork &&
 		// Used for message URLs and STATUSMSG prefixes
 		prev.ctx.buffer.name === next.ctx.buffer.name &&
-		prev.ctx.server.statusMsg === next.ctx.server.statusMsg &&
-		prev.ctx.server.users === next.ctx.server.users,
+		prev.ctx.server.statusMsg === next.ctx.server.statusMsg,
 );
 
 function createNickList(

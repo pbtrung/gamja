@@ -1,8 +1,12 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as irc from "../../src/lib/irc";
 import MessageList from "../../src/components/MessageList";
+import { ControllerContext } from "../../src/app/context";
+import type AppController from "../../src/app/controller";
+import { createAppStore, type AppStore } from "../../src/app/store";
 import {
 	BufferType,
 	ServerStatus,
@@ -11,6 +15,7 @@ import {
 	type Server,
 	type Settings,
 	type TargetMetadata,
+	type User,
 } from "../../src/state";
 
 let key = 0;
@@ -52,6 +57,16 @@ function server(patch: Partial<Server> = {}): Server {
 		metadata: new irc.CaseMapMap(null, irc.CaseMapping.RFC1459),
 		...patch,
 	};
+}
+
+// Nicks look users up in the application state
+let appStore: AppStore;
+beforeEach(() => {
+	appStore = createAppStore();
+});
+function wrapper({ children }: { children: ReactNode }) {
+	const app = { store: appStore } as unknown as AppController;
+	return <ControllerContext.Provider value={app}>{children}</ControllerContext.Provider>;
 }
 
 function buffer(messages: irc.Message[], patch: Partial<Buffer> = {}): Buffer {
@@ -111,6 +126,7 @@ function renderList(
 			actions={opts.actions ? actions : undefined}
 			{...handlers}
 		/>,
+		{ wrapper },
 	);
 	return { ...utils, handlers, actions };
 }
@@ -461,6 +477,7 @@ it("offers to retry failed history fetches", async () => {
 			onVerifyClick={() => {}}
 			onRetryHistory={onRetryHistory}
 		/>,
+		{ wrapper },
 	);
 	expect(screen.getByRole("alert")).toHaveTextContent("Failed to load older messages.");
 	await userEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -542,6 +559,21 @@ describe("comfortable layout", () => {
 			(el) => el.querySelector(".tag-badge")?.textContent ?? null,
 		);
 		expect(badges).toEqual(["bot", null]);
+	});
+
+	it("follows user updates from the application state", () => {
+		const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
+			settings: { layout: "comfortable" },
+		});
+		const nick = screen.getByRole("link", { name: "bob" });
+		expect(nick).not.toHaveAttribute("title");
+		expect(container.querySelector(".tag-badge")).toBeNull();
+
+		const users = new irc.CaseMapMap<User>(null, irc.CaseMapping.RFC1459);
+		users.set("bob", { nick: "bob", realname: "Bob Bot", bot: true });
+		act(() => appStore.setState({ servers: new Map([[1, server({ users })]]) }));
+		expect(nick).toHaveAttribute("title", "Bob Bot");
+		expect(container.querySelector(".tag-badge")).toHaveTextContent("bot");
 	});
 
 	it("starts a new group for replies and folds events", () => {
