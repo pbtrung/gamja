@@ -19,6 +19,7 @@ import {
 import DialogActions from "./DialogActions";
 import Dialog from "../Dialog";
 import Menu from "../Menu";
+import Switch from "./Switch";
 import {
 	BufferEventsDisplayMode,
 	type MessageLayout,
@@ -72,15 +73,13 @@ function ToggleRow({ name, label, hint, checked, disabled, onChange }: ToggleRow
 					</span>
 				)}
 			</div>
-			<input
+			<Switch
 				id={id + "-input"}
-				className="switch"
-				type="checkbox"
 				name={name}
 				checked={checked}
 				disabled={disabled}
 				aria-describedby={hint ? id + "-hint" : undefined}
-				onChange={(e) => onChange(e.target.checked)}
+				onChange={onChange}
 			/>
 		</div>
 	);

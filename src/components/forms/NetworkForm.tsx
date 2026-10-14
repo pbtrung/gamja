@@ -3,6 +3,7 @@ import { Check, ChevronRight, Plus, Server, Trash } from "lucide-react";
 import DialogActions from "./DialogActions";
 import type { BouncerNetwork } from "../../state";
 import Field from "./Field";
+import { SwitchRow } from "./Switch";
 
 const defaultParams = {
 	name: "",
@@ -75,17 +76,9 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 			/>
 
 			{autojoin && (
-				<label className="switch-row">
-					<span>
-						Auto-join channel <strong>{autojoin}</strong>
-					</span>
-					<input
-						type="checkbox"
-						className="switch"
-						checked={doAutojoin}
-						onChange={(e) => setDoAutojoin(e.target.checked)}
-					/>
-				</label>
+				<SwitchRow checked={doAutojoin} onChange={setDoAutojoin}>
+					Auto-join channel <strong>{autojoin}</strong>
+				</SwitchRow>
 			)}
 
 			<details className="advanced-options">
@@ -95,16 +88,13 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 
 				<div className="advanced-body">
 					<Field label="Port" type="number" {...param("port")} min={1} max={65535} />
-					<label className="switch-row">
-						<span>Use TLS (encrypted connection)</span>
-						<input
-							type="checkbox"
-							className="switch"
-							name="tls"
-							checked={form.tls !== "0"}
-							onChange={(e) => setForm((f) => ({ ...f, tls: e.target.checked ? "1" : "0" }))}
-						/>
-					</label>
+					<SwitchRow
+						name="tls"
+						checked={form.tls !== "0"}
+						onChange={(checked) => setForm((f) => ({ ...f, tls: checked ? "1" : "0" }))}
+					>
+						Use TLS (encrypted connection)
+					</SwitchRow>
 					<Field label="Network name" {...param("name")} />
 					<Field label="Nickname" {...param("nickname")} />
 					<Field label="Username" {...param("username")} />

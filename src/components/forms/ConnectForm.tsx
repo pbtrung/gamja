@@ -18,6 +18,7 @@ import { resolveServerURL } from "../../app/config";
 import { Linkified } from "../RichText";
 import IconButton from "../IconButton";
 import Field from "./Field";
+import { SwitchRow } from "./Switch";
 
 interface ConnectFormProps {
 	params: ConnectParams;
@@ -169,33 +170,25 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 
 				<div className="connect-options">
 					{channels.length > 0 && (
-						<label className="switch-row">
-							<span>
-								Auto-join channel{channels.length > 1 ? "s" : ""}{" "}
-								<strong>{channels.join(", ")}</strong>
-							</span>
-							<input
-								type="checkbox"
-								className="switch"
-								name="autojoin"
-								checked={form.autojoin}
-								disabled={connecting}
-								onChange={(e) => set("autojoin", e.target.checked)}
-							/>
-						</label>
+						<SwitchRow
+							name="autojoin"
+							checked={form.autojoin}
+							disabled={connecting}
+							onChange={(checked) => set("autojoin", checked)}
+						>
+							Auto-join channel{channels.length > 1 ? "s" : ""}{" "}
+							<strong>{channels.join(", ")}</strong>
+						</SwitchRow>
 					)}
 
-					<label className="switch-row">
-						<span>Remember me</span>
-						<input
-							type="checkbox"
-							className="switch"
-							name="rememberMe"
-							checked={form.rememberMe}
-							disabled={connecting}
-							onChange={(e) => set("rememberMe", e.target.checked)}
-						/>
-					</label>
+					<SwitchRow
+						name="rememberMe"
+						checked={form.rememberMe}
+						disabled={connecting}
+						onChange={(checked) => set("rememberMe", checked)}
+					>
+						Remember me
+					</SwitchRow>
 				</div>
 
 				<details className="advanced-options">
