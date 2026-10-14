@@ -1203,7 +1203,11 @@ export default class Client extends EventTarget {
 		});
 	}
 
-	async join(channel: string, password?: string): Promise<void> {
+	/**
+	 * Join a channel. Resolves with the name of the channel joined, which
+	 * differs from the requested one when the server forwarded us elsewhere.
+	 */
+	async join(channel: string, password?: string): Promise<string> {
 		const params = [channel];
 		if (password) {
 			params.push(password);
@@ -1212,18 +1216,24 @@ export default class Client extends EventTarget {
 			command: "JOIN",
 			params,
 		};
-		await this.roundtrip(msg, (msg) => {
+		const targets = [this.cm(channel)];
+		return this.roundtrip(msg, (msg) => {
 			switch (msg.command) {
+				case irc.ERR_LINKCHANNEL:
+					// The JOIN that follows is for the channel we're forwarded to
+					if (this.cm(msg.params[1]) === targets[0] && msg.params[2]) {
+						targets.push(this.cm(msg.params[2]));
+					}
+					break;
 				case irc.ERR_NOSUCHCHANNEL:
 				case irc.ERR_TOOMANYCHANNELS:
 				case irc.ERR_BADCHANNELKEY:
 				case irc.ERR_BANNEDFROMCHAN:
 				case irc.ERR_CHANNELISFULL:
 				case irc.ERR_INVITEONLYCHAN:
-				case irc.ERR_LINKCHANNEL:
 				case irc.ERR_BADCHANMASK:
 				case irc.ERR_NEEDREGGEDNICK:
-					if (this.cm(msg.params[1]) === this.cm(channel)) {
+					if (targets.includes(this.cm(msg.params[1]))) {
 						throw new IRCError(msg);
 					}
 					break;
@@ -1231,9 +1241,9 @@ export default class Client extends EventTarget {
 					if (
 						msg.prefix &&
 						this.isMyNick(msg.prefix.name) &&
-						this.cm(msg.params[0]) === this.cm(channel)
+						targets.includes(this.cm(msg.params[0]))
 					) {
-						return true;
+						return msg.params[0];
 					}
 					break;
 			}

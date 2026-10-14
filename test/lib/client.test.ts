@@ -391,10 +391,23 @@ describe("commands", () => {
 		const p = client.join("#chan", "key");
 		expect(ws.sent).toEqual(["JOIN #chan key"]);
 		ws.receive(":Me!u@h JOIN #CHAN");
-		await expect(p).resolves.toBeUndefined();
+		await expect(p).resolves.toBe("#CHAN");
 
 		const p2 = client.join("#banned");
 		ws.receive(":srv 474 me #banned :Cannot join channel (+b)");
+		await expect(p2).rejects.toThrow("Cannot join channel (+b)");
+	});
+
+	it("follows channel forwards on join", async () => {
+		const { client, ws } = register();
+		const p = client.join("#old");
+		ws.receive(":srv 470 me #old #new :Forwarding to another channel");
+		ws.receive(":me!u@h JOIN #new");
+		await expect(p).resolves.toBe("#new");
+
+		const p2 = client.join("#old");
+		ws.receive(":srv 470 me #old #new :Forwarding to another channel");
+		ws.receive(":srv 474 me #new :Cannot join channel (+b)");
 		await expect(p2).rejects.toThrow("Cannot join channel (+b)");
 	});
 
