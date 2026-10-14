@@ -34,6 +34,24 @@ function scrollToBottom(el: HTMLElement): void {
 	el.scrollTop = el.scrollHeight;
 }
 
+function firstVisibleAnchor(el: HTMLElement, stickTo: string): Anchor | null {
+	const top = el.getBoundingClientRect().top;
+	for (const child of el.querySelectorAll<HTMLElement>(stickTo)) {
+		const childTop = child.getBoundingClientRect().top;
+		if (childTop >= top && child.dataset.key) {
+			return { key: child.dataset.key, offset: childTop - top };
+		}
+	}
+	return null;
+}
+
+/** Save the scroll position of a key, returns whether it's at the bottom. */
+function savePosition(el: HTMLElement, scrollKey: unknown, stickTo: string): boolean {
+	const atBottom = isAtBottom(el);
+	positions.set(scrollKey, atBottom ? null : firstVisibleAnchor(el, stickTo));
+	return atBottom;
+}
+
 /**
  * Scrollable chat log container. Sticks to the bottom when new messages
  * arrive, keeps the first visible message in place when older messages are
@@ -59,24 +77,13 @@ export default function ChatScroller({
 		onScrollTopRef.current = onScrollTop;
 	});
 
-	function firstVisibleAnchor(el: HTMLElement): Anchor | null {
-		const top = el.getBoundingClientRect().top;
-		for (const child of el.querySelectorAll<HTMLElement>(stickTo)) {
-			const childTop = child.getBoundingClientRect().top;
-			if (childTop >= top && child.dataset.key) {
-				return { key: child.dataset.key, offset: childTop - top };
-			}
-		}
-		return null;
-	}
-
 	function save(el: HTMLElement) {
-		stickToBottom.current = isAtBottom(el);
-		positions.set(scrollKey, stickToBottom.current ? null : firstVisibleAnchor(el));
+		stickToBottom.current = savePosition(el, scrollKey, stickTo);
 	}
 
-	// Restore the position after every render: either the buffer changed or
-	// messages were added
+	// Restore the position when the content changes: either the buffer
+	// changed or messages were added. Size changes while sticking to the
+	// bottom are handled by the resize observer below.
 	useLayoutEffect(() => {
 		const el = ref.current;
 		if (!el) {
@@ -88,7 +95,7 @@ export default function ChatScroller({
 				el.scrollTop +=
 					target.getBoundingClientRect().top - el.getBoundingClientRect().top - el.clientHeight / 3;
 				flash(target);
-				save(el);
+				stickToBottom.current = savePosition(el, scrollKey, stickTo);
 				onJumped?.();
 				return;
 			}
@@ -110,7 +117,7 @@ export default function ChatScroller({
 		if (el.scrollTop === 0) {
 			onScrollTopRef.current();
 		}
-	});
+	}, [scrollKey, jumpTo, onJumped, stickTo, children]);
 
 	useEffect(() => {
 		const el = ref.current;
