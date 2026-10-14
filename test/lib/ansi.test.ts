@@ -30,6 +30,24 @@ describe("ansi", () => {
 		expect(parse("\x0303,04\x16x")[0].style).toMatchObject({ fg: 4, bg: 3 });
 	});
 
+	it("toggles reverse color back", () => {
+		const styles = parse("a\x16b\x16c").map((seg) => seg.style);
+		expect(styles[1]).toMatchObject({ fg: 0, bg: 1 });
+		expect(styles[2]).toEqual({ fg: undefined, bg: undefined });
+
+		const colored = parse("\x0303,04a\x16b\x16c").map((seg) => seg.style);
+		expect(colored[2]).toEqual({ fg: 3, bg: 4 });
+
+		// Colors changed while reversed get swapped back
+		const changed = parse("a\x16\x0305b\x16c").map((seg) => seg.style);
+		expect(changed[1]).toEqual({ fg: 5, bg: 1 });
+		expect(changed[2]).toEqual({ fg: undefined, bg: 5 });
+
+		// Reset ends the reverse
+		const reset = parse("\x16a\x0f\x16b").map((seg) => seg.style);
+		expect(reset[1]).toEqual({ fg: 0, bg: 1 });
+	});
+
 	it("resolves CSS colors", () => {
 		expect(cssColor(4)).toBe("#ff0000");
 		expect(cssColor("#123456")).toBe("#123456");

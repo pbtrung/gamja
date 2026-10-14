@@ -41,6 +41,8 @@ export function parse(text: string): Segment[] {
 	const segments: Segment[] = [];
 	let style: Style = {};
 	let cur = "";
+	// Colors from before the reverse toggle, and the ones it swapped in
+	let reversed: (Pick<Style, "fg" | "bg"> & { swapped: Pick<Style, "fg" | "bg"> }) | null = null;
 
 	const flush = () => {
 		if (cur) {
@@ -72,9 +74,24 @@ export function parse(text: string): Segment[] {
 				update({ monospace: !style.monospace });
 				break;
 			case REVERSE_COLOR:
-				update({ fg: style.bg ?? 0, bg: style.fg ?? 1 });
+				if (!reversed) {
+					// Default colors are assumed to be black on white
+					const patch = { fg: style.bg ?? 0, bg: style.fg ?? 1 };
+					reversed = { fg: style.fg, bg: style.bg, swapped: patch };
+					update(patch);
+				} else {
+					// Swap back, restoring the colors from before the reverse
+					// if they didn't change since
+					const { fg, bg, swapped } = reversed;
+					update({
+						fg: style.bg === swapped.bg ? fg : style.bg,
+						bg: style.fg === swapped.fg ? bg : style.fg,
+					});
+					reversed = null;
+				}
 				break;
 			case RESET:
+				reversed = null;
 				update(null);
 				break;
 			case COLOR: {
