@@ -272,7 +272,13 @@ function Dialogs({ state }: { state: AppState }) {
 				<Dialog
 					title="Set away"
 					icon={Moon}
-					description="Shown to others on all networks"
+					description={
+						// soju keeps the message to itself, and only tells the
+						// networks once all of our clients are away
+						[...state.servers.values()].some((s) => s.isBouncer || s.bouncerNetID)
+							? "With soju, others see you away once all your clients are, without this message"
+							: "Shown to others on all networks"
+					}
 					onDismiss={dismiss}
 					size="sm"
 				>
