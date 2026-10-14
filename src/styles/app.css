@@ -1,3 +1,11 @@
+/*
+ * Breakpoints (media queries can't use variables):
+ * - 640px: small screens, where the side panels cover the whole screen
+ *   (also SMALL_SCREEN in components/useMediaQuery.ts)
+ * - 720px: the connect page stacks its columns
+ * - 1024px: header actions only show their icon
+ */
+
 /* Base */
 
 *,
