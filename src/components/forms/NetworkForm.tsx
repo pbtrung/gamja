@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { Check, ChevronRight, Plus, Server, Trash } from "lucide-react";
 import type { BouncerNetwork } from "../../state";
+import Field from "./Field";
 
 const defaultParams = {
 	name: "",
@@ -54,36 +55,23 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 		onSubmit(attrs, doAutojoin && autojoin ? autojoin : null);
 	}
 
-	const input = (k: keyof Params, type: string, extra: Record<string, unknown>) => (
-		<input
-			type={type}
-			id={"network-" + k}
-			name={k}
-			value={form[k]}
-			onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
-			{...extra}
-		/>
-	);
-	const field = (k: keyof Params, label: string, type = "text", extra: Record<string, unknown> = {}) => (
-		<div className="field">
-			<label htmlFor={"network-" + k}>{label}</label>
-			{input(k, type, extra)}
-		</div>
-	);
+	// Props of the field editing a parameter
+	const param = (k: keyof Params) => ({
+		name: k,
+		value: form[k],
+		onChange: (e: ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value })),
+	});
 
 	return (
 		<form onSubmit={handleSubmit}>
-			<div className="field">
-				<label htmlFor="network-host">Hostname</label>
-				<div className="input-with-icon">
-					<Server aria-hidden="true" />
-					{input("host", "text", {
-						required: true,
-						autoFocus: true,
-						placeholder: "irc.libera.chat",
-					})}
-				</div>
-			</div>
+			<Field
+				label="Hostname"
+				icon={Server}
+				{...param("host")}
+				required
+				autoFocus
+				placeholder="irc.libera.chat"
+			/>
 
 			{autojoin && (
 				<label className="switch-row">
@@ -105,7 +93,7 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 				</summary>
 
 				<div className="advanced-body">
-					{field("port", "Port", "number", { min: 1, max: 65535 })}
+					<Field label="Port" type="number" {...param("port")} min={1} max={65535} />
 					<label className="switch-row">
 						<span>Use TLS (encrypted connection)</span>
 						<input
@@ -116,11 +104,11 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 							onChange={(e) => setForm((f) => ({ ...f, tls: e.target.checked ? "1" : "0" }))}
 						/>
 					</label>
-					{field("name", "Network name")}
-					{field("nickname", "Nickname")}
-					{field("username", "Username")}
-					{field("realname", "Real name")}
-					{field("pass", "Server password", "password", { placeholder: "None" })}
+					<Field label="Network name" {...param("name")} />
+					<Field label="Nickname" {...param("nickname")} />
+					<Field label="Username" {...param("username")} />
+					<Field label="Real name" {...param("realname")} />
+					<Field label="Server password" type="password" {...param("pass")} placeholder="None" />
 				</div>
 			</details>
 

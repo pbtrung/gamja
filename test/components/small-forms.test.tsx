@@ -5,6 +5,8 @@ import AuthForm from "../../src/components/forms/AuthForm";
 import RegisterForm from "../../src/components/forms/RegisterForm";
 import VerifyForm from "../../src/components/forms/VerifyForm";
 import ConfirmOpenBuffer from "../../src/components/forms/ConfirmOpenBuffer";
+import Field from "../../src/components/forms/Field";
+import { KeyRound } from "lucide-react";
 
 describe("account forms", () => {
 	it("logs in", async () => {
@@ -48,5 +50,31 @@ describe("account forms", () => {
 		expect(onSubmit).toHaveBeenCalled();
 		rerender(<ConfirmOpenBuffer name="bob" isChannel={false} networkName={null} onSubmit={onSubmit} />);
 		expect(screen.getByText(/user/)).toHaveTextContent("Do you want to open a new buffer for user bob?");
+	});
+});
+
+describe("Field", () => {
+	it("labels its input, with an optional icon and action", () => {
+		const { container } = render(
+			<>
+				<Field label="Plain" />
+				<Field
+					label="Fancy"
+					icon={KeyRound}
+					type="password"
+					action={<button type="button">Go</button>}
+				/>
+			</>,
+		);
+		const plain = screen.getByLabelText("Plain");
+		expect(plain).toHaveAttribute("type", "text");
+		expect(plain.closest(".input-with-icon")).toBeNull();
+		const fancy = screen.getByLabelText("Fancy");
+		expect(fancy).toHaveAttribute("type", "password");
+		expect(fancy.parentElement).toHaveClass("input-with-icon");
+		expect(fancy.parentElement!.querySelector("svg")).toBeInTheDocument();
+		expect(fancy.nextElementSibling).toHaveTextContent("Go");
+		// Each gets its own ID
+		expect(new Set([...container.querySelectorAll("input")].map((el) => el.id)).size).toBe(2);
 	});
 });

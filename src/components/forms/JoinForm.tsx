@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { LogIn, MessagesSquare } from "lucide-react";
+import Field from "./Field";
 
 export default function JoinForm({
 	channel,
@@ -17,21 +18,15 @@ export default function JoinForm({
 
 	return (
 		<form onSubmit={handleSubmit}>
-			<div className="field">
-				<label htmlFor="join-channel">Channel</label>
-				<div className="input-with-icon">
-					<MessagesSquare aria-hidden="true" />
-					<input
-						type="text"
-						id="join-channel"
-						name="channel"
-						value={value}
-						onChange={(e) => setValue(e.target.value)}
-						autoFocus
-						required
-					/>
-				</div>
-			</div>
+			<Field
+				label="Channel"
+				icon={MessagesSquare}
+				name="channel"
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+				autoFocus
+				required
+			/>
 
 			<div className="dialog-actions">
 				<button type="submit" className="btn btn-primary">

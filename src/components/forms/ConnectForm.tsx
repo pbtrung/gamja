@@ -17,6 +17,7 @@ import type { ConnectParams } from "../../app/store";
 import { resolveServerURL } from "../../app/config";
 import { Linkified } from "../RichText";
 import IconButton from "../IconButton";
+import Field from "./Field";
 
 interface ConnectFormProps {
 	params: ConnectParams;
@@ -130,40 +131,31 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 					)}
 				</div>
 
-				<div className="field">
-					<label htmlFor="connect-nick">Nickname</label>
-					<div className="input-with-icon">
-						<User aria-hidden="true" />
-						<input
-							type="text"
-							id="connect-nick"
-							name="nick"
-							autoComplete="username"
-							value={form.nick}
-							disabled={connecting}
-							onChange={(e) => set("nick", e.target.value)}
-							required
-							autoFocus
-						/>
-					</div>
-				</div>
+				<Field
+					label="Nickname"
+					icon={User}
+					name="nick"
+					autoComplete="username"
+					value={form.nick}
+					disabled={connecting}
+					onChange={(e) => set("nick", e.target.value)}
+					required
+					autoFocus
+				/>
 
 				{askPassword && (
-					<div className="field">
-						<label htmlFor="connect-password">Password</label>
-						<div className="input-with-icon">
-							<KeyRound aria-hidden="true" />
-							<input
-								type={showPassword ? "text" : "password"}
-								id="connect-password"
-								name="password"
-								autoComplete="current-password"
-								value={form.password}
-								disabled={connecting}
-								required={auth === "mandatory"}
-								placeholder={auth !== "mandatory" ? "Optional" : undefined}
-								onChange={(e) => set("password", e.target.value)}
-							/>
+					<Field
+						label="Password"
+						icon={KeyRound}
+						type={showPassword ? "text" : "password"}
+						name="password"
+						autoComplete="current-password"
+						value={form.password}
+						disabled={connecting}
+						required={auth === "mandatory"}
+						placeholder={auth !== "mandatory" ? "Optional" : undefined}
+						onChange={(e) => set("password", e.target.value)}
+						action={
 							<IconButton
 								icon={showPassword ? EyeOff : Eye}
 								label={showPassword ? "Hide password" : "Show password"}
@@ -171,8 +163,8 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 								pressed={showPassword}
 								onClick={() => setShowPassword((v) => !v)}
 							/>
-						</div>
-					</div>
+						}
+					/>
 				)}
 
 				<div className="connect-options">
@@ -213,59 +205,44 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 
 					<div className="advanced-body">
 						{!params.url && (
-							<div className="field">
-								<label htmlFor="connect-url">Server URL</label>
-								<input
-									type="text"
-									id="connect-url"
-									name="url"
-									value={form.url}
-									disabled={connecting}
-									inputMode="url"
-									placeholder="wss://irc.example.org"
-									onChange={(e) => set("url", e.target.value)}
-								/>
-							</div>
+							<Field
+								label="Server URL"
+								name="url"
+								value={form.url}
+								disabled={connecting}
+								inputMode="url"
+								placeholder="wss://irc.example.org"
+								onChange={(e) => set("url", e.target.value)}
+							/>
 						)}
 
-						<div className="field">
-							<label htmlFor="connect-username">Username</label>
-							<input
-								type="text"
-								id="connect-username"
-								name="username"
-								value={form.username}
-								disabled={connecting}
-								placeholder="Same as nickname"
-								onChange={(e) => set("username", e.target.value)}
-							/>
-						</div>
+						<Field
+							label="Username"
+							name="username"
+							value={form.username}
+							disabled={connecting}
+							placeholder="Same as nickname"
+							onChange={(e) => set("username", e.target.value)}
+						/>
 
-						<div className="field">
-							<label htmlFor="connect-realname">Real name</label>
-							<input
-								type="text"
-								id="connect-realname"
-								name="realname"
-								value={form.realname}
-								disabled={connecting}
-								placeholder="Same as nickname"
-								onChange={(e) => set("realname", e.target.value)}
-							/>
-						</div>
+						<Field
+							label="Real name"
+							name="realname"
+							value={form.realname}
+							disabled={connecting}
+							placeholder="Same as nickname"
+							onChange={(e) => set("realname", e.target.value)}
+						/>
 
-						<div className="field">
-							<label htmlFor="connect-pass">Server password</label>
-							<input
-								type="password"
-								id="connect-pass"
-								name="pass"
-								value={form.pass}
-								disabled={connecting}
-								placeholder="None"
-								onChange={(e) => set("pass", e.target.value)}
-							/>
-						</div>
+						<Field
+							label="Server password"
+							type="password"
+							name="pass"
+							value={form.pass}
+							disabled={connecting}
+							placeholder="None"
+							onChange={(e) => set("pass", e.target.value)}
+						/>
 					</div>
 				</details>
 

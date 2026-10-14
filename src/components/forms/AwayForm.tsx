@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Moon } from "lucide-react";
+import Field from "./Field";
 
 export default function AwayForm({
 	message,
@@ -17,18 +18,14 @@ export default function AwayForm({
 
 	return (
 		<form onSubmit={handleSubmit}>
-			<div className="field">
-				<label htmlFor="away-message">Message</label>
-				<input
-					type="text"
-					id="away-message"
-					name="message"
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					onFocus={(e) => e.target.select()}
-					autoFocus
-				/>
-			</div>
+			<Field
+				label="Message"
+				name="message"
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+				onFocus={(e) => e.target.select()}
+				autoFocus
+			/>
 
 			<div className="dialog-actions">
 				<button type="submit" className="btn btn-primary">
