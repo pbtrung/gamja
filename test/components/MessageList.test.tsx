@@ -536,24 +536,78 @@ describe("blocked users", () => {
 	});
 });
 
-describe("comfortable layout", () => {
-	it("uses the compact style on small screens", () => {
-		vi.stubGlobal(
-			"matchMedia",
-			(query: string) =>
-				({
-					matches: query === "(max-width: 640px)",
-					addEventListener() {},
-					removeEventListener() {},
-				}) as unknown as MediaQueryList,
+describe("columns layout", () => {
+	it("puts senders and event arrows in their own column", () => {
+		const { container } = renderList(
+			[
+				msg(":bob!u@h PRIVMSG #c :hello"),
+				msg(":bob!u@h NOTICE #c :psst"),
+				msg(":bob!u@h PRIVMSG #c :\x01ACTION waves\x01"),
+				msg(":carol!u@h JOIN #c"),
+				msg(":carol!u@h PART #c"),
+			],
+			{ settings: { layout: "columns", bufferEvents: "expand" } },
 		);
-		const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
-			settings: { layout: "comfortable" },
-		});
-		expect(container.querySelector(".comfortable")).toBeNull();
-		expect(lines(container)).toEqual(["<bob> hi"]);
-		vi.unstubAllGlobals();
+		const rows = [...container.querySelectorAll(".logline.columns")].map((el) => [
+			el.querySelector(".logline-prefix")!.textContent,
+			el.querySelector(".logline-content")!.textContent,
+		]);
+		expect(rows).toEqual([
+			["bob", "hello"],
+			["-bob-", "psst"],
+			["*", "bob waves"],
+			["-->", "carol has joined"],
+			["<--", "carol has left"],
+		]);
 	});
+});
+
+describe("bubbles layout", () => {
+	it("puts our own messages apart and names senders once per group", () => {
+		const { container } = renderList(
+			[
+				msg(":bob!u@h PRIVMSG #c :one", "2030-01-01T12:00:00.000Z"),
+				msg(":bob!u@h PRIVMSG #c :two", "2030-01-01T12:01:00.000Z"),
+				msg(":me!u@h PRIVMSG #c :mine", "2030-01-01T12:02:00.000Z"),
+				msg(":carol!u@h JOIN #c", "2030-01-01T12:03:00.000Z"),
+			],
+			{ settings: { layout: "bubbles", bufferEvents: "expand" }, server: { nick: "me" } },
+		);
+		const rows = [...container.querySelectorAll(".logline.bubbles")].map((el) => [
+			el.classList.contains("event") ? "event" : el.classList.contains("mine") ? "mine" : "other",
+			el.querySelector(".bubble-sender")?.textContent ?? null,
+			el.querySelector(".logline-content")!.textContent,
+		]);
+		expect(rows).toEqual([
+			["other", "bob", "one"],
+			["other", null, "two"],
+			["mine", null, "mine"],
+			["event", null, "carol has joined"],
+		]);
+	});
+});
+
+describe("comfortable layout", () => {
+	it.each(["comfortable", "columns", "bubbles"] as const)(
+		"uses the compact style on small screens (%s)",
+		(layout) => {
+			vi.stubGlobal(
+				"matchMedia",
+				(query: string) =>
+					({
+						matches: query === "(max-width: 640px)",
+						addEventListener() {},
+						removeEventListener() {},
+					}) as unknown as MediaQueryList,
+			);
+			const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
+				settings: { layout },
+			});
+			expect(container.querySelector(`.${layout}`)).toBeNull();
+			expect(lines(container)).toEqual(["<bob> hi"]);
+			vi.unstubAllGlobals();
+		},
+	);
 
 	it("groups consecutive messages from the same sender", () => {
 		const { container } = renderList(

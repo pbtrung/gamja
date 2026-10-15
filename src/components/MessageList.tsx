@@ -188,8 +188,21 @@ interface LogLineProps {
 	parent?: Message | null;
 	/** Whether the message this one replies to was deleted */
 	parentRedacted?: boolean;
-	/** Position in a group of messages from the same sender (comfortable layout) */
+	/** Position in a group of messages from the same sender (comfortable and bubbles layouts) */
 	group?: "first" | "continuation";
+}
+
+/** WeeChat-style prefix of event lines in the columns layout */
+function eventPrefix(command: string, lineClass: string): string {
+	switch (command) {
+		case "JOIN":
+			return "-->";
+		case "PART":
+		case "QUIT":
+		case "KICK":
+			return "<--";
+	}
+	return lineClass.includes("error") ? "=!=" : "--";
 }
 
 /** Messages from the same sender closer than this are grouped. */
@@ -635,6 +648,81 @@ const LogLine = memo(
 			);
 		}
 
+		if (ctx.settings.layout === "columns") {
+			let prefix: ReactNode;
+			let body = content;
+			if (chatBody === null) {
+				prefix = eventPrefix(msg.command, lineClass);
+				lineClass += " event";
+			} else if (lineClass.includes("me-tell")) {
+				prefix = "*";
+				body = (
+					<>
+						{createNick(from)} {chatBody}
+					</>
+				);
+			} else if (msg.command === "NOTICE") {
+				prefix = <>-{createNick(from)}-</>;
+				body = chatBody;
+			} else {
+				prefix = createNick(from);
+				body = chatBody;
+			}
+			return (
+				<div
+					className={`logline columns ${lineClass}`}
+					data-key={msg.key}
+					data-msgid={msgid ?? undefined}
+				>
+					<Timestamp date={date} url={url} showSeconds={showSeconds} />
+					<span className="logline-prefix">{prefix}</span>
+					<div className="logline-main">
+						{quote}
+						<span className="logline-content">{body}</span>
+						{reactionsEl}
+					</div>
+					{actionsEl}
+				</div>
+			);
+		}
+
+		if (ctx.settings.layout === "bubbles") {
+			if (chatBody === null) {
+				return (
+					<div
+						className={`logline bubbles event ${lineClass}`}
+						data-key={msg.key}
+						data-msgid={msgid ?? undefined}
+					>
+						<span className="logline-content">{content}</span>
+					</div>
+				);
+			}
+			const mine = Boolean(server.nick) && server.cm(from) === server.cm(server.nick!);
+			const isAction = lineClass.includes("me-tell");
+			return (
+				<div
+					className={`logline bubbles ${lineClass} group-${group ?? "first"}${mine ? " mine" : ""}`}
+					data-key={msg.key}
+					data-msgid={msgid ?? undefined}
+				>
+					{group !== "continuation" && !mine && (
+						<div className="bubble-sender">
+							{createNick(from)}
+							<BotBadge serverID={buf.server} nick={from} tagged={msg.tags.bot !== undefined} />
+						</div>
+					)}
+					<div className="bubble">
+						{quote}
+						<span className="logline-content">{isAction ? content : chatBody}</span>
+						<Timestamp date={date} url={url} showSeconds={false} />
+					</div>
+					{reactionsEl}
+					{actionsEl}
+				</div>
+			);
+		}
+
 		return (
 			<div className={`logline ${lineClass}`} data-key={msg.key} data-msgid={msgid ?? undefined}>
 				{quote}
@@ -657,7 +745,9 @@ const LogLine = memo(
 		prev.ctx.bouncerNetwork === next.ctx.bouncerNetwork &&
 		// Used for message URLs and STATUSMSG prefixes
 		prev.ctx.buffer.name === next.ctx.buffer.name &&
-		prev.ctx.server.statusMsg === next.ctx.server.statusMsg,
+		prev.ctx.server.statusMsg === next.ctx.server.statusMsg &&
+		// Own messages are told apart in the bubbles layout
+		prev.ctx.server.nick === next.ctx.server.nick,
 );
 
 function createNickList(
@@ -765,6 +855,30 @@ function FoldGroup({ messages: msgs, ctx }: { messages: Message[]; ctx: Context 
 				<div className="logline-main">
 					<div className="logline-content">{content}</div>
 				</div>
+			</div>
+		);
+	}
+
+	if (ctx.settings.layout === "columns") {
+		return (
+			<div className="logline columns event fold-group" data-key={msgs[0].key}>
+				<Timestamp
+					date={firstDate}
+					url={getMessageURL(ctx.buffer, msgs[0], ctx.bouncerNetwork)}
+					showSeconds={showSeconds}
+				/>
+				<span className="logline-prefix">--</span>
+				<div className="logline-main">
+					<span className="logline-content">{content}</span>
+				</div>
+			</div>
+		);
+	}
+
+	if (ctx.settings.layout === "bubbles") {
+		return (
+			<div className="logline bubbles event fold-group" data-key={msgs[0].key}>
+				<span className="logline-content">{content}</span>
 			</div>
 		);
 	}
@@ -915,12 +1029,12 @@ interface MessageListProps extends MessageListHandlers {
 
 function MessageList(props: MessageListProps) {
 	const { buffer: buf, server } = props;
-	// Small screens have no room for avatars and sender headers: use the
-	// compact style there, whatever the setting
+	// Small screens have no room for avatars, sender columns or bubbles: use
+	// the compact style there, whatever the setting
 	const smallScreen = useMediaQuery(SMALL_SCREEN);
 	const settings = useMemo<Settings>(
 		() =>
-			smallScreen && props.settings.layout === "comfortable"
+			smallScreen && props.settings.layout !== "compact"
 				? { ...props.settings, layout: "compact" }
 				: props.settings,
 		[smallScreen, props.settings],
@@ -989,10 +1103,11 @@ function MessageList(props: MessageListProps) {
 		children.push(<AccountNagger key="nag-account" ctx={ctx} />);
 	}
 
-	// Group consecutive messages from the same sender in the comfortable layout
+	// Group consecutive messages from the same sender in the comfortable and
+	// bubbles layouts
 	let lastChat: Message | null = null;
 	const groupOf = (msg: Message): "first" | "continuation" | undefined => {
-		if (settings.layout !== "comfortable") {
+		if (settings.layout !== "comfortable" && settings.layout !== "bubbles") {
 			return undefined;
 		}
 		const isChat = msg.command === "PRIVMSG" || msg.command === "NOTICE";

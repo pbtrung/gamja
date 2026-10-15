@@ -169,6 +169,16 @@ const layouts: { value: MessageLayout; label: string; hint: string }[] = [
 		label: "Compact",
 		hint: "Classic IRC, one line per message",
 	},
+	{
+		value: "columns",
+		label: "Columns",
+		hint: "WeeChat style, senders aligned in a column",
+	},
+	{
+		value: "bubbles",
+		label: "Bubbles",
+		hint: "Messenger style, your messages on the right",
+	},
 ];
 
 function LayoutPreview({ layout }: { layout: MessageLayout }) {
@@ -184,6 +194,33 @@ function LayoutPreview({ layout }: { layout: MessageLayout }) {
 						</span>
 					</span>
 				))}
+			</span>
+		);
+	}
+	if (layout === "columns") {
+		return (
+			<span className="layout-preview columns" aria-hidden="true">
+				{["70%", "45%", "85%", "55%"].map((width, i) => (
+					<span className="layout-preview-row" key={i}>
+						<span className="layout-preview-time" />
+						<span className="layout-preview-prefix">
+							<span
+								className="layout-preview-line name"
+								style={{ width: i % 2 ? "1.5rem" : "2.25rem" }}
+							/>
+						</span>
+						<span className="layout-preview-line" style={{ width }} />
+					</span>
+				))}
+			</span>
+		);
+	}
+	if (layout === "bubbles") {
+		return (
+			<span className="layout-preview bubbles" aria-hidden="true">
+				<span className="layout-preview-bubble" style={{ width: "55%" }} />
+				<span className="layout-preview-bubble mine" style={{ width: "45%" }} />
+				<span className="layout-preview-bubble" style={{ width: "35%" }} />
 			</span>
 		);
 	}

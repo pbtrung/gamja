@@ -16,7 +16,7 @@ test("opens the buffer list from the header on small screens", async ({ page, co
 	await expect(page.locator("#composer textarea")).not.toBeFocused();
 });
 
-for (const layout of ["comfortable", "compact"] as const) {
+for (const layout of ["comfortable", "compact", "columns", "bubbles"] as const) {
 	test(`hides message times on small screens (${layout})`, async ({ page, connect, bot, settings }) => {
 		await settings({ layout });
 		const bob = await bot("bob");
@@ -30,8 +30,8 @@ for (const layout of ["comfortable", "compact"] as const) {
 		for (const ts of times) {
 			await expect(ts).toBeHidden();
 		}
-		// No room for avatars and sender headers: the compact style is used
-		await expect(page.locator("#buffer .logline.comfortable")).toHaveCount(0);
+		// No room for avatars, sender columns or bubbles: the compact style is used
+		await expect(page.locator("#buffer .logline:is(.comfortable, .columns, .bubbles)")).toHaveCount(0);
 	});
 }
 

@@ -53,12 +53,15 @@ export const BufferEventsDisplayMode = {
 } as const;
 export type BufferEventsDisplayMode = (typeof BufferEventsDisplayMode)[keyof typeof BufferEventsDisplayMode];
 
-export type MessageLayout = "comfortable" | "compact";
+export type MessageLayout = "comfortable" | "compact" | "columns" | "bubbles";
 
 export interface Settings {
 	/** Color theme ID, see themes.ts */
 	theme: string;
-	/** Comfortable groups messages under the sender's name, compact is classic IRC */
+	/**
+	 * Comfortable groups messages under the sender's name, compact is classic
+	 * IRC, columns aligns senders like WeeChat, bubbles is messenger-style
+	 */
 	layout: MessageLayout;
 	secondsInTimestamps: boolean;
 	bufferEvents: BufferEventsDisplayMode;
