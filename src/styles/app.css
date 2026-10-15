@@ -804,10 +804,6 @@ input.switch:focus-visible {
 	opacity: 0.8;
 }
 
-.layout-preview-line.name.repeated {
-	visibility: hidden;
-}
-
 .layout-preview-time {
 	flex-shrink: 0;
 	width: 1.25rem;
@@ -1775,17 +1771,6 @@ li.unread-highlight .unread-indicator,
 	text-align: right;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-/* Repeated senders are left out, like WeeChat does, but show on hover */
-#buffer .logline.columns.group-continuation .logline-prefix.nick > * {
-	opacity: 0;
-	transition: opacity var(--transition);
-}
-
-#buffer .logline.columns.group-continuation:hover .logline-prefix.nick > *,
-#buffer .logline.columns.group-continuation:focus-within .logline-prefix.nick > * {
-	opacity: 0.5;
 }
 
 #buffer .logline.columns .logline-prefix.info,

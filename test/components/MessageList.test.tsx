@@ -561,7 +561,7 @@ describe("columns layout", () => {
 		]);
 	});
 
-	it("leaves out repeated senders", () => {
+	it("spaces out changes of sender", () => {
 		const { container } = renderList(
 			[
 				msg(":bob!u@h PRIVMSG #c :one", "2030-01-01T12:00:00.000Z"),

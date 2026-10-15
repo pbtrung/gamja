@@ -204,9 +204,8 @@ function LayoutPreview({ layout }: { layout: MessageLayout }) {
 					<span className="layout-preview-row" key={i}>
 						<span className="layout-preview-time" />
 						<span className="layout-preview-prefix">
-							{/* Repeated senders are left out */}
 							<span
-								className={`layout-preview-line name${i === 1 ? " repeated" : ""}`}
+								className="layout-preview-line name"
 								style={{ width: i < 2 ? "2.25rem" : "1.5rem" }}
 							/>
 						</span>
