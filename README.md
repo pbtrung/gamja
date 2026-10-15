@@ -13,7 +13,7 @@ Build gamja with [Vite]:
     npm run build
 
 Then [configure an HTTP server] to serve the files in `dist/`. The version
-shown in the UI comes from `git describe`; set `GAMJA_VERSION` to override it
+shown in the UI is the latest git tag; set `GAMJA_VERSION` to override it
 when building outside a git checkout.
 
 ### Development server

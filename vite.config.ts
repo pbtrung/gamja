@@ -20,13 +20,13 @@ function devCSP(): Plugin {
 	};
 }
 
-/** The version shown in the UI: GAMJA_VERSION, else from git, e.g. v1.2-3-gabcdef */
+/** The version shown in the UI: GAMJA_VERSION, else the latest git tag, e.g. v0.99.26 */
 function version(): string {
 	if (process.env.GAMJA_VERSION) {
 		return process.env.GAMJA_VERSION;
 	}
 	try {
-		return execFileSync("git", ["describe", "--tags", "--always"], { encoding: "utf8" }).trim();
+		return execFileSync("git", ["describe", "--tags", "--abbrev=0"], { encoding: "utf8" }).trim();
 	} catch {
 		return "dev";
 	}
