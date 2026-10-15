@@ -204,9 +204,10 @@ function LayoutPreview({ layout }: { layout: MessageLayout }) {
 					<span className="layout-preview-row" key={i}>
 						<span className="layout-preview-time" />
 						<span className="layout-preview-prefix">
+							{/* Repeated senders are left out */}
 							<span
-								className="layout-preview-line name"
-								style={{ width: i % 2 ? "1.5rem" : "2.25rem" }}
+								className={`layout-preview-line name${i === 1 ? " repeated" : ""}`}
+								style={{ width: i < 2 ? "2.25rem" : "1.5rem" }}
 							/>
 						</span>
 						<span className="layout-preview-line" style={{ width }} />
@@ -218,9 +219,12 @@ function LayoutPreview({ layout }: { layout: MessageLayout }) {
 	if (layout === "bubbles") {
 		return (
 			<span className="layout-preview bubbles" aria-hidden="true">
-				<span className="layout-preview-bubble" style={{ width: "55%" }} />
+				<span className="layout-preview-group">
+					<span className="layout-preview-avatar" />
+					<span className="layout-preview-bubble" style={{ width: "55%" }} />
+				</span>
+				<span className="layout-preview-bubble joined" style={{ width: "35%" }} />
 				<span className="layout-preview-bubble mine" style={{ width: "45%" }} />
-				<span className="layout-preview-bubble" style={{ width: "35%" }} />
 			</span>
 		);
 	}

@@ -560,6 +560,21 @@ describe("columns layout", () => {
 			["<--", "carol has left"],
 		]);
 	});
+
+	it("leaves out repeated senders", () => {
+		const { container } = renderList(
+			[
+				msg(":bob!u@h PRIVMSG #c :one", "2030-01-01T12:00:00.000Z"),
+				msg(":bob!u@h PRIVMSG #c :two", "2030-01-01T12:01:00.000Z"),
+				msg(":carol!u@h PRIVMSG #c :three", "2030-01-01T12:02:00.000Z"),
+			],
+			{ settings: { layout: "columns" } },
+		);
+		const groups = [...container.querySelectorAll(".logline.columns")].map((el) =>
+			el.classList.contains("group-continuation"),
+		);
+		expect(groups).toEqual([false, true, false]);
+	});
 });
 
 describe("bubbles layout", () => {

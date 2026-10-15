@@ -203,3 +203,41 @@ test("account dialog screenshots", async ({ page, connect }) => {
 	await page.getByRole("link", { name: "register", exact: true }).click();
 	await shotDialog(page, "register");
 });
+
+for (const layout of ["columns", "bubbles"] as const) {
+	test(`${layout} conversation screenshots`, async ({ page, connect, bot, settings }) => {
+		await settings({ theme: "system", layout });
+		await page.setViewportSize({ width: 1100, height: 700 });
+		const bob = await bot("bob");
+		const carol = await bot("carol");
+		await bob.join("#layout");
+		await connect(page, "tester", { channels: ["#layout"] });
+		await carol.join("#layout");
+		bob.privmsg("#layout", "hi everyone!");
+		bob.privmsg("#layout", "anyone tried the new layouts?");
+		carol.privmsg("#layout", "hey bob, check https://soju.im");
+		await page.getByRole("textbox", { name: "Type a message" }).fill("tester here, they look nice");
+		await page.keyboard.press("Enter");
+		await page.getByRole("textbox", { name: "Type a message" }).fill("a second line from me");
+		await page.keyboard.press("Enter");
+		bob.privmsg(
+			"#layout",
+			"tester: glad you like them, this one is a longer message to see how wrapping works when the text goes over more than a single line of the window",
+		);
+		carol.send("PRIVMSG #layout :\x01ACTION waves\x01");
+		bob.send("NOTICE #layout :a notice for the channel");
+		const line = page.locator("#buffer .logline", { hasText: "glad you like" });
+		await expect(line).toHaveAttribute("data-msgid", /.+/);
+		const msgid = await line.getAttribute("data-msgid");
+		carol.send(`@+draft/react=🎉;+draft/reply=${msgid} TAGMSG #layout`);
+		carol.privmsg("#layout", "indeed!", { "+draft/reply": msgid! });
+		await expect(page.locator("#buffer")).toContainText("indeed!");
+		for (const scheme of ["light", "dark"] as const) {
+			await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+			await page.mouse.move(0, 0);
+			await page.screenshot({ path: `${dir()}/layout-${layout}-${scheme}.png` });
+		}
+		await page.locator("#buffer .logline", { hasText: "hey bob" }).hover();
+		await page.screenshot({ path: `${dir()}/layout-${layout}-hover.png` });
+	});
+}
