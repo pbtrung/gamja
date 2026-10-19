@@ -308,7 +308,7 @@ export default class AppController {
 			connectParams.nick = queryParams.nick;
 		}
 		if (typeof queryParams.channels === "string") {
-			autojoin = queryParams.channels.split(",");
+			autojoin = queryParams.channels.split(",").filter(Boolean);
 		}
 		if (typeof queryParams.open === "string") {
 			this.autoOpenURL = irc.parseURL(queryParams.open);
@@ -323,7 +323,7 @@ export default class AppController {
 			if (window.location.hash.startsWith("#/")) {
 				this.initialRoute = parseWindowHash(window.location.hash);
 			} else {
-				autojoin = window.location.hash.split(",");
+				autojoin = window.location.hash.split(",").filter(Boolean);
 			}
 		}
 

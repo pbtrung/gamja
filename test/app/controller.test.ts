@@ -12,7 +12,7 @@ function buf(app: AppController, name: string) {
 
 describe("AppController configuration", () => {
 	it("fills connect params from config and URL", async () => {
-		window.history.replaceState(null, "", "/?nick=guest-*&channels=%23a,%23b&debug=1");
+		window.history.replaceState(null, "", "/?nick=guest-*&channels=%23a,,%23b,&debug=1");
 		const app = new AppController();
 		await app.handleConfig({ server: { url: "wss://cfg/socket", autojoin: "#cfg", ping: 30 } });
 		const params = app.state.connectParams;
