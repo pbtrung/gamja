@@ -44,12 +44,6 @@ function KeyBindingsHelp() {
 			</div>
 			<div>
 				<dt>
-					<kbd>Shift</kbd> <kbd>Enter</kbd>
-				</dt>
-				<dd>Insert a new line</dd>
-			</div>
-			<div>
-				<dt>
 					<kbd>Escape</kbd>
 				</dt>
 				<dd>Cancel the reply being written</dd>
