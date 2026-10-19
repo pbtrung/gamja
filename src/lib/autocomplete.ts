@@ -50,7 +50,8 @@ export function computeAutocomplete(
 			prefix: text.slice(0, wordStart),
 			suffix: text.slice(wordEnd),
 			replacements,
-			replIndex: -1,
+			// Stepped below: to the first replacement, or back to the last one
+			replIndex: backwards ? 0 : -1,
 		};
 	}
 

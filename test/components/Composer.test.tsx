@@ -51,6 +51,13 @@ describe("Composer", () => {
 		expect(input).toHaveValue("alice: ");
 	});
 
+	it("tab-completes backwards from the last match", async () => {
+		const { input } = setup();
+		await userEvent.type(input, "al");
+		await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+		expect(input).toHaveValue("albert: ");
+	});
+
 	it("starts typing from anywhere on the page", async () => {
 		const { input } = setup();
 		input.blur();
