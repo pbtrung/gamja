@@ -47,7 +47,11 @@ interface MenuProps {
 	toggleLabel?: string;
 	toggleIcon?: LucideIcon;
 	toggleClassName?: string;
-	/** Shown in the toggle after its icon */
+	/**
+	 * Shown in the toggle after its icon. They name the toggle, so they must
+	 * contain its label: the visible text has to be part of the accessible
+	 * name (WCAG 2.5.3).
+	 */
 	children?: ReactNode;
 	placement?: MenuPlacement;
 	onClose?: () => void;
@@ -162,7 +166,7 @@ export default function Menu({
 					type="button"
 					className={toggleClassName}
 					title={toggleLabel}
-					aria-label={toggleLabel}
+					aria-label={children ? undefined : toggleLabel}
 					aria-haspopup="menu"
 					aria-expanded={open}
 					onClick={toggle}

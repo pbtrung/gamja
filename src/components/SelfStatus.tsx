@@ -19,13 +19,14 @@ export default function SelfStatus({ nick, awayMessage, onSetAway, onBack }: Sel
 			]
 		: [{ key: "away", icon: Moon, label: "Set away…", onClick: onSetAway }];
 	const status = away ? `Away: ${awayMessage}` : "Online";
+	const label = `${nick}, ${status}. Change status`;
 
 	return (
 		<div className="self-status">
 			<Menu
 				items={items}
 				label="Status"
-				toggleLabel={`${nick}, ${status}. Change status`}
+				toggleLabel={label}
 				toggleClassName="self-status-toggle"
 				placement="above-start"
 			>
@@ -33,10 +34,15 @@ export default function SelfStatus({ nick, awayMessage, onSetAway, onBack }: Sel
 					{nickInitial(nick)}
 					<span className={"presence " + (away ? "away" : "here")} />
 				</span>
-				<span className="self-status-text" aria-hidden="true">
-					<span className="self-status-nick">{nick}</span>
+				{/* Names the toggle, read as the label */}
+				<span className="self-status-text">
+					<span className="self-status-nick">
+						{nick}
+						<span className="visually-hidden">,</span>
+					</span>{" "}
 					<span className="self-status-away">{status}</span>
 				</span>
+				<span className="visually-hidden">. Change status</span>
 			</Menu>
 		</div>
 	);
