@@ -1604,7 +1604,8 @@ export default class AppController {
 				if (
 					this.autoOpenURL &&
 					this.autoOpenURL.host &&
-					!this.findBouncerNetIDByHost(this.autoOpenURL.host)
+					// The URL may have a port, the networks' hosts don't
+					!this.findBouncerNetIDByHost(splitHostPort(this.autoOpenURL.host).host)
 				) {
 					this.openURL(this.autoOpenURL);
 					this.autoOpenURL = null;
@@ -1731,7 +1732,7 @@ export default class AppController {
 		joinChannels(client, join);
 
 		const serverHost = bouncerNetwork?.host ?? "";
-		if (this.autoOpenURL && serverHost === this.autoOpenURL.host) {
+		if (this.autoOpenURL && serverHost === splitHostPort(this.autoOpenURL.host).host) {
 			const url = this.autoOpenURL;
 			this.autoOpenURL = null;
 

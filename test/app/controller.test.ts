@@ -4,6 +4,7 @@ import { getBuffer, createBuffer, createServer, SERVER_BUFFER, Unread, BufferTyp
 import * as store from "../../src/store";
 import AppController from "../../src/app/controller";
 import { FakeWebSocket, installFakeWebSocket } from "../helpers/fake-ws";
+import * as irc from "../../src/lib/irc";
 
 function buf(app: AppController, name: string) {
 	return getBuffer(app.state, { name });
@@ -684,6 +685,23 @@ describe("bouncer networks", () => {
 		await p;
 		expect(app.state.dialog).toMatchObject({ kind: "network" });
 		expect(app.state.error).toBe("Invalid host");
+	});
+});
+
+describe("opening irc:// URLs", () => {
+	it("opens URLs with a port on the existing bouncer network", async () => {
+		const { app, recv } = await connectedApp({
+			caps: "batch server-time message-tags labeled-response soju.im/bouncer-networks",
+		});
+		app.autoOpenURL = irc.parseURL("ircs://irc.libera.chat:6697/#soju");
+		recv(
+			":srv BATCH +n soju.im/bouncer-networks",
+			"@batch=n :srv BOUNCER NETWORK 1 name=Libera;host=irc.libera.chat;state=connected",
+			":srv BATCH -n",
+		);
+		// Not offered to add a network: opened once its connection is registered
+		expect(app.state.dialog).toBeNull();
+		expect(app.autoOpenURL).not.toBeNull();
 	});
 });
 
