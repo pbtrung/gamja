@@ -1098,6 +1098,10 @@ export default class Client extends EventTarget {
 				break;
 			case "NAK":
 				console.log("Server nak'ed caps:", args[0]);
+				// An AWAY sent before CAP END without it was rejected
+				if (args[0].toLowerCase().split(" ").includes("draft/pre-away")) {
+					this.sentAway = null;
+				}
 				break;
 		}
 	}
@@ -1109,7 +1113,7 @@ export default class Client extends EventTarget {
 		}
 		// draft/pre-away: don't appear present while reconnecting in the
 		// background. The REQ has been sent, the server handles it first
-		const away = this.caps.available.has("draft/pre-away") ? this.wantedAway(true) : null;
+		const away = this.caps.requested.has("draft/pre-away") ? this.wantedAway(true) : null;
 		if (away) {
 			this.send({ command: "AWAY", params: [away] });
 			this.sentAway = away;

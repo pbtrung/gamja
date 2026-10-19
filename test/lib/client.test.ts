@@ -794,6 +794,23 @@ describe("away", () => {
 		expect(take(ws)).toEqual(["AWAY *"]);
 	});
 
+	it("restores the away message after a draft/pre-away NAK", async () => {
+		const { client, ws } = connect({ saslPlain: { username: "u", password: "p" } });
+		client.awayMessage = "lunch";
+		take(ws);
+		ws.receive(":srv CAP * LS :sasl=PLAIN draft/pre-away");
+		ws.receive(
+			":srv CAP me NAK draft/pre-away",
+			"AUTHENTICATE +",
+			":srv 903 me :SASL authentication successful",
+		);
+		await flush();
+		// Not before CAP END: the server would reject it
+		expect(take(ws).filter((l) => l.startsWith("AWAY"))).toEqual([]);
+		ws.receive(":srv 001 me :Welcome");
+		expect(take(ws)).toContain("AWAY lunch");
+	});
+
 	it("doesn't go away on absence without draft/pre-away", () => {
 		const { client, ws } = connect();
 		client.present = false;
