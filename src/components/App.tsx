@@ -57,11 +57,7 @@ import VerifyForm from "./forms/VerifyForm";
 
 function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void }) {
 	return (
-		<Alert
-			id="error-msg"
-			className="toast"
-			action={<IconButton icon={X} label="Dismiss" onClick={onDismiss} />}
-		>
+		<Alert className="toast" action={<IconButton icon={X} label="Dismiss" onClick={onDismiss} />}>
 			{error}
 		</Alert>
 	);
