@@ -1,4 +1,5 @@
 import * as irc from "./lib/irc";
+import { ClientStatus } from "./lib/client";
 import type Client from "./lib/client";
 import { SERVER_BUFFER, BufferType, Unread, getBuffer, unionUnread, type TargetMetadata } from "./state";
 import type AppController from "./app/controller";
@@ -22,10 +23,17 @@ function textAfter(text: string, n: number): string {
 	return text;
 }
 
-function getActiveClient(app: AppController): Client {
+/**
+ * The client of the active server, once registered: before, servers reject
+ * most commands. Raw commands can be sent while registering.
+ */
+function getActiveClient(app: AppController, { registering = false } = {}): Client {
 	const client = app.getActiveClient();
-	if (!client) {
-		throw new Error("Not connected to server");
+	const ready =
+		client?.status === ClientStatus.REGISTERED ||
+		(registering && client?.status === ClientStatus.REGISTERING);
+	if (!client || !ready) {
+		throw new Error("Not connected to the server");
 	}
 	return client;
 }
@@ -303,7 +311,8 @@ const commandList: Command[] = [
 		name: "me",
 		usage: "<action>",
 		description: "Send an action message to the current buffer",
-		execute: (app, _args, action) => {
+		execute: (app, args, action) => {
+			requireArg(args, 0, "action");
 			const target = getActiveTarget(app);
 			const text = `\x01ACTION ${action}\x01`;
 			app.privmsg(target, text);
@@ -429,7 +438,7 @@ const commandList: Command[] = [
 			} catch (err) {
 				throw new Error("Failed to parse IRC command", { cause: err });
 			}
-			getActiveClient(app).send(msg);
+			getActiveClient(app, { registering: true }).send(msg);
 		},
 	},
 	{

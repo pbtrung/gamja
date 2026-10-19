@@ -183,6 +183,24 @@ describe("commands", () => {
 		expect(app.state.error).toBe("Server doesn't support changing the realname");
 	});
 
+	it("requires registration, except for raw commands", async () => {
+		const { app, sent } = await connectedApp({ register: false });
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		sent();
+		app.handleComposerSubmit("/join #c");
+		expect(app.state.error).toBe("Not connected to the server");
+		app.handleComposerSubmit("/quote CAP LS 302");
+		expect(sent()).toEqual(["CAP LS 302"]);
+	});
+
+	it("requires the text of an action", async () => {
+		const { app, sent } = await inChannel();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		app.handleComposerSubmit("/me");
+		expect(app.state.error).toBe("Missing action");
+		expect(sent()).toEqual([]);
+	});
+
 	it("requires a channel for channel commands", async () => {
 		const { app } = await connectedApp();
 		vi.spyOn(console, "error").mockImplementation(() => {});
