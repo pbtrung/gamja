@@ -22,8 +22,12 @@ export function notificationForMessage(msg: Message): PushNotification | null {
 	switch (msg.command) {
 		case "PRIVMSG":
 		case "NOTICE": {
-			const [target, text = ""] = msg.params;
-			const isChannel = /^[#&+!]/.test(target);
+			const [rawTarget, text = ""] = msg.params;
+			// Without the server's CHANTYPES and STATUSMSG at hand: skip the
+			// prefix of messages sent to the ops of a channel, e.g. @#chan
+			const channel = /^[~&@%+]*([#&+!].*)$/.exec(rawTarget)?.[1];
+			const isChannel = channel !== undefined;
+			const target = channel ?? rawTarget;
 			const ctcp = parseCTCP(msg);
 			if (ctcp && ctcp.command !== "ACTION") {
 				return null;

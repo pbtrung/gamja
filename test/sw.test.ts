@@ -18,6 +18,11 @@ describe("service worker notifications", () => {
 			tag: "msg:bob:me",
 			target: "bob",
 		});
+		expect(notificationForMessage(parseMessage(":bob!u@h PRIVMSG @#c :ops"))).toMatchObject({
+			title: "bob in #c",
+			target: "#c",
+		});
+		expect(notificationForMessage(parseMessage(":bob!u@h PRIVMSG +c :hi"))?.target).toBe("+c");
 		expect(notificationForMessage(parseMessage(":bob!u@h PRIVMSG me :\x01ACTION waves\x01"))?.body).toBe(
 			"* bob waves",
 		);
