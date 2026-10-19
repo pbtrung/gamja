@@ -6,6 +6,7 @@
  *     node e2e/fake-ircd.ts 8081
  *     open http://localhost:8080/?server=ws://localhost:8081
  */
+import { pathToFileURL } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 
 const SERVER_NAME = "irc.fake.test";
@@ -1338,7 +1339,8 @@ export function startServer(opts: ServerOptions): FakeServer {
 	return new FakeServer(opts);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// import.meta.url is percent-encoded, e.g. with spaces in the path
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 	const port = parseInt(process.argv[2] || "8081", 10);
 	const server = startServer({
 		port,
