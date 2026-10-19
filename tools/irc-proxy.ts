@@ -1,6 +1,7 @@
 import * as tls from "node:tls";
 import type { Plugin } from "vite";
 import { WebSocketServer, type WebSocket } from "ws";
+import { splitHostPort } from "../src/app/config.ts";
 
 const WS_BAD_GATEWAY = 1014;
 
@@ -17,8 +18,9 @@ export default function ircProxy(remote: string | undefined): Plugin {
 				return;
 			}
 
-			const [host, portStr] = remote.split(":");
-			const port = portStr ? parseInt(portStr, 10) : 6697;
+			// Handles IPv6 literals, e.g. [::1]:6697
+			const { host, port: p } = splitHostPort(remote);
+			const port = p ?? 6697;
 
 			const wsServer = new WebSocketServer({ noServer: true });
 			server.httpServer.on("upgrade", (req, socket, head) => {
