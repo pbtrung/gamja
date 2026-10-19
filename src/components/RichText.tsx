@@ -67,7 +67,8 @@ interface RichTextProps {
 /** Render IRC-formatted text with links. */
 function RichText({ text, onLinkClick }: RichTextProps) {
 	const segments = parseFormatting(text);
-	if (segments.every((seg) => !seg.style || Object.values(seg.style).every((v) => !v))) {
+	// Colors are indices, 0 (white) included
+	if (segments.every((seg) => Object.values(seg.style).every((v) => v === undefined || v === false))) {
 		return <Linkified text={segments.map((s) => s.text).join("")} onLinkClick={onLinkClick} />;
 	}
 	return (

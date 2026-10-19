@@ -33,6 +33,15 @@ describe("RichText", () => {
 		expect(container.textContent).toBe("bold red italic");
 	});
 
+	it("renders white, color 0", () => {
+		const { container } = render(
+			<p>
+				<RichText text={"\x030white"} />
+			</p>,
+		);
+		expect(container.querySelector("span")?.style.color).toBe("rgb(255, 255, 255)");
+	});
+
 	it("linkifies plain text", () => {
 		render(
 			<p>
