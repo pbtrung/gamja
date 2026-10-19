@@ -1,4 +1,4 @@
-import { Unread, BufferType, compareUnread, type Buffer } from "./state";
+import { Unread, BufferType, compareUnread, displayedBuffers, type Buffer } from "./state";
 import type AppController from "./app/controller";
 
 interface KeyBinding {
@@ -9,9 +9,11 @@ interface KeyBinding {
 	execute: (app: AppController) => void;
 }
 
-function getSiblingBuffer(buffers: Map<number, Buffer>, bufID: number | null, delta: number): Buffer | null {
-	const bufList = Array.from(buffers.values());
-	let i = bufList.findIndex((buf) => buf.id === bufID);
+/** The buffer shown before or after the active one in the buffer list */
+function getSiblingBuffer(app: AppController, delta: number): Buffer | null {
+	const { buffers, servers, collapsedNetworks, activeBuffer } = app.state;
+	const bufList = displayedBuffers(buffers, servers, collapsedNetworks, activeBuffer);
+	let i = bufList.findIndex((buf) => buf.id === activeBuffer);
 	if (i < 0) {
 		return null;
 	}
@@ -66,7 +68,7 @@ export const keybindings: KeyBinding[] = [
 		altKey: true,
 		description: "Jump to the previous buffer",
 		execute: (app) => {
-			const prev = getSiblingBuffer(app.state.buffers, app.state.activeBuffer, -1);
+			const prev = getSiblingBuffer(app, -1);
 			if (prev) {
 				app.switchBuffer(prev.id);
 			}
@@ -77,7 +79,7 @@ export const keybindings: KeyBinding[] = [
 		altKey: true,
 		description: "Jump to the next buffer",
 		execute: (app) => {
-			const next = getSiblingBuffer(app.state.buffers, app.state.activeBuffer, 1);
+			const next = getSiblingBuffer(app, 1);
 			if (next) {
 				app.switchBuffer(next.id);
 			}

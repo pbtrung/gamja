@@ -34,6 +34,18 @@ describe("keybindings", () => {
 		expect(name()).toBe("#b");
 	});
 
+	it("navigates in the order of the buffer list", async () => {
+		const { app, cleanup, name } = await withBuffers();
+		// Pinned buffers come first
+		const server = [...app.state.servers.values()][0];
+		server.metadata.set("#b", { pinned: true });
+		press("ArrowDown", { altKey: true });
+		expect(name()).toBe("#b");
+		press("ArrowDown", { altKey: true });
+		expect(name()).toBe("#a");
+		cleanup();
+	});
+
 	it("jumps to activity and marks everything as read", async () => {
 		const { app, cleanup, name } = await withBuffers();
 		press("a", { altKey: true });

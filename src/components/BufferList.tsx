@@ -6,6 +6,7 @@ import {
 	BufferType,
 	Unread,
 	ServerStatus,
+	displayGroups,
 	getBufferURL,
 	getServerKey,
 	getServerName,
@@ -227,53 +228,6 @@ interface BufferListProps {
 	onBufferClick: (buf: Buffer) => void;
 	onBufferClose: (buf: Buffer) => void;
 	onToggleCollapse?: (buf: Buffer, all: boolean) => void;
-}
-
-interface Group {
-	server: Buffer[];
-	/** Buffers shown */
-	shown: Buffer[];
-	/** How many buffers hidden by collapsing have unread messages */
-	hiddenUnread: number;
-}
-
-/**
- * Buffers in display order, by server: pinned ones right after their
- * server's buffer, keeping the order of the others. Collapsed servers only
- * show pinned buffers, the active one and those with highlights: hidden
- * ones never have highlights.
- */
-function displayGroups(
-	buffers: Map<number, Buffer>,
-	servers: Map<number, Server>,
-	collapsed: ReadonlySet<string>,
-	activeBuffer: number | null,
-): Group[] {
-	const pinned = (buf: Buffer) =>
-		buf.type !== BufferType.SERVER &&
-		Boolean(getTargetMetadata(servers.get(buf.server), buf.name).pinned);
-	const byServer = new Map<number, Buffer[]>();
-	for (const buf of buffers.values()) {
-		byServer.set(buf.server, [...(byServer.get(buf.server) ?? []), buf]);
-	}
-	return [...byServer].map(([serverID, group]) => {
-		const server = servers.get(serverID);
-		const children = [
-			...group.filter(pinned),
-			...group.filter((buf) => buf.type !== BufferType.SERVER && !pinned(buf)),
-		];
-		const isCollapsed = server !== undefined && collapsed.has(getServerKey(server));
-		const visible = (buf: Buffer) =>
-			!isCollapsed || pinned(buf) || buf.id === activeBuffer || buf.unread === Unread.HIGHLIGHT;
-		return {
-			server: group.filter((buf) => buf.type === BufferType.SERVER),
-			shown: children.filter(visible),
-			hiddenUnread: children.filter(
-				(buf) =>
-					!visible(buf) && buf.unread !== Unread.NONE && !getTargetMetadata(server, buf.name).muted,
-			).length,
-		};
-	});
 }
 
 const noneCollapsed: ReadonlySet<string> = new Set();
