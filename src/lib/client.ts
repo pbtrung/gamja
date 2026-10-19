@@ -636,14 +636,6 @@ export default class Client extends EventTarget {
 				msg.internal = true;
 				break;
 			}
-			case irc.RPL_ENDOFMOTD:
-			case irc.ERR_NOMOTD:
-				// These messages are used to indicate the end of the ISUPPORT list
-				if (!this.isupport.raw.has("CASEMAPPING")) {
-					// Server didn't send any CASEMAPPING token, assume RFC 1459
-					this.updateCaseMapping();
-				}
-				break;
 			case "CAP":
 				this.handleCap(msg);
 				break;
