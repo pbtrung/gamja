@@ -1,6 +1,17 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures.ts";
 
 test.use({ serverOptions: { bouncer: true } });
+
+/**
+ * Open the bound network's buffer, once its connection is registered: the
+ * tab comes from the bouncer's network list before, with a read-only
+ * composer dropping the keys typed.
+ */
+async function openFakeNet(page: Page) {
+	await page.getByRole("tablist", { name: "Buffer list" }).getByRole("tab", { name: "FakeNet" }).click();
+	await expect(page.locator("#composer")).not.toHaveClass(/read-only/);
+}
 
 test("lists, adds, edits and removes bouncer networks", async ({ page, connect, bot }) => {
 	const bob = await bot("bob");
@@ -13,7 +24,7 @@ test("lists, adds, edits and removes bouncer networks", async ({ page, connect, 
 	await expect(tabs.getByRole("tab", { name: "FakeNet" })).toBeVisible();
 
 	// The bound connection works like a regular server
-	await tabs.getByRole("tab", { name: "FakeNet" }).click();
+	await openFakeNet(page);
 	await page.keyboard.type("/join #net");
 	await page.keyboard.press("Enter");
 	await expect(page.locator("#buffer-header h1")).toHaveText("#net");
@@ -53,7 +64,7 @@ test("detaches a channel without leaving it", async ({ page, connect, bot }) => 
 	await bob.join("#detach");
 	await connect(page, "alice", { password: "secret" });
 	const tabs = page.getByRole("tablist", { name: "Buffer list" });
-	await tabs.getByRole("tab", { name: "FakeNet" }).click();
+	await openFakeNet(page);
 	await page.getByRole("textbox", { name: /Type a command/ }).fill("/join #detach");
 	await page.keyboard.press("Enter");
 	await expect(page.locator("#buffer-header h1")).toHaveText("#detach");
@@ -68,7 +79,7 @@ test("pins and mutes buffers, synced through the bouncer", async ({ page, connec
 	await bob.join("#zzz");
 	await connect(page, "alice", { password: "secret" });
 	const tabs = page.getByRole("tablist", { name: "Buffer list" });
-	await tabs.getByRole("tab", { name: "FakeNet" }).click();
+	await openFakeNet(page);
 	for (const channel of ["#aaa", "#zzz"]) {
 		await page.getByRole("textbox", { name: /Type a command/ }).fill("/join " + channel);
 		await page.keyboard.press("Enter");
