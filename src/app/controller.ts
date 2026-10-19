@@ -801,7 +801,9 @@ export default class AppController {
 		const muted = S.getTargetMetadata(this.state.servers.get(serverID), bufName).muted;
 		const level = this.state.settings.notifications;
 		const notify = level === "all" ? !muted : level === "mentions" && unread === Unread.HIGHLIGHT;
-		if (unread === Unread.NONE || !notify || irc.parseCTCP(msg)) {
+		// Actions (/me) are messages, other CTCPs aren't
+		const ctcp = irc.parseCTCP(msg);
+		if (unread === Unread.NONE || !notify || (ctcp && ctcp.command !== "ACTION")) {
 			return;
 		}
 		const buf = S.getBuffer(this.state, { server: serverID, name: bufName });
@@ -821,7 +823,7 @@ export default class AppController {
 			title += " in " + bufName;
 		}
 		const notif = showNotification(title, {
-			body: stripANSI(msg.params[1]),
+			body: stripANSI(ctcp ? `* ${from} ${ctcp.param}` : msg.params[1]),
 			requireInteraction: true,
 			tag: "msg,server=" + serverID + ",from=" + from + ",to=" + bufName,
 			data: { server: serverID, bufferName: bufName, message: msg },

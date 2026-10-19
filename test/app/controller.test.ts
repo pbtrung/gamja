@@ -957,13 +957,14 @@ describe("AppController buffer list", () => {
 });
 
 describe("AppController notifications", () => {
-	function stubNotifications() {
+	function stubNotifications(bodies: string[] = []) {
 		const shown: string[] = [];
 		class FakeNotification extends EventTarget {
 			static permission = "granted";
-			constructor(title: string) {
+			constructor(title: string, options?: NotificationOptions) {
 				super();
 				shown.push(title);
+				bodies.push(options?.body ?? "");
 			}
 		}
 		vi.stubGlobal("Notification", FakeNotification);
@@ -991,6 +992,23 @@ describe("AppController notifications", () => {
 				at(":bob!u@h INVITE me #secret"),
 			);
 			expect(shown).toHaveLength(2);
+		} finally {
+			localStorage.clear();
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it("notifies of actions, not of other CTCPs", async () => {
+		const bodies: string[] = [];
+		const shown = stubNotifications(bodies);
+		try {
+			const { recv } = await connectedApp({ caps: "batch server-time message-tags" });
+			recv(
+				"@time=2040-01-01T00:00:00.000Z :bob!u@h PRIVMSG me :\x01VERSION\x01",
+				"@time=2040-01-01T00:00:01.000Z :bob!u@h PRIVMSG me :\x01ACTION waves\x01",
+			);
+			expect(shown).toEqual(["New private message from bob"]);
+			expect(bodies).toEqual(["* bob waves"]);
 		} finally {
 			localStorage.clear();
 			vi.unstubAllGlobals();
