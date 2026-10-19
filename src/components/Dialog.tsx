@@ -15,6 +15,9 @@ interface DialogProps {
 	size?: "sm" | "md" | "lg";
 }
 
+/** The focus to restore, from a dialog replaced by the one mounting */
+let handedOverFocus: HTMLElement | null = null;
+
 const FOCUSABLE =
 	'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -47,11 +50,24 @@ export default function Dialog({
 
 	useEffect(() => {
 		const el = ref.current!;
+		// A dialog replacing another one captured an element of that one,
+		// gone now: restore what that one would have
+		const restore = prevFocus?.isConnected ? prevFocus : handedOverFocus;
+		handedOverFocus = null;
 		// React focuses autoFocus fields itself, keep that focus if any
 		if (!el.contains(document.activeElement)) {
 			(focusables(el)[0] ?? el).focus();
 		}
-		return () => prevFocus?.focus?.();
+		return () => {
+			// Focused elements removed leave the focus on the body. Elsewhere,
+			// it's in the dialog replacing this one, which restores it later.
+			if (document.activeElement && document.activeElement !== document.body) {
+				handedOverFocus = restore;
+				queueMicrotask(() => (handedOverFocus = null));
+			} else {
+				restore?.focus?.();
+			}
+		};
 	}, [prevFocus]);
 
 	useEffect(() => {

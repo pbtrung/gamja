@@ -75,4 +75,24 @@ describe("Dialog focus restoration", () => {
 		expect(opener).toHaveFocus();
 		opener.remove();
 	});
+
+	it("restores focus to the opener after a dialog replaced another", () => {
+		const opener = document.createElement("button");
+		document.body.appendChild(opener);
+		opener.focus();
+		const { rerender, unmount } = render(
+			<Dialog key="a" title="A" onDismiss={() => {}}>
+				<input aria-label="a" autoFocus />
+			</Dialog>,
+		);
+		rerender(
+			<Dialog key="b" title="B" onDismiss={() => {}}>
+				<input aria-label="b" autoFocus />
+			</Dialog>,
+		);
+		expect(screen.getByLabelText("b")).toHaveFocus();
+		unmount();
+		expect(opener).toHaveFocus();
+		opener.remove();
+	});
 });
