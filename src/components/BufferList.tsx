@@ -94,9 +94,16 @@ const BufferItem = memo(function BufferItem({
 			onClick(buffer);
 		}
 	}
+	// Middle click closes the buffer
 	function handleMouseDown(event: MouseEvent) {
 		if (event.button === 1) {
-			// middle click
+			// Don't start autoscrolling
+			event.preventDefault();
+		}
+	}
+	function handleAuxClick(event: MouseEvent) {
+		if (event.button === 1) {
+			// Don't open the link in a new tab
 			event.preventDefault();
 			onClose(buffer);
 		}
@@ -168,6 +175,7 @@ const BufferItem = memo(function BufferItem({
 				}
 				onClick={handleClick}
 				onMouseDown={handleMouseDown}
+				onAuxClick={handleAuxClick}
 				onKeyDown={handleKeyDown}
 			>
 				{onToggleCollapse ? (
