@@ -692,15 +692,14 @@ export default class AppController {
 
 		this.closeNotifications(buf.server, client, buf.name);
 
-		if (buf.messages.length > 0) {
-			const lastMsg = buf.messages[buf.messages.length - 1];
-			this.storeReceipts(client, {
-				name: buf.name,
-				server: client.params,
-				unread: Unread.NONE,
-				receipts: { [ReceiptType.READ]: S.receiptFromMessage(lastMsg) },
-			});
+		// Stored even without messages loaded, or the unread state would
+		// come back on reload
+		const update: store.BufferUpdate = { name: buf.name, server: client.params, unread: Unread.NONE };
+		const lastMsg = buf.messages.at(-1);
+		if (lastMsg) {
+			update.receipts = { [ReceiptType.READ]: S.receiptFromMessage(lastMsg) };
 		}
+		this.storeReceipts(client, update);
 
 		this.updateDocumentTitle();
 	}

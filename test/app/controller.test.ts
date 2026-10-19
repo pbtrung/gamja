@@ -219,6 +219,15 @@ describe("AppController messaging", () => {
 		expect(app.bufferStore.get({ name: "bob", server: {} })?.closed).toBe(true);
 	});
 
+	it("stores buffers marked as read without messages loaded", async () => {
+		const { app, recv } = await connectedApp();
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { messages: [], unread: Unread.HIGHLIGHT });
+		app.bufferStore.put({ name: "#c", server: {}, unread: Unread.HIGHLIGHT });
+		app.markBufferAsRead(buf(app, "#c")!.id);
+		expect(app.bufferStore.get({ name: "#c", server: {} })?.unread).toBe(Unread.NONE);
+	});
+
 	it("returns to the connect form when the server is closed", async () => {
 		const { app } = await connectedApp();
 		app.disconnectAll();
