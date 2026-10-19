@@ -223,10 +223,7 @@ const commandList: Command[] = [
 		execute: (app, args) => {
 			const name = requireArg(args, 0, "buffer name");
 			// Prefer the active server, then look for it on the others
-			let buf = getBuffer(app.state, { name });
-			for (const serverID of app.state.servers.keys()) {
-				buf ??= getBuffer(app.state, { server: serverID, name });
-			}
+			const buf = app.findBufferOnAnyServer(name);
 			if (!buf) {
 				throw new Error("Unknown buffer");
 			}
