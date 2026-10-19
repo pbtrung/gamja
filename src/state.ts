@@ -217,6 +217,20 @@ export function displayedBuffers(
 	return displayGroups(buffers, servers, collapsed, activeBuffer).flatMap((g) => [...g.server, ...g.shown]);
 }
 
+/**
+ * The state of a channel we left or got disconnected from: its members
+ * are stale until it's joined again, which fetches them anew.
+ */
+export function leftChannel(buf: Buffer): Partial<Buffer> {
+	return {
+		joined: false,
+		hasInitialWho: false,
+		hasNames: false,
+		members: new irc.CaseMapMap(null, buf.members.caseMap),
+		typing: new Map(),
+	};
+}
+
 export interface Features {
 	reactions: boolean;
 	replies: boolean;
@@ -990,12 +1004,12 @@ export function handleMessage(
 			const nick = msg.command === "KICK" ? msg.params[1] : prefix.name;
 
 			return updateBufferWith(channel, (buf) => {
+				if (client.isMyNick(nick)) {
+					return leftChannel(buf);
+				}
 				const members = new irc.CaseMapMap(buf.members);
 				members.delete(nick);
-
-				const joined = buf.joined && !client.isMyNick(nick);
-
-				return { members, joined };
+				return { members };
 			});
 		}
 		case "QUIT": {

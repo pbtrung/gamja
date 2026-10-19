@@ -243,8 +243,12 @@ describe("handleMessage", () => {
 		t.handle(":me!u@h KICK #c carol :out");
 		expect(t.buf("#c").members.has("carol")).toBe(false);
 
+		t.handle(":dave!u@h JOIN #c");
 		t.handle(":me!u@h PART #c");
 		expect(t.buf("#c").joined).toBe(false);
+		// Stale until joined again
+		expect(t.buf("#c").members.size).toBe(0);
+		expect(t.buf("#c").hasNames).toBe(false);
 	});
 
 	it("parses NAMES with multi-prefix and userhost-in-names", () => {

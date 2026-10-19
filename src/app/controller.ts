@@ -1050,15 +1050,7 @@ export default class AppController {
 							if (buf.server !== serverID) {
 								return;
 							}
-							// Memberships are stale until the channels are joined again
-							buffers.set(buf.id, {
-								...buf,
-								joined: false,
-								hasInitialWho: false,
-								hasNames: false,
-								members: new irc.CaseMapMap(null, buf.members.caseMap),
-								typing: new Map(),
-							});
+							buffers.set(buf.id, { ...buf, ...S.leftChannel(buf) });
 						});
 						return { buffers };
 					});
