@@ -632,6 +632,8 @@ describe("commands", () => {
 		await expect(p).resolves.toEqual({ messages: [], more: false });
 
 		const p2 = client.fetchHistoryTargets("t1", "t2");
+		await flush();
+		expect(ws.takeSent()[0].params).toEqual(["TARGETS", "timestamp=t1", "timestamp=t2", "1000"]);
 		ws.receive(
 			":srv BATCH +t draft/chathistory-targets",
 			"@batch=t :srv CHATHISTORY TARGETS #c 2020-01-01T00:00:00.000Z",

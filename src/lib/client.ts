@@ -1374,7 +1374,7 @@ export default class Client extends EventTarget {
 		});
 	}
 
-	roundtripChatHistory(params: (string | number)[]): Promise<Message[]> {
+	roundtripChatHistory(params: (string | number)[], batchType = "chathistory"): Promise<Message[]> {
 		// Don't send multiple CHATHISTORY commands in parallel, we can't
 		// properly handle batches and errors.
 		const promise = this.pendingCmds.CHATHISTORY.then(async () => {
@@ -1382,11 +1382,23 @@ export default class Client extends EventTarget {
 				command: "CHATHISTORY",
 				params,
 			};
-			const batch = await this.fetchBatch(msg, "chathistory");
+			const batch = await this.fetchBatch(msg, batchType);
 			return batch.messages;
 		});
 		this.pendingCmds.CHATHISTORY = promise.catch(() => {});
 		return promise;
+	}
+
+	/**
+	 * A CHATHISTORY bound. Bounds are exclusive: use the message's ID if the
+	 * server accepts it, its timestamp would skip the messages sharing it.
+	 * soju only accepts timestamps (MSGREFTYPES=timestamp).
+	 */
+	msgRef(bound: { msgid?: string; time?: string }): string {
+		if (bound.msgid && (!bound.time || this.isupport.msgRefTypes().includes("msgid"))) {
+			return "msgid=" + bound.msgid;
+		}
+		return "timestamp=" + bound.time;
 	}
 
 	/* Fetch one page of history before the given date. */
@@ -1396,13 +1408,7 @@ export default class Client extends EventTarget {
 		limit: number,
 	): Promise<{ messages: Message[]; more: boolean }> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		// Bounds are exclusive: start from the message's ID if the server
-		// accepts it, its timestamp would skip the messages sharing it
-		const bound =
-			before.msgid && this.isupport.msgRefTypes().includes("msgid")
-				? "msgid=" + before.msgid
-				: "timestamp=" + before.time;
-		const params = ["BEFORE", target, bound, max];
+		const params = ["BEFORE", target, this.msgRef(before), max];
 		const messages = await this.roundtripChatHistory(params);
 		return { messages, more: max > 0 && messages.length >= max };
 	}
@@ -1415,8 +1421,7 @@ export default class Client extends EventTarget {
 		limit: number,
 	): Promise<{ messages: Message[] }> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		const from = after.msgid ? "msgid=" + after.msgid : "timestamp=" + after.time;
-		const params = ["BETWEEN", target, from, "timestamp=" + before.time, max];
+		const params = ["BETWEEN", target, this.msgRef(after), this.msgRef(before), max];
 		const messages = await this.roundtripChatHistory(params);
 		if (max > 0 && messages.length >= max) {
 			// There are still more messages to fetch
@@ -1424,13 +1429,8 @@ export default class Client extends EventTarget {
 			if (limit <= 0) {
 				throw new Error("Cannot fetch all chat history: too many messages");
 			}
-			// Bounds are exclusive: continue from the last message's ID if the
-			// server accepts it, timestamps would skip messages sharing one
 			const last = messages[messages.length - 1];
-			const next =
-				last.tags.msgid && this.isupport.msgRefTypes().includes("msgid")
-					? { msgid: last.tags.msgid, time: last.tags.time! }
-					: { time: last.tags.time! };
+			const next = { msgid: last.tags.msgid ?? undefined, time: last.tags.time! };
 			const rest = await this.fetchHistoryBetween(target, next, before, limit);
 			return { messages: [...messages, ...rest.messages] };
 		}
@@ -1438,12 +1438,11 @@ export default class Client extends EventTarget {
 	}
 
 	async fetchHistoryTargets(t1: string, t2: string): Promise<ChatHistoryTarget[]> {
-		const msg = {
-			command: "CHATHISTORY",
-			params: ["TARGETS", "timestamp=" + t1, "timestamp=" + t2, 1000],
-		};
-		const batch = await this.fetchBatch(msg, "draft/chathistory-targets");
-		return batch.messages.map((msg) => {
+		const messages = await this.roundtripChatHistory(
+			["TARGETS", "timestamp=" + t1, "timestamp=" + t2, 1000],
+			"draft/chathistory-targets",
+		);
+		return messages.map((msg) => {
 			console.assert(msg.command === "CHATHISTORY" && msg.params[0] === "TARGETS");
 			return {
 				name: msg.params[1],
@@ -1647,10 +1646,7 @@ export default class Client extends EventTarget {
 		limit: number,
 	): Promise<Message[]> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		// soju only accepts timestamps (MSGREFTYPES=timestamp)
-		const useMsgid = bound.msgid && (!bound.time || this.isupport.msgRefTypes().includes("msgid"));
-		const ref = useMsgid ? "msgid=" + bound.msgid : "timestamp=" + bound.time;
-		return this.roundtripChatHistory(["AROUND", target, ref, max]);
+		return this.roundtripChatHistory(["AROUND", target, this.msgRef(bound), max]);
 	}
 
 	/** Run a server-side message search (soju.im/search). */

@@ -1081,6 +1081,8 @@ describe("AppController chat history", () => {
 		const h = await connectedApp({ register: false });
 		h.recv(`:srv CAP * LS :${caps}`, `:srv CAP me ACK :${caps}`);
 		h.recv(":srv 001 me :Welcome", ":srv 005 me CHANTYPES=# CHATHISTORY=100 :ok", ":srv 376 me :End");
+		// Queued behind other CHATHISTORY requests
+		await flush();
 		const targets = h.sentRaw().find((l) => l.includes("CHATHISTORY TARGETS"))!;
 		const reply = (req: string, type: string, ...lines: string[]) => {
 			const label = req.match(/label=(\d+)/)![1];
