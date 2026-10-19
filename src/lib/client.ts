@@ -47,6 +47,7 @@ const LAG_TOKEN_PREFIX = "gamja-lag-";
 // long time to notice a TCP connection silently dropped by the network
 const PONG_TIMEOUT_MSEC = 60 * 1000;
 const ROUNDTRIP_TIMEOUT_MSEC = 60 * 1000;
+const REGISTRATION_TIMEOUT_MSEC = 60 * 1000;
 const RECONNECT_MAX_DELAY_MSEC = 10 * 60 * 1000; // 10min
 
 // WebSocket status codes
@@ -148,6 +149,9 @@ function parseOAuthBearerError(challenge: string): Error {
 			return new Error("OAuth 2.0 authentication failed: " + status);
 	}
 }
+
+/** The server didn't reply in time, which may just be a slow connection. */
+class TimeoutError extends Error {}
 
 class WebSocketError extends Error {
 	constructor(code: number) {
@@ -460,9 +464,16 @@ export default class Client extends EventTarget {
 			return;
 		}
 		console.warn(`No PONG in ${PONG_TIMEOUT_MSEC / 1000} seconds, dropping the connection`);
+		this.dropConnection(ws, WEBSOCKET_CLOSE_CODES.ABNORMAL_CLOSURE);
+	}
+
+	/**
+	 * Close the socket and reconnect, unlike disconnect(). The close event may
+	 * never come on a dead connection: handle it now, with the code to report.
+	 */
+	dropConnection(ws: WebSocket, code: number): void {
 		ws.close();
-		// The close event may never come on a dead connection
-		this.handleClose(ws, WEBSOCKET_CLOSE_CODES.ABNORMAL_CLOSURE);
+		this.handleClose(ws, code);
 	}
 
 	disconnect(): void {
@@ -510,8 +521,20 @@ export default class Client extends EventTarget {
 		console.log("Connection opened");
 		this.setStatus(ClientStatus.REGISTERING);
 
-		this.reconnectBackoff.reset();
 		this.setPingInterval(this.params.ping || 0);
+		// The PONG checks only start once registered: a server or proxy which
+		// never replies would leave us registering forever. Cleared on
+		// RPL_WELCOME by scheduleLagCheck().
+		const ws = this.ws!;
+		clearTimeout(this.lagTimeoutID);
+		this.lagTimeoutID = setTimeout(() => {
+			if (this.ws === ws && this.status !== ClientStatus.REGISTERED) {
+				console.warn(
+					`Not registered in ${REGISTRATION_TIMEOUT_MSEC / 1000} seconds, dropping the connection`,
+				);
+				this.dropConnection(ws, WEBSOCKET_CLOSE_CODES.ABNORMAL_CLOSURE);
+			}
+		}, REGISTRATION_TIMEOUT_MSEC);
 
 		this.nick = this.params.nick;
 
@@ -543,7 +566,8 @@ export default class Client extends EventTarget {
 	handleMessage(event: MessageEvent): void {
 		if (typeof event.data !== "string") {
 			console.error("Received unsupported data type:", event.data);
-			this.ws?.close(WEBSOCKET_CLOSE_CODES.UNSUPPORTED_DATA);
+			// Browsers don't let clients close with 1003, only 1000 and 3000-4999
+			this.dropConnection(this.ws!, WEBSOCKET_CLOSE_CODES.UNSUPPORTED_DATA);
 			return;
 		}
 
@@ -584,6 +608,9 @@ export default class Client extends EventTarget {
 				this.nick = msg.params[0];
 
 				console.log("Registration complete");
+				// Not on open: a gateway may accept the socket, then fail to
+				// reach the IRC server, and must be retried less and less
+				this.reconnectBackoff.reset();
 				this.setStatus(ClientStatus.REGISTERED);
 				// Restore the away status without draft/pre-away
 				this.syncAway();
@@ -687,10 +714,17 @@ export default class Client extends EventTarget {
 				}
 				break;
 			}
-			case "ERROR":
+			case "ERROR": {
+				// Sent before closing the link, e.g. on server restarts and ping
+				// timeouts: keep reconnecting. Fatal registration errors come
+				// before, as numerics.
 				this.dispatchError(new IRCError(msg));
-				this.disconnect();
+				const ws = this.ws;
+				if (ws) {
+					this.dropConnection(ws, WEBSOCKET_CLOSE_CODES.NORMAL_CLOSURE);
+				}
 				break;
+			}
 			case irc.ERR_PASSWDMISMATCH:
 			case irc.ERR_ERRONEUSNICKNAME:
 			case irc.ERR_NICKNAMEINUSE:
@@ -1036,7 +1070,15 @@ export default class Client extends EventTarget {
 								return;
 							}
 							this.dispatchError(err);
-							this.disconnect();
+							// Retry if the server was only slow or busy
+							if (
+								err instanceof TimeoutError ||
+								(err instanceof IRCError && err.msg.command === irc.RPL_TRYAGAIN)
+							) {
+								this.dropConnection(ws!, WEBSOCKET_CLOSE_CODES.NORMAL_CLOSURE);
+							} else {
+								this.disconnect();
+							}
 						},
 					);
 				}
@@ -1240,7 +1282,7 @@ export default class Client extends EventTarget {
 
 			const timeoutID = setTimeout(() => {
 				removeEventListeners();
-				reject(new Error(`Timed out waiting for ${cmd}`));
+				reject(new TimeoutError(`Timed out waiting for ${cmd}`));
 			}, timeout);
 
 			const removeEventListeners = () => {

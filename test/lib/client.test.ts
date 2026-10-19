@@ -180,7 +180,48 @@ describe("Client registration", () => {
 		const errors: Error[] = [];
 		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
 		ws.receive("ERROR :Closing link");
-		expect(errors[0].message).toBe("Closing link");
+		expect(errors.map((err) => err.message)).toEqual(["Closing link"]);
+		// e.g. a server restart: keep reconnecting
+		expect(client.status).toBe("disconnected");
+		expect(client.autoReconnect).toBe(true);
+		expect(client.reconnectAt).not.toBeNull();
+		client.disconnect();
+	});
+
+	it("drops the connection when registration doesn't complete", () => {
+		vi.useFakeTimers();
+		try {
+			const { client, ws } = connect();
+			vi.spyOn(console, "warn").mockImplementation(() => {});
+			client.addEventListener("error", () => {});
+			vi.advanceTimersByTime(59_999);
+			expect(client.status).toBe("registering");
+			vi.advanceTimersByTime(1);
+			expect(ws.closeCode).toBe(1000);
+			expect(client.status).toBe("disconnected");
+			expect(client.reconnectAt).not.toBeNull();
+			client.disconnect();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("keeps reconnecting when SASL times out", async () => {
+		vi.useFakeTimers();
+		try {
+			const { client, ws } = connect({ saslPlain: { username: "u", password: "p" } });
+			const errors: Error[] = [];
+			client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
+			ws.receive(":srv CAP * LS :sasl=PLAIN");
+			ws.receive(":srv 263 me AUTHENTICATE :Try again later");
+			await vi.advanceTimersByTimeAsync(0);
+			expect(errors.map((err) => err.message)).toEqual(["Try again later"]);
+			expect(client.status).toBe("disconnected");
+			expect(client.autoReconnect).toBe(true);
+			client.disconnect();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("fails on ACCOUNT_REQUIRED before registration", () => {
@@ -203,10 +244,15 @@ describe("Client registration", () => {
 	});
 
 	it("rejects non-text frames", () => {
-		const { ws } = register();
+		const { client, ws } = register();
 		vi.spyOn(console, "error").mockImplementation(() => {});
+		const errors: Error[] = [];
+		client.addEventListener("error", (e) => errors.push((e as CustomEvent).detail));
 		ws.dispatchEvent(new MessageEvent("message", { data: new ArrayBuffer(1) }));
-		expect(ws.closeCode).toBe(1003);
+		// Browsers don't let clients close with 1003, but it's reported
+		expect(ws.closeCode).not.toBe(1003);
+		expect(client.status).toBe(ClientStatus.DISCONNECTED);
+		expect(errors.map((e) => e.message)).toEqual(["Connection error (unsupported data)"]);
 	});
 
 	it("skips unparsable lines and stays connected", () => {
@@ -971,6 +1017,21 @@ describe("reconnection", () => {
 		vi.advanceTimersByTime(0);
 		expect(FakeWebSocket.instances).toHaveLength(2);
 		expect(client.status).toBe("connecting");
+	});
+
+	it("keeps backing off while the server closes before registration", () => {
+		vi.useFakeTimers();
+		const { client, ws } = register();
+		client.addEventListener("error", () => {});
+		vi.setSystemTime(Date.now() + 60_000);
+		ws.serverClose(1006);
+		vi.advanceTimersByTime(0);
+		// The socket opens, then a gateway fails to reach the IRC server
+		FakeWebSocket.last().open();
+		vi.setSystemTime(Date.now() + 60_000);
+		FakeWebSocket.last().serverClose(1006);
+		expect(client.reconnectAt! - Date.now()).toBeGreaterThan(0);
+		client.disconnect();
 	});
 
 	it("waits at least the minimum delay after a recent reconnect", () => {
