@@ -104,7 +104,11 @@ function Dialogs({ state }: { state: AppState }) {
 						params={dialog.params}
 						autojoin={dialog.autojoin}
 						onSubmit={(attrs, autojoin) => app.handleNetworkSubmit(dialog.id, attrs, autojoin)}
-						onRemove={() => dialog.id && app.handleNetworkRemove(dialog.id)}
+						onRemove={async () => {
+							if (dialog.id) {
+								await app.handleNetworkRemove(dialog.id);
+							}
+						}}
 					/>
 				</Dialog>
 			);

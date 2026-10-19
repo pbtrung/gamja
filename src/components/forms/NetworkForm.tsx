@@ -22,8 +22,9 @@ interface NetworkFormProps {
 	isNew: boolean;
 	params?: BouncerNetwork;
 	autojoin?: string;
-	onSubmit: (attrs: BouncerNetwork, autojoin: string | null) => void;
-	onRemove: () => void;
+	/** The dialog stays open until the bouncer accepted the change */
+	onSubmit: (attrs: BouncerNetwork, autojoin: string | null) => Promise<void>;
+	onRemove: () => Promise<void>;
 }
 
 export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemove }: NetworkFormProps) {
@@ -39,12 +40,31 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 	});
 	const [form, setForm] = useState<Params>(prevParams);
 	const [doAutojoin, setDoAutojoin] = useState(true);
+	// Don't send a change twice, e.g. adding the network twice
+	const [pending, setPending] = useState(false);
+
+	async function run(action: () => Promise<void>) {
+		setPending(true);
+		try {
+			await action();
+		} finally {
+			setPending(false);
+		}
+	}
 
 	function handleSubmit(event: FormEvent) {
 		event.preventDefault();
+		if (pending) {
+			return;
+		}
 
 		const attrs: BouncerNetwork = {};
 		for (const k of Object.keys(defaultParams) as (keyof Params)[]) {
+			// The default port depends on TLS: keep the one shown
+			if (k === "port" && form.tls !== prevParams.tls && form.port) {
+				attrs.port = form.port;
+				continue;
+			}
 			if (!isNew && prevParams[k] === form[k]) {
 				continue;
 			}
@@ -54,7 +74,7 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 			attrs[k] = form[k];
 		}
 
-		onSubmit(attrs, doAutojoin && autojoin ? autojoin : null);
+		void run(() => onSubmit(attrs, doAutojoin && autojoin ? autojoin : null));
 	}
 
 	// Props of the field editing a parameter
@@ -103,9 +123,18 @@ export default function NetworkForm({ isNew, params, autojoin, onSubmit, onRemov
 				</div>
 			</details>
 
-			<DialogActions label={isNew ? "Add network" : "Save network"} icon={isNew ? Plus : Check}>
+			<DialogActions
+				label={isNew ? "Add network" : "Save network"}
+				icon={isNew ? Plus : Check}
+				disabled={pending}
+			>
 				{!isNew && (
-					<button type="button" className="btn btn-danger-outline me-auto" onClick={onRemove}>
+					<button
+						type="button"
+						className="btn btn-danger-outline me-auto"
+						disabled={pending}
+						onClick={() => void run(onRemove)}
+					>
 						<Trash aria-hidden="true" /> Remove network
 					</button>
 				)}

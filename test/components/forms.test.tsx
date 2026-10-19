@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import * as irc from "../../src/lib/irc";
@@ -171,13 +171,13 @@ describe("ConnectForm", () => {
 
 describe("NetworkForm", () => {
 	it("only submits changed attributes", async () => {
-		const onSubmit = vi.fn();
+		const onSubmit = vi.fn(async () => {});
 		render(
 			<NetworkForm
 				isNew={false}
 				params={{ host: "irc.a", name: "A", port: "6697" }}
 				onSubmit={onSubmit}
-				onRemove={() => {}}
+				onRemove={async () => {}}
 			/>,
 		);
 		const host = screen.getByLabelText("Hostname");
@@ -188,12 +188,34 @@ describe("NetworkForm", () => {
 	});
 
 	it("adds networks with auto-join", async () => {
-		const onSubmit = vi.fn();
-		render(<NetworkForm isNew autojoin="#chan" onSubmit={onSubmit} onRemove={() => {}} />);
+		const onSubmit = vi.fn(async () => {});
+		render(<NetworkForm isNew autojoin="#chan" onSubmit={onSubmit} onRemove={async () => {}} />);
 		await userEvent.type(screen.getByLabelText("Hostname"), "irc.new");
 		await userEvent.click(screen.getByRole("button", { name: "Add network" }));
 		expect(onSubmit).toHaveBeenCalledWith({ host: "irc.new" }, "#chan");
 		expect(screen.queryByRole("button", { name: /Remove/ })).toBeNull();
+	});
+
+	it("sends the port shown when TLS is turned off", async () => {
+		const onSubmit = vi.fn(async () => {});
+		render(<NetworkForm isNew onSubmit={onSubmit} onRemove={async () => {}} />);
+		await userEvent.type(screen.getByLabelText("Hostname"), "irc.new");
+		await userEvent.click(screen.getByRole("checkbox", { name: /Use TLS/ }));
+		await userEvent.click(screen.getByRole("button", { name: "Add network" }));
+		expect(onSubmit).toHaveBeenCalledWith({ host: "irc.new", port: "6697", tls: "0" }, null);
+	});
+
+	it("doesn't submit again while the bouncer handles the change", async () => {
+		let done = () => {};
+		const onSubmit = vi.fn(() => new Promise<void>((resolve) => (done = resolve)));
+		render(<NetworkForm isNew onSubmit={onSubmit} onRemove={async () => {}} />);
+		await userEvent.type(screen.getByLabelText("Hostname"), "irc.new{Enter}");
+		const submit = screen.getByRole("button", { name: "Add network" });
+		expect(submit).toBeDisabled();
+		await userEvent.type(screen.getByLabelText("Hostname"), "{Enter}");
+		expect(onSubmit).toHaveBeenCalledTimes(1);
+		await act(async () => done());
+		expect(submit).toBeEnabled();
 	});
 });
 
