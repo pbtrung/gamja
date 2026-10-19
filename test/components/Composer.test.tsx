@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import Composer from "../../src/components/Composer";
@@ -72,6 +72,29 @@ describe("Composer", () => {
 		await userEvent.keyboard("x");
 		expect(input).toHaveValue("");
 		expect(input).toHaveAttribute("placeholder", "Type a command (see /help)");
+	});
+
+	it("pastes from anywhere on the page, except into dialogs", () => {
+		const { input } = setup({ commandOnly: true });
+		input.blur();
+		const paste = (text: string) => {
+			const event = new Event("paste", { cancelable: true }) as ClipboardEvent;
+			Object.defineProperty(event, "clipboardData", {
+				value: { files: [], getData: () => text },
+			});
+			act(() => {
+				window.dispatchEvent(event);
+			});
+		};
+		paste("not a command");
+		expect(input).toHaveValue("");
+		const dialog = document.body.appendChild(document.createElement("div"));
+		dialog.setAttribute("aria-modal", "true");
+		paste("/join #a");
+		expect(input).toHaveValue("");
+		dialog.remove();
+		paste("/join #a");
+		expect(input).toHaveValue("/join #a");
 	});
 
 	it("flags messages that are too long", async () => {

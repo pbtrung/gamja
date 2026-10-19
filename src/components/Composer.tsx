@@ -209,7 +209,14 @@ export default function Composer({
 		};
 
 		const handleWindowPaste = (event: globalThis.ClipboardEvent) => {
-			if (isEditableFocused() || readOnly || !inputRef.current || !event.clipboardData) {
+			// Like keys: not into an open dialog, only commands when command-only
+			if (
+				isEditableFocused() ||
+				document.querySelector('[aria-modal="true"]') ||
+				readOnly ||
+				!inputRef.current ||
+				!event.clipboardData
+			) {
 				return;
 			}
 
@@ -218,6 +225,9 @@ export default function Composer({
 			}
 
 			const pasted = event.clipboardData.getData("text");
+			if (commandOnly && !inputRef.current.value && !pasted.startsWith("/")) {
+				return;
+			}
 			event.preventDefault();
 			const input = inputRef.current;
 			input.focus();
