@@ -231,6 +231,24 @@ export function leftChannel(buf: Buffer): Partial<Buffer> {
 	};
 }
 
+/** Rename a nick in the channels of a server, or remove it with null. */
+function renameMember(state: State, serverID: number, nick: string, newNick: string | null): State {
+	const buffers = new Map(state.buffers);
+	for (const buf of state.buffers.values()) {
+		const membership = buf.server === serverID ? buf.members.get(nick) : undefined;
+		if (membership === undefined) {
+			continue;
+		}
+		const members = new irc.CaseMapMap(buf.members);
+		members.delete(nick);
+		if (newNick !== null) {
+			members.set(newNick, membership);
+		}
+		buffers.set(buf.id, { ...buf, members });
+	}
+	return { ...state, buffers };
+}
+
 export interface Features {
 	reactions: boolean;
 	replies: boolean;
@@ -1013,19 +1031,7 @@ export function handleMessage(
 			});
 		}
 		case "QUIT": {
-			const buffers = new Map(state.buffers);
-			state.buffers.forEach((buf) => {
-				if (buf.server !== serverID) {
-					return;
-				}
-				if (!buf.members.has(prefix.name)) {
-					return;
-				}
-				const members = new irc.CaseMapMap(buf.members);
-				members.delete(prefix.name);
-				buffers.set(buf.id, { ...buf, members });
-			});
-			state = { ...state, buffers };
+			state = renameMember(state, serverID, prefix.name, null);
 
 			apply(
 				updateServerWith((server) => {
@@ -1047,21 +1053,7 @@ export function handleMessage(
 				apply(updateServerWith({ nick: newNick }));
 			}
 
-			const buffers = new Map(state.buffers);
-			state.buffers.forEach((buf) => {
-				if (buf.server !== serverID) {
-					return;
-				}
-				const membership = buf.members.get(prefix.name);
-				if (membership === undefined) {
-					return;
-				}
-				const members = new irc.CaseMapMap(buf.members);
-				members.delete(prefix.name);
-				members.set(newNick, membership);
-				buffers.set(buf.id, { ...buf, members });
-			});
-			state = { ...state, buffers };
+			state = renameMember(state, serverID, prefix.name, newNick);
 
 			apply(
 				updateServerWith((server) => {
