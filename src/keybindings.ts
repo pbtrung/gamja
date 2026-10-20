@@ -1,4 +1,11 @@
-import { Unread, BufferType, compareUnread, displayedBuffers, type Buffer } from "./state";
+import {
+	Unread,
+	BufferType,
+	compareUnread,
+	displayedBuffers,
+	receiptFromMessage,
+	type Buffer,
+} from "./state";
 import type AppController from "./app/controller";
 
 interface KeyBinding {
@@ -27,10 +34,15 @@ export const keybindings: KeyBinding[] = [
 		altKey: true,
 		description: "Mark all messages as read",
 		execute: (app) => {
-			for (const id of [...app.state.buffers.keys()]) {
-				app.markBufferAsRead(id);
-				// Also drop the "new messages" separator
-				app.setBufferState(id, { prevReadReceipt: null });
+			for (const buf of [...app.state.buffers.values()]) {
+				app.markBufferAsRead(buf.id);
+				// Also drop the "new messages" separator, by moving it past
+				// the last message. Without a receipt, all messages would be
+				// new, with the separator above them all.
+				const lastMsg = buf.messages.at(-1);
+				if (lastMsg) {
+					app.setBufferState(buf.id, { prevReadReceipt: receiptFromMessage(lastMsg) });
+				}
 			}
 		},
 	},

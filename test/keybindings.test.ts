@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { setup } from "../src/keybindings";
-import { getBuffer, Unread } from "../src/state";
+import { getBuffer, isMessageBeforeReceipt, Unread } from "../src/state";
 import { connectedApp } from "./helpers/app";
 
 function press(key: string, opts: KeyboardEventInit = {}) {
@@ -55,6 +55,20 @@ describe("keybindings", () => {
 		expect([...app.state.buffers.values()].every((b) => b.unread === Unread.NONE)).toBe(true);
 		press("a", { altKey: true });
 		expect(name()).toBe("*");
+		cleanup();
+	});
+
+	it("drops the new messages separator when marking all as read", async () => {
+		const { app, recv, cleanup } = await withBuffers();
+		press("h", { altKey: true });
+		// All messages are before the read marker: no separator is shown
+		const buf = getBuffer(app.state, { name: "#b" })!;
+		expect(buf.messages.length).toBeGreaterThan(0);
+		expect(buf.messages.every((msg) => isMessageBeforeReceipt(msg, buf.prevReadReceipt))).toBe(true);
+		// New messages still come after it
+		recv("@time=2030-01-01T00:01:00.000Z :bob!u@h PRIVMSG #b :again");
+		const msg = getBuffer(app.state, { name: "#b" })!.messages.at(-1)!;
+		expect(isMessageBeforeReceipt(msg, buf.prevReadReceipt)).toBe(false);
 		cleanup();
 	});
 
