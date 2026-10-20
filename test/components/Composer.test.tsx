@@ -114,6 +114,33 @@ describe("Composer", () => {
 		expect(onSubmit).toHaveBeenCalledWith("/join #long");
 	});
 
+	it("keeps line breaks only with multiline support", async () => {
+		const { input, onSubmit, rerender } = setup();
+		await userEvent.type(input, "a{Shift>}{Enter}{/Shift}b");
+		expect(input).toHaveValue("a b");
+		await userEvent.clear(input);
+
+		const multiline = { maxBytes: 5, maxLines: 2 };
+		rerender(
+			<Composer
+				readOnly={false}
+				commandOnly={false}
+				onSubmit={onSubmit}
+				autocomplete={() => []}
+				maxLen={3}
+				multiline={multiline}
+			/>,
+		);
+		await userEvent.type(input, "abc{Shift>}{Enter}{/Shift}de");
+		expect(input).toHaveValue("abc\nde");
+		// Lines are limited by the multiline limits, not by maxLen
+		expect(input).not.toHaveAttribute("aria-invalid");
+		await userEvent.type(input, "f");
+		expect(input).toHaveAttribute("aria-invalid", "true");
+		await userEvent.type(input, "{Backspace}{Enter}");
+		expect(onSubmit).toHaveBeenCalledWith("abc\nde");
+	});
+
 	it("doesn't steal keys while a dialog is open", async () => {
 		const { input } = setup();
 		const dialog = document.createElement("div");

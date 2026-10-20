@@ -29,6 +29,7 @@ const permanentCaps = [
 	"draft/extended-monitor",
 	"draft/message-redaction",
 	"draft/metadata-2",
+	"draft/multiline",
 	"draft/no-implicit-names",
 	"draft/pre-away",
 	"draft/read-marker",
@@ -275,6 +276,9 @@ export default class Client extends EventTarget {
 	};
 	debug = false;
 	batches = new Map<string, Batch>();
+	/** draft/multiline batches being received: their BATCH command and lines */
+	multilineBatches = new Map<string, { opener: Message; lines: Message[] }>();
+	lastBatchRef = 0;
 	autoReconnect = true;
 	reconnectTimeoutID: ReturnType<typeof setTimeout> | null = null;
 	reconnectBackoff = new Backoff(RECONNECT_MIN_DELAY_MSEC, RECONNECT_MAX_DELAY_MSEC);
@@ -412,6 +416,7 @@ export default class Client extends EventTarget {
 		this.supportsCap = false;
 		this.caps = new irc.CapRegistry();
 		this.batches = new Map();
+		this.multilineBatches = new Map();
 		Object.keys(this.pendingCmds).forEach((k) => {
 			this.pendingCmds[k] = Promise.resolve(null);
 		});
@@ -576,7 +581,10 @@ export default class Client extends EventTarget {
 			console.debug("Received:", raw);
 		}
 
-		const msg = irc.parseMessage(raw);
+		const msg = this.assembleMultiline(irc.parseMessage(raw));
+		if (!msg) {
+			return;
+		}
 
 		// If the prefix is missing, assume it's coming from the server on the
 		// other end of the connection
@@ -765,6 +773,92 @@ export default class Client extends EventTarget {
 		if (deleteBatch) {
 			this.batches.delete(deleteBatch);
 		}
+	}
+
+	/**
+	 * Assemble a draft/multiline batch into a single PRIVMSG or NOTICE whose
+	 * text contains line breaks. Returns null while the batch is incomplete,
+	 * and the message itself if it isn't part of such a batch.
+	 */
+	assembleMultiline(msg: Message): Message | null {
+		if (msg.command === "BATCH") {
+			const { start, name } = irc.parseBatchRef(msg);
+			if (start && msg.params[1] === irc.MULTILINE_BATCH_TYPE) {
+				this.multilineBatches.set(name, { opener: msg, lines: [] });
+				return null;
+			}
+			const batch = start ? undefined : this.multilineBatches.get(name);
+			if (!batch) {
+				return msg;
+			}
+			this.multilineBatches.delete(name);
+			const joined = irc.joinMultiline(batch.opener, batch.lines);
+			if (!joined) {
+				console.error("Ignoring invalid multiline batch:", name);
+			}
+			return joined;
+		}
+		const batch = this.multilineBatches.get(msg.tags.batch ?? "");
+		if (batch) {
+			batch.lines.push(msg);
+			return null;
+		}
+		return msg;
+	}
+
+	/**
+	 * Expand a PRIVMSG or NOTICE whose text contains line breaks into a
+	 * draft/multiline batch, or into one message per line if the server
+	 * doesn't support it.
+	 */
+	expandMultiline(msg: OutgoingMessage): OutgoingMessage[] {
+		const params = msg.params ?? [];
+		const text = params[1];
+		if (
+			(msg.command !== "PRIVMSG" && msg.command !== "NOTICE") ||
+			typeof text !== "string" ||
+			!text.includes("\n")
+		) {
+			return [msg];
+		}
+		const target = String(params[0]);
+		const maxLen = irc.getMaxPrivmsgLen(this.isupport, this.nick ?? "*", target);
+		const lines = irc.splitMultiline(text, maxLen);
+		if (this.supportsMultiline()) {
+			const ref = String(++this.lastBatchRef);
+			return [
+				{ tags: msg.tags, command: "BATCH", params: ["+" + ref, irc.MULTILINE_BATCH_TYPE, target] },
+				...lines.map((line) => {
+					const tags: irc.Tags = { batch: ref };
+					if (line.concat) {
+						tags[irc.MULTILINE_CONCAT_TAG] = null;
+					}
+					return { tags, command: msg.command, params: [target, line.text] };
+				}),
+				{ command: "BATCH", params: ["-" + ref] },
+			];
+		}
+		// Only the first message carries the label
+		const { label: _label, ...otherTags } = msg.tags ?? {};
+		return lines
+			.filter((line) => line.text !== "")
+			.map((line, i) => ({
+				...msg,
+				tags: i === 0 ? msg.tags : otherTags,
+				params: [target, line.text],
+			}));
+	}
+
+	supportsMultiline(): boolean {
+		return this.caps.enabled.has("batch") && this.caps.enabled.has(irc.MULTILINE_BATCH_TYPE);
+	}
+
+	/** The draft/multiline limits of the server, null if unsupported. */
+	multilineLimits(): irc.MultilineLimits | null {
+		if (!this.supportsMultiline()) {
+			return null;
+		}
+		return irc.parseMultilineCap(this.caps.available.get(irc.MULTILINE_BATCH_TYPE));
 	}
 
 	authenticateFromParams(): Promise<void> {
@@ -1155,10 +1249,13 @@ export default class Client extends EventTarget {
 		if (!this.ws) {
 			throw new Error("Failed to send IRC message " + msg.command + ": socket is closed");
 		}
-		const raw = irc.formatMessage(msg);
-		this.ws.send(raw);
-		if (this.debug) {
-			console.debug("Sent:", raw);
+		// Format all the messages first, not to send a partial batch
+		const raws = this.expandMultiline(msg).map((m) => irc.formatMessage(m));
+		for (const raw of raws) {
+			this.ws.send(raw);
+			if (this.debug) {
+				console.debug("Sent:", raw);
+			}
 		}
 	}
 

@@ -473,3 +473,49 @@ describe("misc helpers", () => {
 		expect(irc.isServerBroadcast(irc.parseMessage(":op NOTICE #c :hi"))).toBe(false);
 	});
 });
+
+describe("multiline", () => {
+	it("parses the capability value", () => {
+		expect(irc.parseMultilineCap("max-bytes=4096,max-lines=24")).toEqual({
+			maxBytes: 4096,
+			maxLines: 24,
+		});
+		expect(irc.parseMultilineCap("max-bytes=4096")).toEqual({ maxBytes: 4096, maxLines: Infinity });
+		expect(irc.parseMultilineCap(undefined)).toEqual({ maxBytes: Infinity, maxLines: Infinity });
+	});
+
+	it("splits text into lines, continuing long ones", () => {
+		expect(irc.splitMultiline("a\n\nb", 100)).toEqual([
+			{ text: "a", concat: false },
+			{ text: "", concat: false },
+			{ text: "b", concat: false },
+		]);
+		// Byte lengths, without splitting characters
+		const long = "é".repeat(40);
+		const lines = irc.splitMultiline(long, 65);
+		expect(lines.map((l) => [l.text.length, l.concat])).toEqual([
+			[32, false],
+			[8, true],
+		]);
+		expect(lines.map((l) => l.text).join("")).toBe(long);
+	});
+
+	it("joins the lines of a batch", () => {
+		const opener = irc.parseMessage("@msgid=1 :bob BATCH +a draft/multiline #c");
+		const lines = [
+			"@batch=a :bob PRIVMSG #c hello",
+			"@batch=a;draft/multiline-concat :bob PRIVMSG #c : world",
+			"@batch=a :bob PRIVMSG #c :",
+			"@batch=a :bob PRIVMSG #c bye",
+		].map((s) => irc.parseMessage(s));
+		expect(irc.joinMultiline(opener, lines)).toEqual({
+			tags: { msgid: "1" },
+			prefix: { name: "bob", user: null, host: null },
+			command: "PRIVMSG",
+			params: ["#c", "hello world\n\nbye"],
+		});
+		expect(irc.joinMultiline(opener, [])).toBeNull();
+		const mixed = [...lines, irc.parseMessage("@batch=a :bob NOTICE #c x")];
+		expect(irc.joinMultiline(opener, mixed)).toBeNull();
+	});
+});

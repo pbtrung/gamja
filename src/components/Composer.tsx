@@ -13,6 +13,7 @@ import { CornerUpRight, SendHorizontal, X } from "lucide-react";
 import type { ReplyTo } from "../app/store";
 import IconButton from "./IconButton";
 import { computeAutocomplete, type Autocomplete } from "../lib/autocomplete";
+import { splitMultiline, type MultilineLimits } from "../lib/irc";
 
 export interface ComposerHandle {
 	focus(): void;
@@ -25,6 +26,8 @@ interface ComposerProps {
 	readOnly: boolean;
 	commandOnly: boolean;
 	maxLen?: number;
+	/** Set if messages may span several lines (draft/multiline) */
+	multiline?: MultilineLimits | null;
 	/** Returns false to keep the text, e.g. when it couldn't be sent */
 	onSubmit: (text: string) => boolean | void;
 	autocomplete: (prefix: string) => string[];
@@ -57,6 +60,7 @@ export default function Composer({
 	readOnly,
 	commandOnly,
 	maxLen,
+	multiline,
 	onSubmit,
 	autocomplete,
 	replyTo,
@@ -167,9 +171,14 @@ export default function Composer({
 		});
 	}
 
+	// Without multi-line message support, flatten newlines
+	const normalizeNewlines = useCallback(
+		(s: string) => (multiline ? s.replace(/\r\n?/g, "\n") : s.replace(/\r?\n/g, " ")),
+		[multiline],
+	);
+
 	function handleChange(value: string) {
-		// Multi-line messages aren't supported: flatten pasted newlines
-		setText(value.replace(/\r?\n/g, " "));
+		setText(normalizeNewlines(value));
 		if (readOnly && !value) {
 			inputRef.current?.blur();
 		}
@@ -231,12 +240,7 @@ export default function Composer({
 			event.preventDefault();
 			const input = inputRef.current;
 			input.focus();
-			input.setRangeText(
-				pasted.replace(/\r?\n/g, " "),
-				input.selectionStart,
-				input.selectionEnd,
-				"end",
-			);
+			input.setRangeText(normalizeNewlines(pasted), input.selectionStart, input.selectionEnd, "end");
 			setText(input.value);
 		};
 
@@ -246,7 +250,7 @@ export default function Composer({
 			window.removeEventListener("keydown", handleWindowKeyDown);
 			window.removeEventListener("paste", handleWindowPaste);
 		};
-	}, [readOnly, commandOnly, focus]);
+	}, [readOnly, commandOnly, focus, normalizeNewlines]);
 
 	const classes: string[] = [];
 	if (readOnly && !text) {
@@ -256,7 +260,15 @@ export default function Composer({
 	const label = commandOnly ? "Type a command (see /help)" : "Type a message";
 	// Commands aren't sent as is ("//" escapes a message starting with "/")
 	const isCommand = text.startsWith("/") && !text.startsWith("//");
-	const tooLong = maxLen !== undefined && !isCommand && new TextEncoder().encode(text).length > maxLen;
+	let tooLong = false;
+	if (!isCommand && multiline && text.includes("\n")) {
+		// Each line is limited by the server's multiline limits instead
+		const bytes = new TextEncoder().encode(text.replace(/\n/g, "")).length;
+		const lines = splitMultiline(text, maxLen ?? Infinity).length;
+		tooLong = bytes > multiline.maxBytes || lines > multiline.maxLines;
+	} else if (!isCommand && maxLen !== undefined) {
+		tooLong = new TextEncoder().encode(text).length > maxLen;
+	}
 
 	return (
 		<form id="composer" className={classes.join(" ")} onSubmit={handleSubmit}>

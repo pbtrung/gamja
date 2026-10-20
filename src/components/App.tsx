@@ -496,10 +496,12 @@ function Chat({ state }: { state: AppState }) {
 	const composerReadOnly = !activeServer || activeServer.status !== ServerStatus.REGISTERED;
 	let commandOnly = false;
 	let privmsgMaxLen: number | undefined;
+	let multiline: irc.MultilineLimits | null = null;
 	if (activeBuffer?.type === BufferType.SERVER) {
 		commandOnly = true;
 	} else if (activeBuffer && activeClient?.nick) {
 		privmsgMaxLen = irc.getMaxPrivmsgLen(activeClient.isupport, activeClient.nick, activeBuffer.name);
+		multiline = activeClient.multilineLimits();
 	}
 
 	// Operators and half-operators
@@ -645,6 +647,7 @@ function Chat({ state }: { state: AppState }) {
 				autocomplete={autocomplete}
 				commandOnly={commandOnly}
 				maxLen={privmsgMaxLen}
+				multiline={multiline}
 			/>
 		</>
 	);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Client, { Backoff, ClientStatus, IRCError } from "../../src/lib/client";
+import Client, { Backoff, ClientStatus, IRCError, type MessageEventDetail } from "../../src/lib/client";
 import { FakeWebSocket, installFakeWebSocket } from "../helpers/fake-ws";
 import { flush } from "../helpers/app";
 
@@ -1081,5 +1081,48 @@ describe("reconnection", () => {
 		vi.advanceTimersByTime(30_000);
 		expect(ws.sent).toEqual(["PING gamja"]);
 		client.disconnect();
+	});
+});
+
+describe("draft/multiline", () => {
+	it("assembles multiline batches into a single message", () => {
+		const { client, ws } = register("batch draft/multiline=max-bytes=4096 message-tags");
+		const messages: string[][] = [];
+		client.addEventListener("message", (event) => {
+			const msg = (event as CustomEvent<MessageEventDetail>).detail.message;
+			messages.push([msg.command, ...msg.params, msg.tags.msgid ?? "", msg.batch?.type ?? ""]);
+		});
+		ws.receive(
+			":srv BATCH +h chathistory #c",
+			"@batch=h;msgid=1 :bob BATCH +m draft/multiline #c",
+			"@batch=m :bob PRIVMSG #c one",
+			"@batch=m;draft/multiline-concat :bob PRIVMSG #c :\u0020more",
+			"@batch=m :bob PRIVMSG #c two",
+			"BATCH -m",
+			":srv BATCH -h",
+		);
+		expect(messages).toEqual([
+			["BATCH", "+h", "chathistory", "#c", "", ""],
+			["PRIVMSG", "#c", "one more\ntwo", "1", "chathistory"],
+			["BATCH", "-h", "", ""],
+		]);
+	});
+
+	it("sends multiline messages as a batch", () => {
+		const { client, ws } = register("batch draft/multiline message-tags");
+		client.send({ tags: { "+draft/reply": "x" }, command: "PRIVMSG", params: ["#c", "one\n\ntwo"] });
+		expect(ws.sent).toEqual([
+			"@+draft/reply=x BATCH +1 draft/multiline #c",
+			"@batch=1 PRIVMSG #c one",
+			"@batch=1 PRIVMSG #c :",
+			"@batch=1 PRIVMSG #c two",
+			"BATCH -1",
+		]);
+	});
+
+	it("sends one message per line without server support", () => {
+		const { client, ws } = register("batch labeled-response");
+		client.send({ tags: { label: "l" }, command: "PRIVMSG", params: ["#c", "one\n\ntwo"] });
+		expect(ws.sent).toEqual(["@label=l PRIVMSG #c one", "PRIVMSG #c two"]);
 	});
 });

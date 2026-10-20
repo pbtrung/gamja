@@ -2299,7 +2299,13 @@ export default class AppController {
 		if (text.startsWith("//")) {
 			text = text.slice(1);
 		} else if (text.startsWith("/")) {
-			this.executeCommand(text);
+			// Commands take a single line
+			this.executeCommand(text.replace(/\n/g, " "));
+			return true;
+		}
+		// Trailing blank lines aren't worth sending
+		text = text.replace(/\n+$/, "");
+		if (!text) {
 			return true;
 		}
 

@@ -894,6 +894,97 @@ export function parseBatchRef(msg: Message): { start: boolean; name: string } {
 	return { start: ref.startsWith("+"), name: ref.slice(1) };
 }
 
+export const MULTILINE_BATCH_TYPE = "draft/multiline";
+export const MULTILINE_CONCAT_TAG = "draft/multiline-concat";
+
+/** Line length below which multiline text isn't split further. */
+const MIN_MULTILINE_LINE_LEN = 64;
+
+export interface MultilineLimits {
+	maxBytes: number;
+	maxLines: number;
+}
+
+/** Parse the value of the draft/multiline capability, "max-bytes=…,max-lines=…". */
+export function parseMultilineCap(value: string | undefined): MultilineLimits {
+	const limits = { maxBytes: Infinity, maxLines: Infinity };
+	for (const item of (value ?? "").split(",")) {
+		const [k, v] = splitKeyValue(item);
+		const n = parseInt(v, 10);
+		if (!Number.isFinite(n) || n <= 0) {
+			continue;
+		}
+		if (k === "max-bytes") {
+			limits.maxBytes = n;
+		} else if (k === "max-lines") {
+			limits.maxLines = n;
+		}
+	}
+	return limits;
+}
+
+export interface MultilineLine {
+	text: string;
+	/** Concatenated to the previous line, without a line break */
+	concat: boolean;
+}
+
+/**
+ * Split multiline text into lines of at most `maxLen` bytes. Longer lines are
+ * continued by lines flagged for concatenation.
+ */
+export function splitMultiline(text: string, maxLen: number): MultilineLine[] {
+	maxLen = Math.max(maxLen, MIN_MULTILINE_LINE_LEN);
+	const lines: MultilineLine[] = [];
+	for (const line of text.split("\n")) {
+		let cur = "";
+		let curLen = 0;
+		let concat = false;
+		// Code points, not to split surrogate pairs
+		for (const ch of line) {
+			const n = byteLength(ch);
+			if (curLen + n > maxLen) {
+				lines.push({ text: cur, concat });
+				cur = "";
+				curLen = 0;
+				concat = true;
+			}
+			cur += ch;
+			curLen += n;
+		}
+		lines.push({ text: cur, concat });
+	}
+	return lines;
+}
+
+/**
+ * Join the lines of a draft/multiline batch into a single PRIVMSG or NOTICE
+ * whose text contains line breaks. The message carries the tags of the BATCH
+ * command. Returns null if the batch is invalid.
+ */
+export function joinMultiline(opener: Message, lines: Message[]): Message | null {
+	const command = lines[0]?.command;
+	if (
+		(command !== "PRIVMSG" && command !== "NOTICE") ||
+		lines.some((msg) => msg.command !== command || msg.params.length < 2)
+	) {
+		return null;
+	}
+	let text = "";
+	lines.forEach((msg, i) => {
+		if (i > 0 && !(MULTILINE_CONCAT_TAG in msg.tags)) {
+			text += "\n";
+		}
+		text += msg.params[1];
+	});
+	return {
+		tags: { ...opener.tags },
+		prefix: opener.prefix ?? lines[0].prefix,
+		command,
+		params: [opener.params[2] ?? lines[0].params[0], text],
+	};
+}
+
 export function findBatchByType(msg: Message, type: string): Batch | null {
 	for (const batch of batchAncestry(msg)) {
 		if (batch.type === type) {
