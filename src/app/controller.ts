@@ -35,6 +35,18 @@ import {
 
 const CHATHISTORY_MAX_SIZE = 4000;
 
+/** How far ahead of ours the IRC server's clock may be, in milliseconds */
+const MAX_CLOCK_SKEW = 24 * 60 * 60 * 1000;
+
+/**
+ * An upper bound for history queries which must include the latest messages.
+ * Messages carry the IRC server's time: if its clock is ahead of ours, the
+ * latest ones are in our future.
+ */
+function latestHistoryBound(): string {
+	return irc.formatDate(new Date(Date.now() + MAX_CLOCK_SKEW));
+}
+
 /** User details requested with WHO, see User in state.ts */
 const WHO_FIELDS: WhoxField[] = ["flags", "hostname", "nick", "realname", "username", "account"];
 
@@ -1886,15 +1898,15 @@ export default class AppController {
 		// The server may be closed while waiting for the history
 		const isClosed = () => this.clients.get(serverID) !== client;
 
-		const now = irc.formatDate(new Date());
-		const targets = await client.fetchHistoryTargets(now, lastReceipt.time);
+		const bound = latestHistoryBound();
+		const targets = await client.fetchHistoryTargets(bound, lastReceipt.time);
 		if (isClosed()) {
 			return;
 		}
 		await Promise.all(
 			targets.map(async (target) => {
 				let from: Receipt = lastReceipt;
-				const to = { time: now };
+				const to = { time: bound };
 
 				// Maybe we've just received a READ update from the
 				// server, avoid over-fetching history
@@ -2467,7 +2479,7 @@ export default class AppController {
 
 		const first = buf.messages[0];
 		const before = {
-			time: first?.tags.time ?? irc.formatDate(new Date()),
+			time: first?.tags.time ?? latestHistoryBound(),
 			msgid: first?.tags.msgid ?? undefined,
 		};
 
