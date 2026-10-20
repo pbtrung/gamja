@@ -577,6 +577,62 @@ describe("columns layout", () => {
 	});
 });
 
+describe("layout options", () => {
+	const members = () => {
+		const m = new irc.CaseMapMap<string>(null, irc.CaseMapping.RFC1459);
+		m.set("bob", "@");
+		return m;
+	};
+
+	it("customizes the sender column like WeeChat", () => {
+		const { container } = renderList(
+			[
+				msg(":bob!u@h PRIVMSG #c :one", "2030-01-01T12:00:00.000Z"),
+				msg(":bob!u@h PRIVMSG #c :two", "2030-01-01T12:01:00.000Z"),
+				msg(":carol!u@h PRIVMSG #c :three", "2030-01-01T12:02:00.000Z"),
+			],
+			{
+				buffer: { members: members() },
+				settings: {
+					layout: "columns",
+					nickModes: true,
+					nickBrackets: true,
+					hideRepeatedNicks: true,
+					nickAlign: "left",
+					nickColumnWidth: 16,
+				},
+			},
+		);
+		const prefixes = [...container.querySelectorAll(".logline.columns .logline-prefix")].map(
+			(el) => el.textContent,
+		);
+		expect(prefixes).toEqual(["<@bob>", "", "<carol>"]);
+		const list = container.querySelector<HTMLElement>(".logline-list")!;
+		expect(list).toHaveClass("nick-align-left");
+		expect(list.style.getPropertyValue("--nick-column-width")).toBe("16ch");
+	});
+
+	it("shows channel modes in the compact layout and turns nick colors off", () => {
+		const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
+			buffer: { members: members() },
+			settings: { layout: "compact", nickModes: true, nickColors: false },
+		});
+		expect(container.querySelector(".logline .logline-content, .logline")!.textContent).toContain(
+			"<@bob>",
+		);
+		expect(container.querySelector(".logline-list")).toHaveClass("no-nick-colors");
+	});
+
+	it("keeps the defaults", () => {
+		const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
+			buffer: { members: members() },
+			settings: { layout: "columns" },
+		});
+		expect(container.querySelector(".logline-prefix")!.textContent).toBe("bob");
+		expect(container.querySelector(".logline-list")).not.toHaveClass("no-nick-colors");
+	});
+});
+
 describe("bubbles layout", () => {
 	it("puts our own messages apart and names senders once per group", () => {
 		const { container } = renderList(

@@ -24,6 +24,7 @@ import Switch from "./Switch";
 import {
 	BufferEventsDisplayMode,
 	type MessageLayout,
+	type NickAlign,
 	type NotificationLevel,
 	type Settings,
 } from "../../state";
@@ -240,6 +241,16 @@ function LayoutPreview({ layout }: { layout: MessageLayout }) {
 	);
 }
 
+const nickAligns: { value: NickAlign; label: string }[] = [
+	{ value: "right", label: "Right" },
+	{ value: "left", label: "Left" },
+];
+
+const nickColumnWidths: { value: number; label: string }[] = [8, 12, 16, 20].map((n) => ({
+	value: n,
+	label: String(n),
+}));
+
 const eventModes: { value: BufferEventsDisplayMode; label: string }[] = [
 	{ value: BufferEventsDisplayMode.FOLD, label: "Fold" },
 	{ value: BufferEventsDisplayMode.EXPAND, label: "Expand" },
@@ -419,6 +430,62 @@ export default function SettingsForm(props: SettingsFormProps) {
 							))}
 						</div>
 					</fieldset>
+
+					<h3 className="settings-heading">Nicks</h3>
+					<div className="settings-card">
+						<ToggleRow
+							name="nickColors"
+							label="Nick colors"
+							hint="Give each nick its own color"
+							checked={settings.nickColors}
+							onChange={(nickColors) => onChange({ nickColors })}
+						/>
+						<ToggleRow
+							name="nickModes"
+							label="Channel modes before nicks"
+							hint="Show @ or + before senders, in the compact and columns layouts"
+							checked={settings.nickModes}
+							onChange={(nickModes) => onChange({ nickModes })}
+						/>
+					</div>
+
+					{settings.layout === "columns" && (
+						<>
+							<h3 className="settings-heading">Columns layout</h3>
+							<div className="settings-card">
+								<SegmentedRow
+									name="nickAlign"
+									label="Nick alignment"
+									hint="Against the column rule, or against the time"
+									options={nickAligns}
+									value={settings.nickAlign}
+									onChange={(nickAlign) => onChange({ nickAlign })}
+								/>
+								<SegmentedRow
+									name="nickColumnWidth"
+									label="Nick column width"
+									hint="In characters, longer nicks are cut"
+									options={nickColumnWidths}
+									value={settings.nickColumnWidth}
+									onChange={(nickColumnWidth) => onChange({ nickColumnWidth })}
+								/>
+								<ToggleRow
+									name="hideRepeatedNicks"
+									label="Hide repeated nicks"
+									hint="Leave the nick out of consecutive messages from the same sender"
+									checked={settings.hideRepeatedNicks}
+									onChange={(hideRepeatedNicks) => onChange({ hideRepeatedNicks })}
+								/>
+								<ToggleRow
+									name="nickBrackets"
+									label="Brackets around nicks"
+									hint="Show <nick> instead of nick"
+									checked={settings.nickBrackets}
+									onChange={(nickBrackets) => onChange({ nickBrackets })}
+								/>
+							</div>
+						</>
+					)}
 				</>
 			);
 			break;

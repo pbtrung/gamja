@@ -55,6 +55,9 @@ export type BufferEventsDisplayMode = (typeof BufferEventsDisplayMode)[keyof typ
 
 export type MessageLayout = "comfortable" | "compact" | "columns" | "bubbles";
 
+/** Alignment of nicks in the sender column of the columns layout */
+export type NickAlign = "right" | "left";
+
 export interface Settings {
 	/** Color theme ID, see themes.ts */
 	theme: string;
@@ -63,6 +66,22 @@ export interface Settings {
 	 * IRC, columns aligns senders like WeeChat, bubbles is messenger-style
 	 */
 	layout: MessageLayout;
+	/** Color nicks, in all layouts (WeeChat's nick colors) */
+	nickColors: boolean;
+	/** Show the sender's channel membership prefix, e.g. "@", before its nick
+	 * in the compact and columns layouts (WeeChat's weechat.look.nick_mode) */
+	nickModes: boolean;
+	/** Columns layout: alignment of the sender column (weechat.look.prefix_align) */
+	nickAlign: NickAlign;
+	/** Columns layout: width of the sender column, in characters
+	 * (weechat.look.prefix_align_max) */
+	nickColumnWidth: number;
+	/** Columns layout: leave the sender out of consecutive messages from the
+	 * same sender (weechat.look.prefix_same_nick) */
+	hideRepeatedNicks: boolean;
+	/** Columns layout: "<nick>" instead of "nick" (weechat.look.nick_prefix
+	 * and nick_suffix) */
+	nickBrackets: boolean;
 	secondsInTimestamps: boolean;
 	bufferEvents: BufferEventsDisplayMode;
 	showMemberList: boolean;
@@ -79,6 +98,12 @@ export type NotificationLevel = "mentions" | "all" | "none";
 export const defaultSettings: Settings = {
 	theme: "dracula",
 	layout: "compact",
+	nickColors: true,
+	nickModes: false,
+	nickAlign: "right",
+	nickColumnWidth: 12,
+	hideRepeatedNicks: false,
+	nickBrackets: false,
 	secondsInTimestamps: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
 	showMemberList: false,

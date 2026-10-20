@@ -1734,7 +1734,9 @@ li.unread-highlight .unread-indicator,
 	   Spaced like the compact layout: evenly, without gaps between groups. */
 	--row-pad: 0.125rem;
 	display: grid;
-	grid-template-columns: max-content 8.5rem minmax(0, 1fr);
+	/* The sender column fits --nick-column-width characters, plus its
+	   padding before the rule */
+	grid-template-columns: max-content calc(var(--nick-column-width, 12ch) + 0.625rem) minmax(0, 1fr);
 	align-items: baseline;
 	padding-top: 0;
 	padding-bottom: 0;
@@ -1769,6 +1771,10 @@ li.unread-highlight .unread-indicator,
 	text-align: right;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+#buffer .nick-align-left .logline.columns .logline-prefix {
+	text-align: left;
 }
 
 #buffer .logline.columns .logline-prefix.info,
@@ -2255,6 +2261,11 @@ a.nick {
 a.nick:hover {
 	color: var(--nick-color, var(--fg-emphasis));
 	text-decoration: underline;
+}
+
+/* Nick colors turned off: nicks use the regular emphasis color */
+#buffer .no-nick-colors a.nick {
+	--nick-color: initial;
 }
 
 /* The line's background and border already mark mentions: tinting the

@@ -266,6 +266,30 @@ describe("SettingsForm theme and layout", () => {
 		await userEvent.click(screen.getByRole("radio", { name: /Comfortable/ }));
 		expect(onChange).toHaveBeenCalledWith({ layout: "comfortable" });
 	});
+
+	it("shows the columns layout options only for that layout", async () => {
+		const onChange = vi.fn();
+		const props = {
+			showProtocolHandler: false,
+			onChange,
+			onDisconnect: () => {},
+			onClose: () => {},
+		};
+		const { rerender } = render(<SettingsForm settings={defaultSettings} {...props} />);
+		expect(screen.queryByText("Nick alignment")).not.toBeInTheDocument();
+		await userEvent.click(screen.getByRole("checkbox", { name: "Nick colors" }));
+		expect(onChange).toHaveBeenCalledWith({ nickColors: false });
+
+		rerender(<SettingsForm settings={{ ...defaultSettings, layout: "columns" }} {...props} />);
+		await userEvent.click(screen.getByRole("radio", { name: "Left" }));
+		expect(onChange).toHaveBeenCalledWith({ nickAlign: "left" });
+		await userEvent.click(screen.getByRole("radio", { name: "16" }));
+		expect(onChange).toHaveBeenCalledWith({ nickColumnWidth: 16 });
+		await userEvent.click(screen.getByRole("checkbox", { name: "Hide repeated nicks" }));
+		expect(onChange).toHaveBeenCalledWith({ hideRepeatedNicks: true });
+		await userEvent.click(screen.getByRole("checkbox", { name: "Brackets around nicks" }));
+		expect(onChange).toHaveBeenCalledWith({ nickBrackets: true });
+	});
 });
 
 describe("SettingsForm push notifications", () => {

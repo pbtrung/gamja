@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { memo, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { CornerUpRight } from "lucide-react";
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
@@ -292,6 +292,15 @@ const LogLine = memo(
 		const { buffer: buf, server, bouncerNetwork, onChannelClick } = ctx;
 		const createNick = makeNick(ctx);
 		const from = msg.prefix?.name ?? "*";
+		// The sender, with its channel membership prefix (e.g. "@") if enabled
+		const senderModes =
+			ctx.settings.nickModes && buf.type === BufferType.CHANNEL ? buf.members.get(from) : null;
+		const sender = (
+			<>
+				<Membership value={senderModes?.slice(0, 1)} />
+				{createNick(from)}
+			</>
+		);
 
 		function createChannel(channel: string) {
 			const url = irc.formatURL({ host: bouncerNetwork?.host ?? undefined, entity: channel });
@@ -318,8 +327,7 @@ const LogLine = memo(
 						lineClass = "me-tell";
 						content = (
 							<>
-								* {createNick(from)}{" "}
-								<RichText text={ctcp.param} onLinkClick={onChannelClick} />
+								* {sender} <RichText text={ctcp.param} onLinkClick={onChannelClick} />
 							</>
 						);
 						chatBody = <RichText text={ctcp.param} onLinkClick={onChannelClick} />;
@@ -349,7 +357,7 @@ const LogLine = memo(
 							<span className="nick-caret" aria-hidden="true">
 								{prefix}
 							</span>
-							{createNick(from)}
+							{sender}
 							<span className="nick-caret" aria-hidden="true">
 								{suffix}
 							</span>{" "}
@@ -660,14 +668,31 @@ const LogLine = memo(
 				prefixKind = "action";
 				body = (
 					<>
-						{createNick(from)} {chatBody}
+						{sender} {chatBody}
 					</>
 				);
+			} else if (ctx.settings.hideRepeatedNicks && group === "continuation") {
+				// Like WeeChat's prefix_same_nick: the column stays, empty
+				prefix = null;
+				body = chatBody;
 			} else if (msg.command === "NOTICE") {
-				prefix = <>-{createNick(from)}-</>;
+				prefix = <>-{sender}-</>;
+				body = chatBody;
+			} else if (ctx.settings.nickBrackets) {
+				prefix = (
+					<>
+						<span className="nick-caret" aria-hidden="true">
+							&lt;
+						</span>
+						{sender}
+						<span className="nick-caret" aria-hidden="true">
+							&gt;
+						</span>
+					</>
+				);
 				body = chatBody;
 			} else {
-				prefix = createNick(from);
+				prefix = sender;
 				body = chatBody;
 			}
 			return (
@@ -1228,7 +1253,20 @@ function MessageList(props: MessageListProps) {
 	}
 	children.push(createFoldGroup(foldMessages));
 
-	return <div className="logline-list">{children}</div>;
+	// Layout options, applied by the stylesheet
+	const listClasses = ["logline-list"];
+	if (!settings.nickColors) {
+		listClasses.push("no-nick-colors");
+	}
+	if (settings.nickAlign === "left") {
+		listClasses.push("nick-align-left");
+	}
+	const listStyle = { "--nick-column-width": `${settings.nickColumnWidth}ch` } as CSSProperties;
+	return (
+		<div className={listClasses.join(" ")} style={listStyle}>
+			{children}
+		</div>
+	);
 }
 
 export default memo(MessageList);
