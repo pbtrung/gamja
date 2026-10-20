@@ -1606,10 +1606,11 @@ li.unread-highlight .unread-indicator,
 }
 
 #buffer .logline {
+	--logline-line-height: 1.55;
 	position: relative;
 	padding: 0.125rem 1rem;
 	border-left: 3px solid transparent;
-	line-height: 1.55;
+	line-height: var(--logline-line-height);
 	white-space: pre-wrap;
 }
 
@@ -1729,7 +1730,8 @@ li.unread-highlight .unread-indicator,
 /* Columns layout: WeeChat style, senders right-aligned before a rule */
 
 #buffer .logline.columns {
-	/* Rows pad their cells so that the rule runs unbroken between rows */
+	/* Rows pad their cells so that the rule runs unbroken between rows.
+	   Spaced like the compact layout: evenly, without gaps between groups. */
 	--row-pad: 0.125rem;
 	display: grid;
 	grid-template-columns: max-content 8.5rem minmax(0, 1fr);
@@ -1739,12 +1741,8 @@ li.unread-highlight .unread-indicator,
 	white-space: normal;
 }
 
-#buffer .logline.columns.group-first {
-	--row-pad-top: 0.375rem;
-}
-
 #buffer .logline.columns > * {
-	padding-top: var(--row-pad-top, var(--row-pad));
+	padding-top: var(--row-pad);
 	padding-bottom: var(--row-pad);
 }
 
@@ -1808,6 +1806,8 @@ li.unread-highlight .unread-indicator,
 
 #buffer .logline.columns.event {
 	font-size: 0.9375em;
+	/* Same line height as other lines, despite the smaller text */
+	line-height: calc(var(--logline-line-height) / 0.9375);
 }
 
 /* Bubbles layout: messenger style, our own messages on the right */
