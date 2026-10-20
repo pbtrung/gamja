@@ -16,6 +16,11 @@ Then [configure an HTTP server] to serve the files in `dist/`. The version
 shown in the UI is the latest git tag; set `GAMJA_VERSION` to override it
 when building outside a git checkout.
 
+To make a release, run `tools/release.sh vX.Y.Z [notes.md]`. It tags HEAD
+before building, so that the version badge shows the new tag, checks the
+badge and zips `dist/` as `gamja-vX.Y.Z.zip`. With a release notes file, it
+also pushes the tag and publishes the release on GitHub.
+
 ### Development server
 
     npm run dev

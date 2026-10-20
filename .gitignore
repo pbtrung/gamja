@@ -8,3 +8,6 @@ node_modules
 /playwright-report
 /test-results
 /coverage
+
+# Release archives built by tools/release.sh
+/gamja-*.zip
