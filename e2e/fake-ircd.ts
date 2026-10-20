@@ -111,20 +111,11 @@ export interface ServerOptions {
 	accounts?: Record<string, string>;
 	/** Advertise soju.im/bouncer-networks */
 	bouncer?: boolean;
+	/** How far ahead of the real time the server's clock is, in milliseconds */
+	clockSkew?: number;
 }
 
 let msgidCounter = 0;
-let lastTime = 0;
-
-function now(): string {
-	// Strictly increasing timestamps keep history ordering deterministic
-	let t = Date.now();
-	if (t <= lastTime) {
-		t = lastTime + 1;
-	}
-	lastTime = t;
-	return new Date(t).toISOString();
-}
 
 const AVAILABLE_CAPS = [
 	"account-notify",
@@ -199,7 +190,7 @@ class Conn {
 			}
 		}
 		if (this.caps.has("server-time")) {
-			tags.time = msg.tags.time || opts.time || now();
+			tags.time = msg.tags.time || opts.time || this.server.now();
 		}
 		const line = format({ ...msg, tags, prefix: msg.prefix ?? SERVER_NAME });
 		this.lines.push(line);
@@ -225,11 +216,23 @@ export class FakeServer {
 	networks = new Map<string, Record<string, string>>([
 		["1", { name: NETWORK, host: "irc.fake.test", state: "connected" }],
 	]);
+	private lastTime = 0;
 
 	constructor(opts: ServerOptions) {
 		this.opts = opts;
 		this.wss = new WebSocketServer({ port: opts.port });
 		this.wss.on("connection", (ws) => this.handleConnection(ws));
+	}
+
+	/** The server's time, for server-time tags and history */
+	now(): string {
+		// Strictly increasing timestamps keep history ordering deterministic
+		let t = Date.now() + (this.opts.clockSkew ?? 0);
+		if (t <= this.lastTime) {
+			t = this.lastTime + 1;
+		}
+		this.lastTime = t;
+		return new Date(t).toISOString();
 	}
 
 	get port(): number {
@@ -862,7 +865,7 @@ export class FakeServer {
 	}
 
 	broadcastChannel(ch: Channel, msg: Msg, except?: Conn): void {
-		const time = msg.tags.time || now();
+		const time = msg.tags.time || this.now();
 		for (const nick of ch.members.keys()) {
 			for (const c of this.connsFor(nick)) {
 				if (c !== except) {
@@ -886,7 +889,7 @@ export class FakeServer {
 			return;
 		}
 		ch.members.set(cm(conn.nick), ch.members.size === 0 ? "@" : "");
-		const time = now();
+		const time = this.now();
 		for (const nick of ch.members.keys()) {
 			for (const c of this.connsFor(nick)) {
 				const params = c.caps.has("extended-join")
@@ -945,7 +948,7 @@ export class FakeServer {
 		const params = reason ? [ch.name, reason] : [ch.name];
 		this.broadcastChannel(ch, { tags: {}, prefix: conn.prefix, command: "PART", params });
 		this.record(ch.name, {
-			time: now(),
+			time: this.now(),
 			msgid: this.nextMsgid(),
 			prefix: conn.prefix,
 			command: "PART",
@@ -992,6 +995,21 @@ export class FakeServer {
 		this.history.set(key, l);
 	}
 
+	/**
+	 * Store a private message in history without delivering it, like a bouncer
+	 * does while its user is away.
+	 */
+	recordMissedMessage(from: string, to: string, text: string): void {
+		this.record(this.dmKey(from, to), {
+			time: this.now(),
+			msgid: this.nextMsgid(),
+			prefix: `${from}!user@fake.host`,
+			command: "PRIVMSG",
+			params: [to, text],
+			tags: {},
+		});
+	}
+
 	/** A tiny BouncerServ: only "channel update <name> -detached true" */
 	bouncerServ(conn: Conn, msg: Msg): void {
 		const tags: Record<string, string> =
@@ -1022,7 +1040,7 @@ export class FakeServer {
 			return;
 		}
 		const clientTags = Object.fromEntries(Object.entries(msg.tags).filter(([k]) => k.startsWith("+")));
-		const time = now();
+		const time = this.now();
 		const msgid = this.nextMsgid();
 		const out: Msg = {
 			tags: { ...clientTags, msgid, time },
