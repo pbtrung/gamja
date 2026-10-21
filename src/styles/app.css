@@ -1729,6 +1729,16 @@ li.unread-highlight .unread-indicator,
 
 /* Columns layout: WeeChat style, senders right-aligned before a rule */
 
+/* Registered as a length, so that a width in "ch" set on the message list
+   is converted there, with the list's font, and inherited as is: resolved on
+   each line, it would vary with the line's font, e.g. smaller or italic text,
+   and misalign the rule */
+@property --nick-column-width {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 0px;
+}
+
 #buffer .logline.columns {
 	/* Rows pad their cells so that the rule runs unbroken between rows.
 	   Spaced like the compact layout: evenly, without gaps between groups. */
@@ -1736,7 +1746,7 @@ li.unread-highlight .unread-indicator,
 	display: grid;
 	/* The sender column fits --nick-column-width characters, plus its
 	   padding before the rule */
-	grid-template-columns: max-content calc(var(--nick-column-width, 12ch) + 0.625rem) minmax(0, 1fr);
+	grid-template-columns: max-content calc(var(--nick-column-width) + 0.625rem) minmax(0, 1fr);
 	align-items: baseline;
 	padding-top: 0;
 	padding-bottom: 0;
