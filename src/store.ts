@@ -1,4 +1,4 @@
-import { ReceiptType, Unread, type Receipt } from "./state";
+import { ReceiptType, Unread, sanitizeSettings, unionUnread, type Receipt } from "./state";
 import debounce from "./lib/debounce";
 
 const PREFIX = "gamja_";
@@ -58,7 +58,16 @@ interface StoredConnectParams {
 
 export const autoconnect = new Item<StoredConnectParams>("autoconnect");
 export const naggedProtocolHandler = new Item<boolean>("naggedProtocolHandler");
-export const settings = new Item<Record<string, unknown>>("settings");
+/** Settings changed from their defaults. Loading drops invalid ones, see
+ * sanitizeSettings(). */
+class SettingsItem extends Item<Record<string, unknown>> {
+	override load(): Record<string, unknown> | null {
+		const stored = super.load();
+		return stored === null ? null : sanitizeSettings(stored);
+	}
+}
+
+export const settings = new SettingsItem("settings");
 /** Keys of the networks collapsed in the buffer list, see getServerKey() */
 export const collapsedNetworks = new Item<string[]>("collapsedNetworks");
 /** Reactions picked last, most recent first */
@@ -86,6 +95,41 @@ export interface BufferUpdate {
 	closed?: boolean;
 }
 
+/** The stored buffer, or null if it isn't one, e.g. corrupted. */
+function parseStoredBuffer(v: unknown): StoredBuffer | null {
+	if (typeof v !== "object" || v === null) {
+		return null;
+	}
+	const buf = v as Partial<StoredBuffer>;
+	if (typeof buf.name !== "string" || typeof buf.server !== "object" || buf.server === null) {
+		return null;
+	}
+	return {
+		name: buf.name,
+		unread: Object.values(Unread).includes(buf.unread as Unread) ? buf.unread! : Unread.NONE,
+		receipts: typeof buf.receipts === "object" && buf.receipts !== null ? buf.receipts : {},
+		closed: buf.closed === true,
+		server: { bouncerNetwork: buf.server.bouncerNetwork ?? null },
+	};
+}
+
+/** Merge two stored copies of the same buffer, keeping the newest receipts. */
+function mergeStoredBuffers(a: StoredBuffer, b: StoredBuffer): StoredBuffer {
+	const receipts: Receipts = { ...a.receipts };
+	for (const k of Object.keys(b.receipts) as ReceiptType[]) {
+		const r = b.receipts[k];
+		if (r && (!receipts[k] || receipts[k].time < r.time)) {
+			receipts[k] = r;
+		}
+	}
+	return {
+		...a,
+		unread: unionUnread(a.unread, b.unread),
+		receipts,
+		closed: a.closed && b.closed,
+	};
+}
+
 /** Per-buffer state persisted across sessions: unread status and receipts. */
 export class BufferStore {
 	raw = new Item<Record<string, StoredBuffer>>("buffers");
@@ -98,8 +142,18 @@ export class BufferStore {
 	};
 
 	constructor() {
-		const obj = this.raw.load();
-		this.m = new Map(Object.entries(obj || {}));
+		// Keys are recomputed: older gamja versions could store a buffer
+		// under several keys, see key()
+		this.m = new Map();
+		for (const v of Object.values(this.raw.load() ?? {})) {
+			const buf = parseStoredBuffer(v);
+			if (!buf) {
+				continue;
+			}
+			const key = this.key(buf);
+			const prev = this.m.get(key);
+			this.m.set(key, prev ? mergeStoredBuffers(prev, buf) : buf);
+		}
 
 		this.save = debounce(this.saveImmediately.bind(this), 500);
 
@@ -113,10 +167,12 @@ export class BufferStore {
 
 	key(buf: { name: string; server: StoredServer }): string {
 		// TODO: use case-mapping here somehow
+		// A missing bouncer network is the same as none: undefined and null
+		// must give the same key
 		return JSON.stringify({
 			name: buf.name.toLowerCase(),
 			server: {
-				bouncerNetwork: buf.server.bouncerNetwork,
+				bouncerNetwork: buf.server.bouncerNetwork ?? null,
 			},
 		});
 	}
@@ -183,7 +239,7 @@ export class BufferStore {
 			receipts,
 			closed,
 			server: {
-				bouncerNetwork: buf.server.bouncerNetwork,
+				bouncerNetwork: buf.server.bouncerNetwork ?? null,
 			},
 		});
 

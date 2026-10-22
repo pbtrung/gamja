@@ -91,8 +91,10 @@ export function handleMessage(
 	client: Client,
 ): Partial<State> | undefined {
 	const updateServerWith = (updater: Updater<Server>) => updateServer(state, serverID, updater);
-	const updateBufferWith = (name: string, updater: Updater<Buffer>) =>
-		updateBuffer(state, { server: serverID, name }, updater);
+	// A missing name would select the server buffer, see getBuffer(): ignore
+	// messages missing their target instead, e.g. malformed replies
+	const updateBufferWith = (name: string | undefined, updater: Updater<Buffer>) =>
+		name ? updateBuffer(state, { server: serverID, name }, updater) : undefined;
 	const updateUser = (name: string, updater: Updater<User>) => {
 		return updateServerWith((server) => {
 			const users = new irc.CaseMapMap(server.users);
@@ -216,9 +218,9 @@ export function handleMessage(
 			});
 		}
 		case irc.RPL_ENDOFWHO: {
-			target = msg.params[1];
+			target = msg.params[1] ?? "";
 			const list = msg.list || [];
-			if (list.length === 0 && !client.isChannel(target) && target.indexOf("*") < 0) {
+			if (list.length === 0 && target && !client.isChannel(target) && target.indexOf("*") < 0) {
 				// Not a channel nor a mask, likely a nick
 				return updateUser(target, { offline: true });
 			}
@@ -380,7 +382,8 @@ export function handleMessage(
 					}
 					const nick = arg;
 					if (!nick) {
-						throw new Error(`Missing membership MODE "${mode}" argument`);
+						// Malformed, e.g. "MODE #chan +o": there's no member to update
+						return;
 					}
 					const membership = members.get(nick);
 					if (membership === undefined) {
@@ -436,7 +439,7 @@ export function handleMessage(
 			});
 		case irc.RPL_MONONLINE:
 		case irc.RPL_MONOFFLINE: {
-			const targets = msg.params[1].split(",");
+			const targets = (msg.params[1] ?? "").split(",").filter(Boolean);
 
 			for (const t of targets) {
 				const p = irc.parsePrefix(t);

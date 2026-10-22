@@ -7,10 +7,12 @@ export const BufferEventsDisplayMode = {
 } as const;
 export type BufferEventsDisplayMode = (typeof BufferEventsDisplayMode)[keyof typeof BufferEventsDisplayMode];
 
-export type MessageLayout = "comfortable" | "compact" | "columns" | "bubbles";
+export const MESSAGE_LAYOUTS = ["comfortable", "compact", "columns", "bubbles"] as const;
+export type MessageLayout = (typeof MESSAGE_LAYOUTS)[number];
 
 /** Alignment of nicks in the sender column of the columns layout */
-export type NickAlign = "right" | "left";
+export const NICK_ALIGNS = ["right", "left"] as const;
+export type NickAlign = (typeof NICK_ALIGNS)[number];
 
 export interface Settings {
 	/** Color theme ID, see themes.ts */
@@ -64,7 +66,8 @@ export interface Settings {
 	backlogSize: number;
 }
 
-export type NotificationLevel = "mentions" | "all" | "none";
+export const NOTIFICATION_LEVELS = ["mentions", "all", "none"] as const;
+export type NotificationLevel = (typeof NOTIFICATION_LEVELS)[number];
 
 export const defaultSettings: Settings = {
 	theme: "dracula",
@@ -114,4 +117,42 @@ export function backlogSize(settings: Settings): number {
 		return defaultSettings.backlogSize;
 	}
 	return Math.min(Math.max(n, BACKLOG_SIZE_MIN), BACKLOG_SIZE_MAX);
+}
+
+/** Allowed values of the settings which are strings, when restricted */
+const SETTING_VALUES: Partial<Record<keyof Settings, readonly string[]>> = {
+	layout: MESSAGE_LAYOUTS,
+	nickAlign: NICK_ALIGNS,
+	notifications: NOTIFICATION_LEVELS,
+	bufferEvents: Object.values(BufferEventsDisplayMode),
+};
+
+/**
+ * The valid settings of stored ones, e.g. from localStorage: unknown keys
+ * and values of the wrong type are dropped, the defaults apply to them. A
+ * stored value isn't trusted: it may come from an older or newer gamja.
+ */
+export function sanitizeSettings(stored: unknown): Partial<Settings> {
+	if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
+		return {};
+	}
+	const settings: Record<string, unknown> = {};
+	for (const [k, v] of Object.entries(stored)) {
+		if (!Object.hasOwn(defaultSettings, k)) {
+			continue;
+		}
+		const key = k as keyof Settings;
+		if (typeof v !== typeof defaultSettings[key]) {
+			continue;
+		}
+		if (typeof v === "number" && !Number.isFinite(v)) {
+			continue;
+		}
+		const allowed = SETTING_VALUES[key];
+		if (allowed && !allowed.includes(v as string)) {
+			continue;
+		}
+		settings[key] = v;
+	}
+	return settings as Partial<Settings>;
 }

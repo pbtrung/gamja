@@ -76,6 +76,32 @@ describe("display settings", () => {
 	});
 });
 
+describe("sanitizeSettings", () => {
+	it("keeps valid settings and drops the rest", () => {
+		expect(
+			S.sanitizeSettings({
+				layout: "columns",
+				nickColors: false,
+				nickColumnWidth: 20,
+				theme: "zenburn",
+				// Invalid values and unknown keys
+				nickAlign: "center",
+				notifications: 1,
+				showTimestamps: "yes",
+				autoAwayMinutes: Number.NaN,
+				unknown: true,
+				toString: "x",
+			}),
+		).toEqual({ layout: "columns", nickColors: false, nickColumnWidth: 20, theme: "zenburn" });
+	});
+
+	it("ignores stored values which aren't settings objects", () => {
+		expect(S.sanitizeSettings(null)).toEqual({});
+		expect(S.sanitizeSettings("compact")).toEqual({});
+		expect(S.sanitizeSettings(["compact"])).toEqual({});
+	});
+});
+
 describe("backlogSize", () => {
 	it("falls back to the default and stays within bounds", () => {
 		const size = (backlogSize: unknown) =>
@@ -314,6 +340,19 @@ describe("handleMessage", () => {
 		expect(t.buf("#c").members.get("bob")).toBe("~+");
 		t.handle(":me!u@h MODE #c +b *!*@x");
 		expect(t.buf("#c").members.get("bob")).toBe("~+");
+		// Malformed: a membership mode without its nick
+		t.handle(":me!u@h MODE #c +o");
+		expect(t.buf("#c").members.get("bob")).toBe("~+");
+	});
+
+	it("ignores replies missing their target", () => {
+		const t = setup(["#c"]);
+		t.handle(":srv 332 me");
+		t.handle(":srv TOPIC");
+		expect(t.buf(SERVER_BUFFER).topic).toBeNull();
+		t.handle(":srv 730 me");
+		t.handle(":srv 315 me");
+		expect(t.state.servers.get(t.serverID)!.users.size).toBe(0);
 	});
 
 	it("tracks topics", () => {

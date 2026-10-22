@@ -81,3 +81,60 @@ describe("BufferStore", () => {
 		Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
 	});
 });
+
+describe("BufferStore keys", () => {
+	it("gives the same key to a missing and a null bouncer network", () => {
+		const store = new BufferStore();
+		expect(store.key({ name: "#c", server: {} })).toBe(
+			store.key({ name: "#c", server: { bouncerNetwork: null } }),
+		);
+		store.put({ name: "#c", server: {}, unread: Unread.MESSAGE });
+		expect(store.get({ name: "#c", server: { bouncerNetwork: null } })?.unread).toBe(Unread.MESSAGE);
+		store.clear();
+	});
+
+	it("merges copies stored under different keys, and drops corrupted ones", () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		localStorage.setItem(
+			"gamja_buffers",
+			JSON.stringify({
+				a: {
+					name: "#c",
+					server: {},
+					unread: "",
+					receipts: { read: { time: "2020-01-01" } },
+					closed: true,
+				},
+				b: {
+					name: "#c",
+					server: { bouncerNetwork: null },
+					unread: "message",
+					receipts: { read: { time: "2020-01-02" } },
+					closed: false,
+				},
+				c: "junk",
+				d: { name: 1, server: {} },
+			}),
+		);
+		const store = new BufferStore();
+		expect(store.m.size).toBe(1);
+		expect(store.get({ name: "#c", server: {} })).toEqual({
+			name: "#c",
+			unread: Unread.MESSAGE,
+			receipts: { read: { time: "2020-01-02" } },
+			closed: false,
+			server: { bouncerNetwork: null },
+		});
+		store.clear();
+	});
+});
+
+describe("settings", () => {
+	it("loads only valid settings", async () => {
+		const { settings } = await import("../src/store");
+		localStorage.setItem("gamja_settings", JSON.stringify({ layout: "bubbles", nickAlign: 3 }));
+		expect(settings.load()).toEqual({ layout: "bubbles" });
+		localStorage.removeItem("gamja_settings");
+		expect(settings.load()).toBeNull();
+	});
+});
