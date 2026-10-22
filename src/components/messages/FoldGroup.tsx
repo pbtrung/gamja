@@ -52,16 +52,11 @@ export default function FoldGroup({ messages: msgs, ctx }: { messages: Message[]
 	}
 
 	const lastMsg = msgs[msgs.length - 1];
+	const firstURL = getMessageURL(ctx.buffer, msgs[0], ctx.bouncerNetwork);
 	const firstDate = new Date(msgs[0].tags.time!);
 	const lastDate = new Date(lastMsg.tags.time!);
 	const showSeconds = ctx.settings.secondsInTimestamps;
-	let timestamp: ReactNode = (
-		<Timestamp
-			date={firstDate}
-			url={getMessageURL(ctx.buffer, msgs[0], ctx.bouncerNetwork)}
-			showSeconds={showSeconds}
-		/>
-	);
+	let timestamp: ReactNode = <Timestamp date={firstDate} url={firstURL} showSeconds={showSeconds} />;
 	if (lastDate.getTime() - firstDate.getTime() > 60 * 1000) {
 		timestamp = (
 			<span className="timestamp-range">
@@ -79,11 +74,7 @@ export default function FoldGroup({ messages: msgs, ctx }: { messages: Message[]
 		return (
 			<div className="logline comfortable event fold-group" data-key={msgs[0].key}>
 				<div className="logline-gutter">
-					<Timestamp
-						date={firstDate}
-						url={getMessageURL(ctx.buffer, msgs[0], ctx.bouncerNetwork)}
-						showSeconds={false}
-					/>
+					<Timestamp date={firstDate} url={firstURL} showSeconds={false} />
 				</div>
 				<div className="logline-main">
 					<div className="logline-content">{content}</div>
@@ -95,11 +86,7 @@ export default function FoldGroup({ messages: msgs, ctx }: { messages: Message[]
 	if (ctx.settings.layout === "columns") {
 		return (
 			<div className="logline columns event fold-group" data-key={msgs[0].key}>
-				<Timestamp
-					date={firstDate}
-					url={getMessageURL(ctx.buffer, msgs[0], ctx.bouncerNetwork)}
-					showSeconds={showSeconds}
-				/>
+				<Timestamp date={firstDate} url={firstURL} showSeconds={showSeconds} />
 				<span className="logline-prefix info">--</span>
 				<div className="logline-main">
 					<span className="logline-content">{content}</span>

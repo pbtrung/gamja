@@ -150,6 +150,8 @@ const LogLine = memo(
 		}
 
 		const msgid = msg.tags.msgid;
+		// Scroll anchors (see ChatScroller), and targets of reply quotes
+		const lineAttrs = { "data-key": msg.key, "data-msgid": msgid ?? undefined };
 		const ctcp = irc.parseCTCP(msg);
 		const isChat =
 			(msg.command === "PRIVMSG" || msg.command === "NOTICE") && (!ctcp || ctcp.command === "ACTION");
@@ -191,8 +193,7 @@ const LogLine = memo(
 			return (
 				<div
 					className={`logline comfortable ${lineClass} ${isGroupedChat ? "group-" + group : "event"}`}
-					data-key={msg.key}
-					data-msgid={msgid ?? undefined}
+					{...lineAttrs}
 				>
 					<div className="logline-gutter">
 						{isGroupedChat && group === "first" ? (
@@ -264,8 +265,7 @@ const LogLine = memo(
 			return (
 				<div
 					className={`logline columns ${lineClass} group-${(chatBody !== null && group) || "first"}`}
-					data-key={msg.key}
-					data-msgid={msgid ?? undefined}
+					{...lineAttrs}
 				>
 					<Timestamp date={date} url={url} showSeconds={showSeconds} />
 					<span className={`logline-prefix ${prefixKind}`}>{prefix}</span>
@@ -282,11 +282,7 @@ const LogLine = memo(
 		if (ctx.settings.layout === "bubbles") {
 			if (chatBody === null) {
 				return (
-					<div
-						className={`logline bubbles event ${lineClass}`}
-						data-key={msg.key}
-						data-msgid={msgid ?? undefined}
-					>
+					<div className={`logline bubbles event ${lineClass}`} {...lineAttrs}>
 						<span className="logline-content">{content}</span>
 					</div>
 				);
@@ -297,8 +293,7 @@ const LogLine = memo(
 			return (
 				<div
 					className={`logline bubbles ${lineClass} group-${first ? "first" : "continuation"}${mine ? " mine" : ""}`}
-					data-key={msg.key}
-					data-msgid={msgid ?? undefined}
+					{...lineAttrs}
 				>
 					{first && !mine && <Avatar nick={from} />}
 					{first && !mine && (
@@ -319,7 +314,7 @@ const LogLine = memo(
 		}
 
 		return (
-			<div className={`logline ${lineClass}`} data-key={msg.key} data-msgid={msgid ?? undefined}>
+			<div className={`logline ${lineClass}`} {...lineAttrs}>
 				{quote}
 				<Timestamp date={date} url={url} showSeconds={showSeconds} />{" "}
 				<span className="logline-content">{content}</span>

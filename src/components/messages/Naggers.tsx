@@ -1,8 +1,17 @@
-import { useState, type MouseEvent } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import * as store from "../../store";
 import { registerProtocolHandler } from "../../format";
 import type { Context } from "./context";
 import Timestamp from "./Timestamp";
+
+/** A line of the server buffer suggesting something, with a placeholder time */
+function NagLine({ showSeconds, children }: { showSeconds: boolean; children: ReactNode }) {
+	return (
+		<div className="logline nag">
+			<Timestamp showSeconds={showSeconds} /> <span className="logline-content">{children}</span>
+		</div>
+	);
+}
 
 function notificationsSupported(): boolean {
 	return "Notification" in globalThis;
@@ -22,15 +31,12 @@ export function NotificationNagger({ showSeconds }: { showSeconds: boolean }) {
 	}
 
 	return (
-		<div className="logline nag">
-			<Timestamp showSeconds={showSeconds} />{" "}
-			<span className="logline-content">
-				<a href="#" onClick={handleClick}>
-					Turn on desktop notifications
-				</a>{" "}
-				to get notified about new messages
-			</span>
-		</div>
+		<NagLine showSeconds={showSeconds}>
+			<a href="#" onClick={handleClick}>
+				Turn on desktop notifications
+			</a>{" "}
+			to get notified about new messages
+		</NagLine>
 	);
 }
 
@@ -55,15 +61,12 @@ export function ProtocolHandlerNagger({
 	}
 
 	return (
-		<div className="logline nag">
-			<Timestamp showSeconds={showSeconds} />{" "}
-			<span className="logline-content">
-				<a href="#" onClick={handleClick}>
-					Register our protocol handler
-				</a>{" "}
-				to open IRC links with {bouncerName || "this bouncer"}
-			</span>
-		</div>
+		<NagLine showSeconds={showSeconds}>
+			<a href="#" onClick={handleClick}>
+				Register our protocol handler
+			</a>{" "}
+			to open IRC links with {bouncerName || "this bouncer"}
+		</NagLine>
 	);
 }
 
@@ -81,25 +84,22 @@ export function AccountNagger({ ctx }: { ctx: Context }) {
 	}
 
 	return (
-		<div className="logline nag">
-			<Timestamp showSeconds={ctx.settings.secondsInTimestamps} />{" "}
-			<span className="logline-content">
-				You are unauthenticated on this server,{" "}
-				<a href="#" onClick={handleAuthClick}>
-					login
-				</a>{" "}
-				{server.supportsAccountRegistration ? (
-					<>
-						or{" "}
-						<a href="#" onClick={handleRegisterClick}>
-							register
-						</a>{" "}
-						{accDesc}
-					</>
-				) : (
-					<>if you have {accDesc}</>
-				)}
-			</span>
-		</div>
+		<NagLine showSeconds={ctx.settings.secondsInTimestamps}>
+			You are unauthenticated on this server,{" "}
+			<a href="#" onClick={handleAuthClick}>
+				login
+			</a>{" "}
+			{server.supportsAccountRegistration ? (
+				<>
+					or{" "}
+					<a href="#" onClick={handleRegisterClick}>
+						register
+					</a>{" "}
+					{accDesc}
+				</>
+			) : (
+				<>if you have {accDesc}</>
+			)}
+		</NagLine>
 	);
 }
