@@ -3278,6 +3278,40 @@ mark {
 	color: var(--accent-fg);
 }
 
+/* Round button at the bottom right of the log, above the composer, while
+ * scrolled up */
+.scroll-latest {
+	position: sticky;
+	bottom: 1rem;
+	z-index: 5;
+	display: flex;
+	/* Not stretched to the zero height */
+	align-items: flex-end;
+	justify-content: flex-end;
+	height: 0;
+	padding-right: 1rem;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.scroll-latest .btn {
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	border-color: var(--accent);
+	border-radius: 50%;
+	background-color: var(--accent);
+	color: var(--accent-fg);
+	box-shadow: var(--shadow-lg);
+	pointer-events: auto;
+}
+
+.scroll-latest .btn:hover {
+	border-color: var(--accent-hover);
+	background-color: var(--accent-hover);
+	color: var(--accent-fg);
+}
+
 .sidebar-version {
 	/* Roughly on the title's baseline */
 	padding-top: 0.3rem;

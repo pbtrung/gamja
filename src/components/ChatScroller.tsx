@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { flash } from "../lib/flash";
 
 /** A message and its distance from the top of the viewport, in pixels */
@@ -32,6 +32,13 @@ function isAtBottom(el: HTMLElement): boolean {
 
 function scrollToBottom(el: HTMLElement): void {
 	el.scrollTop = el.scrollHeight;
+}
+
+function prefersReducedMotion(): boolean {
+	return (
+		typeof window.matchMedia === "function" &&
+		window.matchMedia("(prefers-reduced-motion: reduce)").matches
+	);
 }
 
 function firstVisibleAnchor(el: HTMLElement, stickTo: string): Anchor | null {
@@ -70,6 +77,8 @@ export default function ChatScroller({
 }: ChatScrollerProps) {
 	const ref = useRef<HTMLElement>(null);
 	const [unreadAbove, setUnreadAbove] = useState(false);
+	// Offers to scroll back to the latest messages when scrolled up
+	const [awayFromBottom, setAwayFromBottom] = useState(false);
 	const stickToBottom = useRef(true);
 	const onScrollTopRef = useRef(onScrollTop);
 
@@ -79,6 +88,7 @@ export default function ChatScroller({
 
 	function save(el: HTMLElement) {
 		stickToBottom.current = savePosition(el, scrollKey, stickTo);
+		setAwayFromBottom(!stickToBottom.current);
 	}
 
 	// Restore the position when the content changes: either the buffer
@@ -96,6 +106,7 @@ export default function ChatScroller({
 					target.getBoundingClientRect().top - el.getBoundingClientRect().top - el.clientHeight / 3;
 				flash(target);
 				stickToBottom.current = savePosition(el, scrollKey, stickTo);
+				setAwayFromBottom(!stickToBottom.current);
 				onJumped?.();
 				return;
 			}
@@ -113,6 +124,7 @@ export default function ChatScroller({
 			scrollToBottom(el);
 			stickToBottom.current = true;
 		}
+		setAwayFromBottom(!stickToBottom.current);
 
 		if (el.scrollTop === 0) {
 			onScrollTopRef.current();
@@ -190,6 +202,20 @@ export default function ChatScroller({
 		save(el);
 	}
 
+	function scrollToLatest() {
+		const el = ref.current;
+		if (!el) {
+			return;
+		}
+		if (typeof el.scrollTo === "function" && !prefersReducedMotion()) {
+			// The scroll events update the saved position as it goes
+			el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+		} else {
+			scrollToBottom(el);
+			save(el);
+		}
+	}
+
 	return (
 		<section
 			id={id}
@@ -213,6 +239,19 @@ export default function ChatScroller({
 				</div>
 			)}
 			{children}
+			{awayFromBottom && (
+				<div className="scroll-latest">
+					<button
+						type="button"
+						className="btn"
+						title="Scroll to latest messages"
+						aria-label="Scroll to latest messages"
+						onClick={scrollToLatest}
+					>
+						<ArrowDown aria-hidden="true" />
+					</button>
+				</div>
+			)}
 		</section>
 	);
 }
