@@ -531,8 +531,11 @@ export abstract class ClientConnection extends EventTarget {
 		// Pending roundtrips first: they may mark the message as internal. A
 		// capture listener wouldn't do: browsers call the listeners of a plain
 		// EventTarget in the order they were added.
-		for (const handler of [...this.roundtripHandlers]) {
-			handler(msg);
+		// Copied, handlers remove themselves once done
+		if (this.roundtripHandlers.size > 0) {
+			for (const handler of [...this.roundtripHandlers]) {
+				handler(msg);
+			}
 		}
 		this.dispatchEvent(
 			new CustomEvent<MessageEventDetail>("message", {

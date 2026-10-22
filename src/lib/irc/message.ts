@@ -131,6 +131,14 @@ function formatPrefix(prefix: Prefix): string {
 	return s;
 }
 
+/** The rest of s from i, after the spaces there. */
+function skipSpaces(s: string, i: number): string {
+	while (s[i] === " ") {
+		i++;
+	}
+	return s.slice(i);
+}
+
 export function parseMessage(s: string): Message {
 	if (s.endsWith("\r\n")) {
 		s = s.slice(0, s.length - 2);
@@ -151,7 +159,7 @@ export function parseMessage(s: string): Message {
 			throw new Error("expected a space after tags");
 		}
 		msg.tags = parseTags(s.slice(1, i));
-		s = s.slice(i + 1).replace(/^ +/, "");
+		s = skipSpaces(s, i + 1);
 	}
 
 	if (s.startsWith(":")) {
@@ -160,7 +168,7 @@ export function parseMessage(s: string): Message {
 			throw new Error("expected a space after prefix");
 		}
 		msg.prefix = parsePrefix(s.slice(1, i));
-		s = s.slice(i + 1).replace(/^ +/, "");
+		s = skipSpaces(s, i + 1);
 	}
 
 	let i = s.indexOf(" ");

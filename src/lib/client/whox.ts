@@ -16,6 +16,9 @@ export const WHOX_FIELDS = {
 	realname: "r",
 } as const;
 
+/** WHOX_FIELDS as entries, in reply order */
+const WHOX_FIELD_ENTRIES = Object.entries(WHOX_FIELDS);
+
 export type WhoxField = keyof typeof WHOX_FIELDS;
 
 export interface WhoReply {
@@ -54,7 +57,7 @@ export function parseWhoReply(msg: Message, queries: ReadonlyMap<string, string>
 			}
 			const who: Record<string, string | null> = {};
 			let i = 0;
-			for (const [k, v] of Object.entries(WHOX_FIELDS)) {
+			for (const [k, v] of WHOX_FIELD_ENTRIES) {
 				if (fields.indexOf(v) < 0) {
 					continue;
 				}
