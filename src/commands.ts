@@ -100,6 +100,25 @@ function markServerBufferUnread(app: AppController): void {
 	});
 }
 
+/**
+ * A command sending its arguments as-is to the server, whose replies are
+ * shown in the server buffer: flag it, the user is likely elsewhere.
+ */
+function serverQuery(name: string, usage: string, description: string, required?: string): Command {
+	return {
+		name,
+		usage,
+		description,
+		execute: (app, args) => {
+			if (required) {
+				requireArg(args, 0, required);
+			}
+			getActiveClient(app).send({ command: name.toUpperCase(), params: args });
+			markServerBufferUnread(app);
+		},
+	};
+}
+
 const join: Command = {
 	name: "join",
 	usage: "<name> [password]",
@@ -295,15 +314,7 @@ const commandList: Command[] = [
 			kick.execute(app, args, text);
 		},
 	},
-	{
-		name: "lusers",
-		usage: "[<mask> [<target>]]",
-		description: "Request user statistics about the network",
-		execute: (app, args) => {
-			getActiveClient(app).send({ command: "LUSERS", params: args });
-			markServerBufferUnread(app);
-		},
-	},
+	serverQuery("lusers", "[<mask> [<target>]]", "Request user statistics about the network"),
 	{
 		name: "me",
 		usage: "<action>",
@@ -328,15 +339,7 @@ const commandList: Command[] = [
 			getActiveClient(app).send({ command: "MODE", params: args });
 		},
 	},
-	{
-		name: "motd",
-		usage: "[server]",
-		description: "Get the Message Of The Day",
-		execute: (app, args) => {
-			getActiveClient(app).send({ command: "MOTD", params: args });
-			markServerBufferUnread(app);
-		},
-	},
+	serverQuery("motd", "[server]", "Get the Message Of The Day"),
 	{
 		name: "msg",
 		usage: "<target> <message>",
@@ -513,15 +516,7 @@ const commandList: Command[] = [
 		description: "Give a user voiced status on this channel",
 		execute: (app, args) => givemode(app, args, "+v"),
 	},
-	{
-		name: "who",
-		usage: "<mask>",
-		description: "Retrieve a list of users",
-		execute: (app, args) => {
-			getActiveClient(app).send({ command: "WHO", params: args });
-			markServerBufferUnread(app);
-		},
-	},
+	serverQuery("who", "<mask>", "Retrieve a list of users"),
 	{
 		name: "whois",
 		usage: "<nick>",
@@ -532,25 +527,8 @@ const commandList: Command[] = [
 			markServerBufferUnread(app);
 		},
 	},
-	{
-		name: "whowas",
-		usage: "<nick> [count]",
-		description: "Retrieve information about an offline user",
-		execute: (app, args) => {
-			requireArg(args, 0, "nick");
-			getActiveClient(app).send({ command: "WHOWAS", params: args });
-			markServerBufferUnread(app);
-		},
-	},
-	{
-		name: "list",
-		usage: "[filter]",
-		description: "Retrieve a list of channels from a network",
-		execute: (app, args) => {
-			getActiveClient(app).send({ command: "LIST", params: args });
-			markServerBufferUnread(app);
-		},
-	},
+	serverQuery("whowas", "<nick> [count]", "Retrieve information about an offline user", "nick"),
+	serverQuery("list", "[filter]", "Retrieve a list of channels from a network"),
 ];
 
 const commands = new Map(commandList.map((cmd) => [cmd.name, cmd]));
