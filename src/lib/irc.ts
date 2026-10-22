@@ -374,40 +374,33 @@ export function isHighlight(msg: Message, nick: string, cm: CaseMapFn): boolean 
 	}
 
 	nick = cm(nick);
+	if (!nick) {
+		return false;
+	}
 
 	if (msg.prefix && cm(msg.prefix.name) === nick) {
 		return false; // Our own messages aren't highlights
 	}
 
-	let text = cm(msg.params[1] ?? "");
-	while (true) {
-		const i = text.indexOf(nick);
-		if (i < 0) {
-			return false;
-		}
-
+	// Search the whole text, so that the characters around each occurrence
+	// are the real ones, even right after a previous occurrence
+	const text = cm(msg.params[1] ?? "");
+	for (let i = text.indexOf(nick); i >= 0; i = text.indexOf(nick, i + 1)) {
 		// Detect word boundaries
-		let left = "\x00",
-			right = "\x00";
-		if (i > 0) {
-			left = text[i - 1];
-		}
-		if (i + nick.length < text.length) {
-			right = text[i + nick.length];
-		}
+		const left = i > 0 ? text[i - 1] : "\x00";
+		const right = i + nick.length < text.length ? text[i + nick.length] : "\x00";
 		if (isWordBoundary(left) && isWordBoundary(right) && !isURIPrefix(text.slice(0, i))) {
 			return true;
 		}
-
-		text = text.slice(i + nick.length);
 	}
+	return false;
 }
 
 export function isServerBroadcast(msg: Message): boolean {
 	if (msg.command !== "PRIVMSG" && msg.command !== "NOTICE") {
 		return false;
 	}
-	return msg.params[0].startsWith("$");
+	return msg.params[0]?.startsWith("$") ?? false;
 }
 
 export function isError(cmd: string): boolean {
@@ -1016,7 +1009,8 @@ export function forEachChannelModeUpdate(
 	if (msg.command !== "MODE") {
 		throw new Error("Expected a MODE message");
 	}
-	const change = msg.params[1];
+	// A MODE without a mode string only queries the modes
+	const change = msg.params[1] ?? "";
 	const args = msg.params.slice(2);
 
 	let plusMinus: string | null = null;
@@ -1169,15 +1163,15 @@ export class CapRegistry {
 
 		const subCmd = msg.params[1];
 		const args = msg.params.slice(2);
+		// The list of caps, missing in a malformed message
+		const list = args[args.length - 1] ?? "";
 		switch (subCmd) {
 			case "LS":
-				this.addAvailable(args[args.length - 1]);
-				break;
 			case "NEW":
-				this.addAvailable(args[0]);
+				this.addAvailable(list);
 				break;
 			case "DEL":
-				for (let cap of args[0].split(" ")) {
+				for (let cap of list.split(" ")) {
 					cap = cap.toLowerCase();
 					this.available.delete(cap);
 					this.enabled.delete(cap);
@@ -1185,7 +1179,7 @@ export class CapRegistry {
 				}
 				break;
 			case "ACK":
-				for (let cap of args[0].split(" ")) {
+				for (let cap of list.split(" ")) {
 					cap = cap.toLowerCase();
 					if (!cap) {
 						continue;
@@ -1200,7 +1194,7 @@ export class CapRegistry {
 				break;
 			case "NAK":
 				// Can be requested again if the server advertises it anew
-				for (const cap of args[0].split(" ")) {
+				for (const cap of list.split(" ")) {
 					this.requested.delete(cap.toLowerCase());
 				}
 				break;

@@ -121,6 +121,18 @@ describe("isHighlight", () => {
 		expect(irc.isHighlight(privmsg("x bobby bob"), "bob", cm)).toBe(true);
 	});
 
+	it("checks the characters around each occurrence", () => {
+		// The second "bob" follows the first one, it isn't a word of its own
+		expect(irc.isHighlight(privmsg("bobbob"), "bob", cm)).toBe(false);
+		expect(irc.isHighlight(privmsg("bobbob bob"), "bob", cm)).toBe(true);
+		expect(irc.isHighlight(privmsg("https://bob.example/bob"), "bob", cm)).toBe(false);
+	});
+
+	it("never highlights an empty nick", () => {
+		expect(irc.isHighlight(privmsg("hi"), "", cm)).toBe(false);
+		expect(irc.isHighlight(privmsg(""), "", cm)).toBe(false);
+	});
+
 	it("ignores URLs and own messages", () => {
 		expect(irc.isHighlight(privmsg("see https://bob.example"), "bob", cm)).toBe(false);
 		expect(irc.isHighlight(privmsg("bob", "bob"), "bob", cm)).toBe(false);
@@ -325,6 +337,12 @@ describe("forEachChannelModeUpdate", () => {
 		]);
 	});
 
+	it("ignores a MODE query without a mode string", () => {
+		const callback = vi.fn();
+		irc.forEachChannelModeUpdate(irc.parseMessage("MODE #c"), new irc.Isupport(), callback);
+		expect(callback).not.toHaveBeenCalled();
+	});
+
 	it("rejects mode strings without sign", () => {
 		expect(() =>
 			irc.forEachChannelModeUpdate(irc.parseMessage("MODE #c o x"), new irc.Isupport(), () => {}),
@@ -387,6 +405,14 @@ describe("CapRegistry", () => {
 		caps.parse(irc.parseMessage("CAP * DEL :server-time"));
 		expect(caps.available.has("server-time")).toBe(false);
 		expect(caps.enabled.has("server-time")).toBe(false);
+	});
+
+	it("ignores malformed messages without a list of caps", () => {
+		const caps = new irc.CapRegistry();
+		for (const sub of ["LS", "NEW", "DEL", "ACK", "NAK"]) {
+			expect(() => caps.parse(irc.parseMessage(`CAP * ${sub}`))).not.toThrow();
+		}
+		expect(caps.available.size).toBe(0);
 	});
 
 	it("tracks requested caps", () => {
@@ -471,6 +497,7 @@ describe("misc helpers", () => {
 	it("detects server broadcasts", () => {
 		expect(irc.isServerBroadcast(irc.parseMessage(":op NOTICE $* :maintenance"))).toBe(true);
 		expect(irc.isServerBroadcast(irc.parseMessage(":op NOTICE #c :hi"))).toBe(false);
+		expect(irc.isServerBroadcast(irc.parseMessage(":op NOTICE"))).toBe(false);
 	});
 });
 
