@@ -253,7 +253,7 @@ function handleListKeyDown(event: KeyboardEvent<HTMLUListElement>) {
 	tabs[(moves[event.key] + tabs.length) % tabs.length].focus();
 }
 
-export default function BufferList(props: BufferListProps) {
+function BufferList(props: BufferListProps) {
 	const collapsed = props.collapsed ?? noneCollapsed;
 	const groups = displayGroups(props.buffers, props.servers, collapsed, props.activeBuffer);
 	const shown = groups.flatMap((group) => [...group.server, ...group.shown]);
@@ -303,3 +303,6 @@ export default function BufferList(props: BufferListProps) {
 		</ul>
 	);
 }
+
+// The chat re-renders on every state change: skip the ones not about buffers
+export default memo(BufferList);
