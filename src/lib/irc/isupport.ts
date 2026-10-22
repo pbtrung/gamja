@@ -295,7 +295,9 @@ export function forEachChannelModeUpdate(
 			continue;
 		}
 		if (!plusMinus) {
-			throw new Error("malformed mode string: missing plus/minus");
+			// Malformed: skip the modes before the first sign rather than
+			// failing the whole message
+			continue;
 		}
 
 		const mode = change[i];

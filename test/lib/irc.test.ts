@@ -343,10 +343,12 @@ describe("forEachChannelModeUpdate", () => {
 		expect(callback).not.toHaveBeenCalled();
 	});
 
-	it("rejects mode strings without sign", () => {
-		expect(() =>
-			irc.forEachChannelModeUpdate(irc.parseMessage("MODE #c o x"), new irc.Isupport(), () => {}),
-		).toThrow();
+	it("skips the modes before the first sign of a malformed mode string", () => {
+		const calls: [string, boolean, string | null][] = [];
+		irc.forEachChannelModeUpdate(irc.parseMessage("MODE #c o+v x"), new irc.Isupport(), (m, add, arg) =>
+			calls.push([m, add, arg]),
+		);
+		expect(calls).toEqual([["v", true, "x"]]);
 	});
 });
 
