@@ -68,23 +68,46 @@ async function readEndpointResponse(resp: Response) {
 	return data;
 }
 
+/**
+ * The URLs where an issuer may publish its metadata, in the order to try them.
+ * With a path, Authorization Server Metadata inserts the well-known path
+ * before it (RFC 8414 section 3.1) while OpenID Connect Discovery appends it.
+ * Appending the former too is kept for servers relying on it.
+ */
+function metadataURLs(issuer: string): string[] {
+	const url = new URL(issuer.replace(/\/+$/, ""));
+	const path = url.pathname.replace(/\/+$/, "");
+	const origin = url.origin;
+	if (!path) {
+		return [
+			origin + "/.well-known/oauth-authorization-server",
+			origin + "/.well-known/openid-configuration",
+		];
+	}
+	return [
+		origin + "/.well-known/oauth-authorization-server" + path,
+		origin + path + "/.well-known/oauth-authorization-server",
+		origin + path + "/.well-known/openid-configuration",
+	];
+}
+
 export async function fetchServerMetadata(url: string): Promise<ServerMetadata> {
-	// TODO: handle path in config.oauth2.url
-	url = url.replace(/\/+$/, "");
-	let resp: Response;
-	try {
-		resp = await fetch(url + "/.well-known/oauth-authorization-server");
-		checkResponse(resp);
-	} catch (err) {
-		console.warn(
-			"OAuth 2.0 server doesn't support Authorization Server Metadata (retrying with OpenID Connect Discovery): ",
-			err,
-		);
-		resp = await fetch(url + "/.well-known/openid-configuration");
-		checkResponse(resp);
+	const urls = metadataURLs(url);
+	let resp: Response | null = null;
+	for (const [i, u] of urls.entries()) {
+		try {
+			resp = await fetch(u);
+			checkResponse(resp);
+			break;
+		} catch (err) {
+			if (i === urls.length - 1) {
+				throw err;
+			}
+			console.warn(`OAuth 2.0 server metadata not found at ${u}, trying ${urls[i + 1]}:`, err);
+		}
 	}
 
-	const data = await resp.json();
+	const data = await resp!.json();
 	if (!data.issuer) {
 		throw new Error("Missing issuer in response");
 	}
@@ -157,14 +180,19 @@ export function takePendingAuthorization(state: string | undefined): PendingAuth
 	return pending;
 }
 
+/** Encode a value as in application/x-www-form-urlencoded, e.g. spaces as "+". */
+function formEncode(s: string): string {
+	return new URLSearchParams([["", s]]).toString().slice(1);
+}
+
 function buildPostHeaders(clientId: string, clientSecret?: string): Record<string, string> {
 	const headers: Record<string, string> = {
 		"Content-Type": "application/x-www-form-urlencoded",
 		Accept: "application/json",
 	};
 	if (clientSecret) {
-		headers["Authorization"] =
-			"Basic " + btoa(encodeURIComponent(clientId) + ":" + encodeURIComponent(clientSecret));
+		// The credentials are form-encoded first, see RFC 6749 section 2.3.1
+		headers["Authorization"] = "Basic " + btoa(formEncode(clientId) + ":" + formEncode(clientSecret));
 	}
 	return headers;
 }
@@ -202,7 +230,11 @@ export async function exchangeCode({
 		headers: buildPostHeaders(clientId, clientSecret),
 		body: formatQueryString(params),
 	});
-	return readEndpointResponse(resp);
+	const data = await readEndpointResponse(resp);
+	if (typeof data?.access_token !== "string" || !data.access_token) {
+		throw new Error("Missing access_token in response");
+	}
+	return data;
 }
 
 export async function introspectToken({

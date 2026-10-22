@@ -135,6 +135,40 @@ describe("oauth2", () => {
 		).rejects.toThrow("HTTP error: 502");
 	});
 
+	it("looks for the metadata of issuers with a path where the specs put it", async () => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		const fetch = vi.fn().mockResolvedValue(new Response("", { status: 404 }));
+		vi.stubGlobal("fetch", fetch);
+		await expect(oauth2.fetchServerMetadata("https://auth.example/realms/irc/")).rejects.toThrow(
+			"HTTP error: 404",
+		);
+		expect(fetch.mock.calls.map((c) => c[0])).toEqual([
+			"https://auth.example/.well-known/oauth-authorization-server/realms/irc",
+			"https://auth.example/realms/irc/.well-known/oauth-authorization-server",
+			"https://auth.example/realms/irc/.well-known/openid-configuration",
+		]);
+	});
+
+	it("form-encodes client credentials", async () => {
+		const fetch = vi.fn().mockResolvedValue(jsonResponse({ access_token: "tok" }));
+		vi.stubGlobal("fetch", fetch);
+		await oauth2.exchangeCode({
+			serverMetadata: metadata,
+			redirectUri: "https://app/",
+			code: "c",
+			clientId: "my app",
+			clientSecret: "a:b/c",
+		});
+		expect(fetch.mock.calls[0][1].headers.Authorization).toBe("Basic " + btoa("my+app:a%3Ab%2Fc"));
+	});
+
+	it("rejects token responses without an access token", async () => {
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ token_type: "Bearer" })));
+		await expect(
+			oauth2.exchangeCode({ serverMetadata: metadata, redirectUri: "x", code: "c", clientId: "id" }),
+		).rejects.toThrow("Missing access_token");
+	});
+
 	it("strips trailing slashes from the server URL", async () => {
 		const fetch = vi.fn().mockResolvedValue(jsonResponse(metadata));
 		vi.stubGlobal("fetch", fetch);
