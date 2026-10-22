@@ -1412,7 +1412,12 @@ export default class AppController {
 		}
 		return messages
 			.map((message) => ({ buffer: this.resolveMessageTarget(serverID, message), message }))
-			.sort((a, b) => ((a.message.tags.time ?? "") < (b.message.tags.time ?? "") ? 1 : -1))
+			// Newest first. Sorting is stable: results with the same time, e.g.
+			// the lines of a multiline message, keep the server's order.
+			.sort((a, b) => {
+				const [ta, tb] = [a.message.tags.time ?? "", b.message.tags.time ?? ""];
+				return ta === tb ? 0 : ta < tb ? 1 : -1;
+			})
 			.slice(0, 100);
 	}
 

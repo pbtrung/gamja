@@ -902,6 +902,20 @@ describe("search", () => {
 		expect(app.state.jumpTo).toEqual({ buffer: buf(app, "#c")!.id, msgid: "a" });
 	});
 
+	it("sorts results newest first, keeping the order of those with the same time", async () => {
+		const { app, serverID } = await connectedApp();
+		const msg = (msgid: string, time: string) =>
+			irc.parseMessage(`@msgid=${msgid};time=${time} :bob!u@h PRIVMSG #c :x`);
+		const t = "2020-01-01T00:00:00.000Z";
+		const same = Array.from({ length: 30 }, (_, i) => msg(`s${i}`, t));
+		vi.spyOn(app.clients.get(serverID)!, "search").mockResolvedValue([
+			...same,
+			msg("new", "2020-01-02T00:00:00.000Z"),
+		]);
+		const results = await app.searchMessages(serverID, { text: "x" });
+		expect(results.map((r) => r.message.tags.msgid)).toEqual(["new", ...same.map((m) => m.tags.msgid)]);
+	});
+
 	it("searches each buffer when the server requires a target (soju)", async () => {
 		const { app, recv, sentRaw, serverID } = await connectedApp({
 			caps: "batch server-time echo-message message-tags labeled-response draft/chathistory soju.im/search",
