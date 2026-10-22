@@ -55,6 +55,9 @@ export default defineConfig({
 			},
 			output: {
 				entryFileNames: (chunk) => (chunk.name === "sw" ? "sw.js" : "assets/[name]-[hash].js"),
+				// Dependencies change less often than gamja: in their own
+				// chunk, browsers keep them cached across gamja releases
+				manualChunks: (id) => (id.includes("/node_modules/") ? "vendor" : undefined),
 			},
 		},
 	},
