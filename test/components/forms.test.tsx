@@ -88,6 +88,17 @@ describe("SwitcherForm", () => {
 });
 
 describe("ConnectForm", () => {
+	it("shows only the form, without a side pane", () => {
+		const { container } = render(
+			<ConnectForm params={defaultConnectParams} connecting={false} error={null} onSubmit={vi.fn()} />,
+		);
+		expect(container.querySelector("aside")).toBeNull();
+		expect(screen.queryByRole("complementary")).toBeNull();
+		const shell = container.firstElementChild!;
+		expect(shell.children).toHaveLength(1);
+		expect(shell.firstElementChild!.tagName).toBe("FORM");
+	});
+
 	it("submits connection parameters with SASL", async () => {
 		const onSubmit = vi.fn();
 		render(

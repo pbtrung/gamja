@@ -1,17 +1,5 @@
 import { useState, type FormEvent } from "react";
-import {
-	ChevronRight,
-	Eye,
-	EyeOff,
-	History,
-	KeyRound,
-	LogIn,
-	MessageSquareText,
-	Palette,
-	Server,
-	ServerCog,
-	User,
-} from "lucide-react";
+import { ChevronRight, Eye, EyeOff, KeyRound, LogIn, Server, User } from "lucide-react";
 import type { ConnectParams } from "../../app/store";
 import { resolveServerURL } from "../../app/config";
 import { Linkified } from "../RichText";
@@ -36,12 +24,6 @@ function serverHost(url: string): string | null {
 		return null;
 	}
 }
-
-const highlights = [
-	{ icon: ServerCog, text: "Works best with the soju bouncer" },
-	{ icon: History, text: "Chat history, read markers and search" },
-	{ icon: Palette, text: "Light, dark and colorful themes" },
-];
 
 export default function ConnectForm({ params, auth, connecting, error, onSubmit }: ConnectFormProps) {
 	const [form, setForm] = useState({
@@ -99,24 +81,6 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 
 	return (
 		<div className="connect-shell">
-			<aside className="connect-brand">
-				<div className="connect-wordmark">
-					<span className="connect-logo" aria-hidden="true">
-						<MessageSquareText />
-					</span>
-					gamja
-				</div>
-				<p className="connect-tagline">A modern IRC client for the web.</p>
-				<ul className="connect-highlights">
-					{highlights.map(({ icon: Icon, text }) => (
-						<li key={text}>
-							<Icon aria-hidden="true" />
-							{text}
-						</li>
-					))}
-				</ul>
-			</aside>
-
 			<form className="connect-card" onSubmit={handleSubmit} aria-labelledby="connect-title">
 				<div className="connect-header">
 					<h1 id="connect-title">Connect to IRC</h1>

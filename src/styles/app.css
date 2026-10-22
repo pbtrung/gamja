@@ -2589,80 +2589,13 @@ textarea.composer-input:focus {
 }
 
 .connect-shell {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	width: 100%;
-	max-width: 52rem;
+	max-width: 26rem;
 	border: 1px solid var(--border);
 	border-radius: var(--radius-lg);
 	overflow: hidden;
 	background-color: var(--bg-elevated);
 	box-shadow: var(--shadow-lg);
-}
-
-/* Brand panel */
-
-.connect-brand {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	gap: 1.25rem;
-	padding: 2.25rem 2rem;
-	background:
-		linear-gradient(160deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
-		var(--bg-sidebar);
-	border-right: 1px solid var(--border);
-}
-
-.connect-wordmark {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	color: var(--fg-emphasis);
-	font-size: 1.5rem;
-	font-weight: 700;
-	letter-spacing: -0.01em;
-}
-
-.connect-logo {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 2.75rem;
-	height: 2.75rem;
-	border-radius: 0.875rem;
-	background-color: var(--accent);
-	color: var(--accent-fg);
-	font-size: 1.5rem;
-	box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent);
-}
-
-.connect-tagline {
-	margin: -0.5rem 0 0;
-	color: var(--fg-muted);
-	font-size: 0.9375rem;
-}
-
-.connect-highlights {
-	display: flex;
-	flex-direction: column;
-	gap: 0.625rem;
-	margin: 0.5rem 0 0;
-	padding: 0;
-	list-style: none;
-	color: var(--fg-muted);
-	font-size: 0.875rem;
-}
-
-.connect-highlights li {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.connect-highlights svg.lucide {
-	flex-shrink: 0;
-	color: var(--accent);
 }
 
 /* Form */
@@ -2768,27 +2701,8 @@ form > .switch-row {
 	font-size: 0.9375rem;
 }
 
-/* Small screens: a single column, the brand shrinks to a header */
+/* Small screens: less padding around the form */
 @media (max-width: 720px) {
-	.connect-shell {
-		grid-template-columns: minmax(0, 1fr);
-		max-width: 26rem;
-	}
-
-	.connect-brand {
-		padding: 1.25rem 1.5rem;
-		border-right: none;
-		border-bottom: 1px solid var(--border);
-	}
-
-	.connect-tagline {
-		margin-top: -0.75rem;
-	}
-
-	.connect-highlights {
-		display: none;
-	}
-
 	.connect-card {
 		padding: 1.5rem;
 	}
