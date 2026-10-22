@@ -54,8 +54,29 @@
 		font-size: 1.25rem;
 	}
 
-	#buffer-header .leading > .btn:hover,
-	#buffer-header .actions .btn-group > .btn:hover,
+	/* The ⋮ glyph is narrow: a narrower button keeps it next to the member
+	 * list button instead of a button width away */
+	#buffer-header .actions .btn-group > .btn[aria-haspopup="menu"] {
+		min-width: 1.75rem;
+	}
+
+	/* The unread dot sits on the corner of the icon, not of the larger
+	 * button around it */
+	#buffer-header .buffer-list-toggle .unread-indicator {
+		top: calc(50% - 0.875rem);
+		right: calc(50% - 0.875rem);
+	}
+
+	/* Touch screens keep :hover after a tap: only highlight with a pointer
+	 * that can hover, so tapping doesn't flash a background */
+	@media (hover: hover) {
+		#buffer-header .leading > .btn:hover,
+		#buffer-header .actions .btn-group > .btn:hover {
+			background-color: var(--bg-hover);
+			color: var(--fg-emphasis);
+		}
+	}
+
 	#buffer-header .actions .btn-group > .btn[aria-expanded="true"] {
 		background-color: var(--bg-hover);
 		color: var(--fg-emphasis);

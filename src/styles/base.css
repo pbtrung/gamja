@@ -9,6 +9,9 @@
 html {
 	scrollbar-color: var(--scrollbar) transparent;
 	-webkit-text-size-adjust: 100%;
+	/* No grey flash over tapped buttons and links on mobile browsers: they
+	 * have their own hover, active and focus styles */
+	-webkit-tap-highlight-color: transparent;
 }
 
 html,
