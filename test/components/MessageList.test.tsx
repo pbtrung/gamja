@@ -690,6 +690,28 @@ describe("layout options", () => {
 		expect(list.style.getPropertyValue("--nick-column-width")).toBe("16ch");
 	});
 
+	it("updates the sender's channel mode of rendered lines", () => {
+		const messages = [msg(":bob!u@h PRIVMSG #c :hi")];
+		const settings = { ...defaultSettings, layout: "compact" as const, nickModes: true };
+		const props = {
+			server: server(),
+			bouncerNetwork: null,
+			settings,
+			onChannelClick: () => {},
+			onNickClick: () => {},
+			onAuthClick: () => {},
+			onRegisterClick: () => {},
+			onVerifyClick: () => {},
+		};
+		const { container, rerender } = render(<MessageList buffer={buffer(messages)} {...props} />, {
+			wrapper,
+		});
+		expect(lines(container)).toEqual(["<bob> hi"]);
+		// bob gets op: the same message object is rendered again
+		rerender(<MessageList buffer={buffer(messages, { members: members() })} {...props} />);
+		expect(lines(container)).toEqual(["<@bob> hi"]);
+	});
+
 	it("shows channel modes in the compact layout and turns nick colors off", () => {
 		const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
 			buffer: { members: members() },

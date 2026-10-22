@@ -215,6 +215,14 @@ function eventPrefix(command: string, lineClass: string): [string, string] {
 /** Messages from the same sender closer than this are grouped. */
 const GROUP_TIMEOUT = 5 * 60 * 1000;
 
+/** The sender's channel membership shown before its nick, if enabled */
+function senderMembership({ message, ctx }: LogLineProps): string | undefined {
+	if (!ctx.settings.nickModes || ctx.buffer.type !== BufferType.CHANNEL) {
+		return undefined;
+	}
+	return ctx.buffer.members.get(message.prefix?.name ?? "*");
+}
+
 function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandlers | undefined): boolean {
 	if (!a || !b) {
 		return a === b;
@@ -300,8 +308,7 @@ const LogLine = memo(
 		const createNick = makeNick(ctx);
 		const from = msg.prefix?.name ?? "*";
 		// The sender, with its channel membership prefix (e.g. "@") if enabled
-		const senderModes =
-			ctx.settings.nickModes && buf.type === BufferType.CHANNEL ? buf.members.get(from) : null;
+		const senderModes = senderMembership({ message: msg, redacted, ctx });
 		const sender = (
 			<>
 				<Membership value={senderModes?.slice(0, 1)} />
@@ -782,6 +789,11 @@ const LogLine = memo(
 		// Used for message URLs and STATUSMSG prefixes
 		prev.ctx.buffer.name === next.ctx.buffer.name &&
 		prev.ctx.server.statusMsg === next.ctx.server.statusMsg &&
+		// Shown before the sender's nick, and used to describe MODE changes.
+		// Comparing the sender's membership rather than the member list keeps
+		// lines from re-rendering on every join and part.
+		senderMembership(prev) === senderMembership(next) &&
+		prev.ctx.server.membershipModes === next.ctx.server.membershipModes &&
 		// Own messages are told apart in the bubbles layout
 		prev.ctx.server.nick === next.ctx.server.nick,
 );
