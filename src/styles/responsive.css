@@ -20,8 +20,8 @@
 	/* One row: [buffer list] [title and description] [menu, member list] */
 	#buffer-header {
 		grid-template-columns: auto minmax(0, 1fr) auto;
-		column-gap: 0.5rem;
-		padding: 0 0.5rem;
+		column-gap: 0.25rem;
+		padding: 0 0.25rem;
 	}
 
 	#buffer-header .leading {
@@ -39,11 +39,12 @@
 	}
 
 	/* Plain icons, like a drawer toggle: no border or background at rest.
-	 * They span both header lines, so they can be big enough to tap. */
+	 * They span both header lines, so they can be big enough to tap, while
+	 * leaving most of the row to the title. */
 	#buffer-header .leading > .btn,
 	#buffer-header .actions .btn-group > .btn {
-		min-width: 2.75rem;
-		min-height: 2.75rem;
+		min-width: 2.5rem;
+		min-height: 2.5rem;
 		margin: 0;
 		padding: 0;
 		border-color: transparent;
