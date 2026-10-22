@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as irc from "../../src/lib/irc";
 import MessageList from "../../src/components/MessageList";
+import { formatTime } from "../../src/format";
 import { ControllerContext } from "../../src/app/context";
 import type AppController from "../../src/app/controller";
 import { createAppStore, type AppStore } from "../../src/app/store";
@@ -177,6 +178,18 @@ describe("MessageList", () => {
 		expect(container.querySelector(".timestamp time")).toHaveTextContent(/^09:05$/);
 	});
 
+	it("formats times with a 12-hour clock", () => {
+		expect(formatTime(new Date(2030, 0, 1, 0, 5, 7), true, true)).toBe("12:05:07 AM");
+		expect(formatTime(new Date(2030, 0, 1, 12, 5, 7), false, true)).toBe("12:05 PM");
+		expect(formatTime(new Date(2030, 0, 1, 13, 34, 0), false, true)).toBe("01:34 PM");
+		expect(formatTime(new Date(2030, 0, 1, 13, 34, 0), false)).toBe("13:34");
+		const t = new Date(2030, 0, 1, 21, 5, 7).toISOString();
+		const { container } = renderList([msg(":bob PRIVMSG #c :x", t)], {
+			settings: { clock12h: true, secondsInTimestamps: false },
+		});
+		expect(container.querySelector(".timestamp time")).toHaveTextContent(/^09:05 PM$/);
+	});
+
 	it("describes channel events", () => {
 		const { container } = renderList(
 			[
@@ -248,6 +261,18 @@ describe("MessageList", () => {
 		const seps = [...container.querySelectorAll("[role=separator]")].map((el) => el.className);
 		expect(seps.filter((c) => c.includes("date-separator"))).toHaveLength(2);
 		expect(screen.getByText("New messages")).toBeInTheDocument();
+	});
+
+	it("hides date separators when turned off", () => {
+		const { container } = renderList(
+			[
+				msg(":bob PRIVMSG #c :old", "2030-01-01T12:00:00.000Z"),
+				msg(":bob PRIVMSG #c :new", "2030-01-02T12:00:00.000Z"),
+			],
+			{ settings: { dateSeparators: false } },
+		);
+		expect(container.querySelector(".date-separator")).toBeNull();
+		expect(screen.getByText("new")).toBeInTheDocument();
 	});
 
 	it("hides redacted message content", () => {
@@ -682,7 +707,19 @@ describe("layout options", () => {
 			settings: { layout: "columns" },
 		});
 		expect(container.querySelector(".logline-prefix")!.textContent).toBe("bob");
-		expect(container.querySelector(".logline-list")).not.toHaveClass("no-nick-colors");
+		const list = container.querySelector(".logline-list");
+		expect(list).not.toHaveClass("no-nick-colors");
+		expect(list).not.toHaveClass("no-timestamps");
+		expect(list).not.toHaveClass("indent-wrapped");
+	});
+
+	it("applies the line options", () => {
+		const { container } = renderList([msg(":bob!u@h PRIVMSG #c :hi")], {
+			settings: { layout: "compact", showTimestamps: false, indentWrapped: true },
+		});
+		const list = container.querySelector(".logline-list");
+		expect(list).toHaveClass("no-timestamps");
+		expect(list).toHaveClass("indent-wrapped");
 	});
 });
 

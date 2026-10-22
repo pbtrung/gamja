@@ -2279,6 +2279,39 @@ a.nick:hover {
 	text-decoration: underline;
 }
 
+/* Timestamps turned off, like on small screens */
+#buffer .no-timestamps :is(.timestamp, .timestamp-range) {
+	display: none;
+}
+
+#buffer .no-timestamps :is(.reactions, .reply-quote) {
+	margin-left: 0;
+}
+
+#buffer .no-timestamps .logline {
+	white-space: normal;
+}
+
+#buffer .no-timestamps .logline-content {
+	white-space: pre-wrap;
+}
+
+/* The columns layout loses its time column */
+#buffer .no-timestamps .logline.columns {
+	grid-template-columns: calc(var(--nick-column-width) + 0.625rem) minmax(0, 1fr);
+}
+
+/* Compact layout: wrapped lines start further in than the first one */
+#buffer .indent-wrapped .logline:not(.comfortable, .columns, .bubbles) {
+	padding-left: calc(1rem + 2em);
+	text-indent: -2em;
+}
+
+/* Inline blocks would inherit the negative indent */
+#buffer .indent-wrapped .logline:not(.comfortable, .columns, .bubbles) > * {
+	text-indent: 0;
+}
+
 /* Nick colors turned off: nicks use the regular emphasis color */
 #buffer .no-nick-colors a.nick {
 	--nick-color: initial;

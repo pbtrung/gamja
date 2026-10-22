@@ -69,6 +69,18 @@ describe("App", () => {
 		expect(within(log).getByText("hi me").closest(".logline")).toHaveClass("highlight");
 	});
 
+	it("shows who is typing, unless turned off", async () => {
+		const app = await renderApp();
+		const ws = await login(app);
+		serverSays(ws, ":me!u@h JOIN #c", ":srv 353 me = #c :@me bob", ":srv 366 me #c :End");
+		const tabs = screen.getByRole("tablist", { name: "Buffer list" });
+		await userEvent.click(within(tabs).getByRole("tab", { name: "#c" }));
+		serverSays(ws, "@+typing=active :bob!u@h TAGMSG #c");
+		expect(screen.getByText(/bob is typing/)).toBeInTheDocument();
+		act(() => app.handleSettingsChange({ showTyping: false }));
+		expect(screen.queryByText(/is typing/)).toBeNull();
+	});
+
 	it("opens dialogs from the header and keyboard", async () => {
 		const app = await renderApp();
 		await login(app);

@@ -54,6 +54,28 @@ function setup(names: string[] = []) {
 	};
 }
 
+describe("display settings", () => {
+	it("default to the previous behavior", () => {
+		expect(S.defaultSettings).toMatchObject({
+			showTimestamps: true,
+			dateSeparators: true,
+			indentWrapped: false,
+			clock12h: false,
+			textSize: 100,
+			showTyping: true,
+			sendTyping: true,
+		});
+	});
+
+	it("falls back to the default text size", () => {
+		const size = (textSize: unknown) =>
+			S.textSize({ ...S.defaultSettings, textSize: textSize as number });
+		expect(size(125)).toBe(125);
+		expect(size(117)).toBe(100);
+		expect(size("x")).toBe(100);
+	});
+});
+
 describe("backlogSize", () => {
 	it("falls back to the default and stays within bounds", () => {
 		const size = (backlogSize: unknown) =>

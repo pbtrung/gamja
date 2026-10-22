@@ -99,6 +99,20 @@ export interface Settings {
 	 * and nick_suffix) */
 	nickBrackets: boolean;
 	secondsInTimestamps: boolean;
+	/** Show the time of messages, in all layouts */
+	showTimestamps: boolean;
+	/** Show a separator between messages of different days */
+	dateSeparators: boolean;
+	/** Compact layout: indent the wrapped lines of a long message */
+	indentWrapped: boolean;
+	/** Show timestamps as 01:34 PM instead of 13:34 */
+	clock12h: boolean;
+	/** Text size of the whole interface, in percent, see textSize() */
+	textSize: number;
+	/** Show who is typing in the current buffer */
+	showTyping: boolean;
+	/** Let others know when we type, with +typing client tags */
+	sendTyping: boolean;
 	bufferEvents: BufferEventsDisplayMode;
 	showMemberList: boolean;
 	/** Receive Web Push notifications when gamja is closed */
@@ -124,6 +138,13 @@ export const defaultSettings: Settings = {
 	hideRepeatedNicks: false,
 	nickBrackets: false,
 	secondsInTimestamps: true,
+	showTimestamps: true,
+	dateSeparators: true,
+	indentWrapped: false,
+	clock12h: false,
+	textSize: 100,
+	showTyping: true,
+	sendTyping: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
 	showMemberList: false,
 	pushNotifications: false,
@@ -131,6 +152,17 @@ export const defaultSettings: Settings = {
 	autoAwayMinutes: 1,
 	backlogSize: 200,
 };
+
+/** Values of the textSize setting */
+export const TEXT_SIZES = [90, 100, 110, 125] as const;
+
+/** The textSize setting, falling back to the default for a stored value
+ * that isn't one of TEXT_SIZES. */
+export function textSize(settings: Settings): number {
+	return (TEXT_SIZES as readonly number[]).includes(settings.textSize)
+		? settings.textSize
+		: defaultSettings.textSize;
+}
 
 /** Bounds of the backlogSize setting */
 export const BACKLOG_SIZE_MIN = 100;

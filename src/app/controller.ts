@@ -20,7 +20,7 @@ import {
 import * as store from "../store";
 import commands from "../commands";
 import * as webpush from "./webpush";
-import { applyTheme } from "../themes";
+import { applyTextSize, applyTheme } from "../themes";
 import { createAppStore, type AppState, type AppStore, type ConnectParams, type Dialog } from "./store";
 import {
 	fetchConfig,
@@ -262,6 +262,7 @@ export default class AppController {
 			this.update((state) => ({ settings: { ...state.settings, ...settings } }));
 		}
 		applyTheme(this.state.settings.theme);
+		applyTextSize(S.textSize(this.state.settings));
 		this.update({ collapsedNetworks: new Set(store.collapsedNetworks.load() ?? []) });
 		if (this.state.settings.autoAwayMinutes <= 0) {
 			this.present = true;
@@ -1315,6 +1316,14 @@ export default class AppController {
 		const buf = S.getBuffer(this.state, this.state.activeBuffer);
 		if (!buf || buf.type === BufferType.SERVER || text.startsWith("/")) {
 			return;
+		}
+		// With the setting off, only end typing started before it was
+		// turned off
+		if (!this.state.settings.sendTyping) {
+			if (this.typingState.status !== "active") {
+				return;
+			}
+			text = "";
 		}
 		const client = this.clients.get(buf.server);
 		if (
@@ -2839,6 +2848,9 @@ export default class AppController {
 		this.update({ settings: updated });
 		if (settings.theme !== undefined) {
 			applyTheme(updated.theme);
+		}
+		if (settings.textSize !== undefined) {
+			applyTextSize(S.textSize(updated));
 		}
 		if (settings.autoAwayMinutes !== undefined && typeof document !== "undefined") {
 			this.handleVisibilityChange();

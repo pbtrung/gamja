@@ -55,6 +55,12 @@ export function getTheme(id: string | undefined | null): Theme {
 	return THEMES.find((t) => t.id === id) ?? THEMES[0];
 }
 
+/** Apply a text size, in percent, to the document. Sizes are in rem: they
+ * all follow the root font size. */
+export function applyTextSize(percent: number, doc: Document = document): void {
+	doc.documentElement.style.fontSize = percent === 100 ? "" : `${percent}%`;
+}
+
 /** Apply a theme to the document. */
 export function applyTheme(id: string | undefined | null, doc: Document = document): void {
 	const theme = getTheme(id);

@@ -643,6 +643,26 @@ describe("reactions, replies, redaction and typing", () => {
 		expect(buf(app, "#c")!.redacted.has("m1")).toBe(true);
 	});
 
+	it("doesn't share typing when turned off, but ends ongoing typing", async () => {
+		const { app, sentRaw } = await chat();
+		app.notifyTyping("h");
+		expect(sentRaw()).toEqual(["@+typing=active TAGMSG #c"]);
+		app.handleSettingsChange({ sendTyping: false });
+		app.notifyTyping("he");
+		expect(sentRaw()).toEqual(["@+typing=done TAGMSG #c"]);
+		app.notifyTyping("hel");
+		app.notifyTyping("");
+		expect(sentRaw()).toEqual([]);
+	});
+
+	it("applies the text size", () => {
+		const app = new AppController();
+		app.handleSettingsChange({ textSize: 110 });
+		expect(document.documentElement.style.fontSize).toBe("110%");
+		app.handleSettingsChange({ textSize: 100 });
+		expect(document.documentElement.style.fontSize).toBe("");
+	});
+
 	it("sends throttled typing notifications", async () => {
 		vi.useFakeTimers();
 		const { app, sentRaw } = await chat();

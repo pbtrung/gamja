@@ -1,4 +1,13 @@
-import { memo, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import {
+	createContext,
+	memo,
+	useContext,
+	useMemo,
+	useState,
+	type CSSProperties,
+	type MouseEvent,
+	type ReactNode,
+} from "react";
 import { CornerUpRight } from "lucide-react";
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
@@ -30,6 +39,7 @@ import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import RichText, { type LinkClickHandler } from "./RichText";
 import MessageActions, { Reactions } from "./MessageActions";
 import { strip as stripANSI } from "../lib/ansi";
+import { formatTime } from "../format";
 import { flash } from "../lib/flash";
 
 export interface MessageActionHandlers {
@@ -61,19 +71,13 @@ interface Context extends MessageListHandlers {
 	settings: Settings;
 }
 
-function formatTime(date: Date, showSeconds: boolean): string {
-	const hh = date.getHours().toString().padStart(2, "0");
-	const mm = date.getMinutes().toString().padStart(2, "0");
-	let timestamp = `${hh}:${mm}`;
-	if (showSeconds) {
-		timestamp += ":" + date.getSeconds().toString().padStart(2, "0");
-	}
-	return timestamp;
-}
+/** Whether timestamps use a 12-hour clock, see Settings.clock12h */
+const Clock12hContext = createContext(false);
 
 function Timestamp({ date, url, showSeconds }: { date?: Date; url?: string | null; showSeconds: boolean }) {
+	const clock12h = useContext(Clock12hContext);
 	if (!date) {
-		const placeholder = showSeconds ? "--:--:--" : "--:--";
+		const placeholder = (showSeconds ? "--:--:--" : "--:--") + (clock12h ? " --" : "");
 		return (
 			<span className="timestamp" aria-hidden="true">
 				{placeholder}
@@ -88,7 +92,7 @@ function Timestamp({ date, url, showSeconds }: { date?: Date; url?: string | nul
 			title={date.toLocaleString()}
 			onClick={(event) => event.preventDefault()}
 		>
-			<time dateTime={date.toISOString()}>{formatTime(date, showSeconds)}</time>
+			<time dateTime={date.toISOString()}>{formatTime(date, showSeconds, clock12h)}</time>
 		</a>
 	);
 }
@@ -1263,7 +1267,7 @@ function MessageList(props: MessageListProps) {
 		}
 
 		const date = new Date(msg.tags.time!);
-		if (!sameDate(prevDate, date)) {
+		if (settings.dateSeparators && !sameDate(prevDate, date)) {
 			sep.push(<DateSeparator key={"date-" + msg.key} date={date} />);
 		}
 		prevDate = date;
@@ -1302,11 +1306,19 @@ function MessageList(props: MessageListProps) {
 	if (settings.nickAlign === "left") {
 		listClasses.push("nick-align-left");
 	}
+	if (!settings.showTimestamps) {
+		listClasses.push("no-timestamps");
+	}
+	if (settings.indentWrapped) {
+		listClasses.push("indent-wrapped");
+	}
 	const listStyle = { "--nick-column-width": `${settings.nickColumnWidth}ch` } as CSSProperties;
 	return (
-		<div className={listClasses.join(" ")} style={listStyle}>
-			{children}
-		</div>
+		<Clock12hContext.Provider value={settings.clock12h}>
+			<div className={listClasses.join(" ")} style={listStyle}>
+				{children}
+			</div>
+		</Clock12hContext.Provider>
 	);
 }
 

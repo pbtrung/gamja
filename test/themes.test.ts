@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { THEMES, applyTheme, getTheme } from "../src/themes";
+import { THEMES, applyTextSize, applyTheme, getTheme } from "../src/themes";
 
 const css = readFileSync("src/styles/themes.css", "utf8");
 const tokensCSS = readFileSync("src/styles/tokens.css", "utf8");
@@ -28,6 +28,15 @@ function contrast(a: string, b: string): number {
 	const [la, lb] = [luminance(a), luminance(b)];
 	return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
+
+describe("applyTextSize", () => {
+	it("sets the root font size, except for 100%", () => {
+		applyTextSize(125);
+		expect(document.documentElement.style.fontSize).toBe("125%");
+		applyTextSize(100);
+		expect(document.documentElement.style.fontSize).toBe("");
+	});
+});
 
 describe("themes", () => {
 	it("applies themes to the document", () => {

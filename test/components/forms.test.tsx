@@ -231,6 +231,41 @@ describe("NetworkForm", () => {
 });
 
 describe("SettingsForm", () => {
+	it("reports appearance and message line changes", async () => {
+		const onChange = vi.fn();
+		render(
+			<SettingsForm
+				settings={defaultSettings}
+				showProtocolHandler={false}
+				onChange={onChange}
+				onDisconnect={() => {}}
+				onClose={() => {}}
+			/>,
+		);
+		await userEvent.click(screen.getByRole("radio", { name: "125%" }));
+		expect(onChange).toHaveBeenCalledWith({ textSize: 125 });
+		await userEvent.click(screen.getByLabelText("Show timestamps"));
+		expect(onChange).toHaveBeenCalledWith({ showTimestamps: false });
+		await userEvent.click(screen.getByLabelText("Day separators"));
+		expect(onChange).toHaveBeenCalledWith({ dateSeparators: false });
+		await userEvent.click(screen.getByLabelText("Indent wrapped lines"));
+		expect(onChange).toHaveBeenCalledWith({ indentWrapped: true });
+	});
+
+	it("only offers indenting wrapped lines in the compact layout", () => {
+		render(
+			<SettingsForm
+				settings={{ ...defaultSettings, layout: "columns" }}
+				showProtocolHandler={false}
+				onChange={() => {}}
+				onDisconnect={() => {}}
+				onClose={() => {}}
+			/>,
+		);
+		expect(screen.queryByLabelText("Indent wrapped lines")).toBeNull();
+		expect(screen.getByLabelText("Show timestamps")).toBeInTheDocument();
+	});
+
 	it("reports changes", async () => {
 		const onChange = vi.fn();
 		const onDisconnect = vi.fn();
@@ -248,6 +283,12 @@ describe("SettingsForm", () => {
 		expect(onChange).toHaveBeenCalledWith({ secondsInTimestamps: false });
 		await userEvent.click(screen.getByRole("radio", { name: "Hide" }));
 		expect(onChange).toHaveBeenCalledWith({ bufferEvents: "hide" });
+		await userEvent.click(screen.getByLabelText("12-hour clock"));
+		expect(onChange).toHaveBeenCalledWith({ clock12h: true });
+		await userEvent.click(screen.getByLabelText("Show who is typing"));
+		expect(onChange).toHaveBeenCalledWith({ showTyping: false });
+		await userEvent.click(screen.getByLabelText("Share when you're typing"));
+		expect(onChange).toHaveBeenCalledWith({ sendTyping: false });
 		await userEvent.click(screen.getByRole("tab", { name: "Notifications" }));
 		await userEvent.click(screen.getByRole("radio", { name: "All" }));
 		expect(onChange).toHaveBeenCalledWith({ notifications: "all" });

@@ -645,7 +645,7 @@ function Chat({ state }: { state: AppState }) {
 			<Composer
 				ref={composer}
 				draftKey={activeID}
-				status={<TypingIndicator buffer={activeBuffer} />}
+				status={state.settings.showTyping ? <TypingIndicator buffer={activeBuffer} /> : null}
 				replyTo={state.replyTo?.buffer === activeBuffer?.id ? state.replyTo : null}
 				onCancelReply={handleCancelReply}
 				onTextChange={handleTextChange}

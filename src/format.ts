@@ -296,3 +296,19 @@ export const EMOJIS: [string, string][] = [
 	["🆗", "ok button"],
 	["🆒", "cool button"],
 ];
+
+/** Formats the time of a message, e.g. "13:34" or "01:34:56 PM". */
+export function formatTime(date: Date, showSeconds: boolean, clock12h = false): string {
+	const hours = date.getHours();
+	const h = clock12h ? hours % 12 || 12 : hours;
+	const hh = h.toString().padStart(2, "0");
+	const mm = date.getMinutes().toString().padStart(2, "0");
+	let timestamp = `${hh}:${mm}`;
+	if (showSeconds) {
+		timestamp += ":" + date.getSeconds().toString().padStart(2, "0");
+	}
+	if (clock12h) {
+		timestamp += hours < 12 ? " AM" : " PM";
+	}
+	return timestamp;
+}

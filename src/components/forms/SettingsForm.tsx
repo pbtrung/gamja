@@ -25,7 +25,9 @@ import {
 	BACKLOG_SIZE_MAX,
 	BACKLOG_SIZE_MIN,
 	BufferEventsDisplayMode,
+	TEXT_SIZES,
 	backlogSize,
+	textSize,
 	type MessageLayout,
 	type NickAlign,
 	type NotificationLevel,
@@ -310,6 +312,11 @@ const nickColumnWidths: { value: number; label: string }[] = [8, 12, 16, 20].map
 	label: String(n),
 }));
 
+const textSizes: { value: number; label: string }[] = TEXT_SIZES.map((n) => ({
+	value: n,
+	label: `${n}%`,
+}));
+
 const eventModes: { value: BufferEventsDisplayMode; label: string }[] = [
 	{ value: BufferEventsDisplayMode.FOLD, label: "Fold" },
 	{ value: BufferEventsDisplayMode.EXPAND, label: "Expand" },
@@ -490,6 +497,45 @@ export default function SettingsForm(props: SettingsFormProps) {
 						</div>
 					</fieldset>
 
+					<h3 className="settings-heading">Message lines</h3>
+					<div className="settings-card">
+						<ToggleRow
+							name="showTimestamps"
+							label="Show timestamps"
+							hint="The time of each message, in all layouts"
+							checked={settings.showTimestamps}
+							onChange={(showTimestamps) => onChange({ showTimestamps })}
+						/>
+						<ToggleRow
+							name="dateSeparators"
+							label="Day separators"
+							hint="A line with the date between messages of different days"
+							checked={settings.dateSeparators}
+							onChange={(dateSeparators) => onChange({ dateSeparators })}
+						/>
+						{settings.layout === "compact" && (
+							<ToggleRow
+								name="indentWrapped"
+								label="Indent wrapped lines"
+								hint="Long messages continue further in than their first line"
+								checked={settings.indentWrapped}
+								onChange={(indentWrapped) => onChange({ indentWrapped })}
+							/>
+						)}
+					</div>
+
+					<h3 className="settings-heading">Text</h3>
+					<div className="settings-card">
+						<SegmentedRow
+							name="textSize"
+							label="Text size"
+							hint="Of the whole interface"
+							options={textSizes}
+							value={textSize(settings)}
+							onChange={(textSize) => onChange({ textSize })}
+						/>
+					</div>
+
 					<h3 className="settings-heading">Nicks</h3>
 					<div className="settings-card">
 						<ToggleRow
@@ -561,6 +607,13 @@ export default function SettingsForm(props: SettingsFormProps) {
 							onChange={(checked) => onChange({ secondsInTimestamps: checked })}
 						/>
 						<ToggleRow
+							name="clock12h"
+							label="12-hour clock"
+							hint="Display timestamps as 01:34 PM instead of 13:34"
+							checked={settings.clock12h}
+							onChange={(clock12h) => onChange({ clock12h })}
+						/>
+						<ToggleRow
 							name="showMemberList"
 							label="Show member list"
 							hint="Keep the channel member list open on wide screens"
@@ -583,6 +636,24 @@ export default function SettingsForm(props: SettingsFormProps) {
 							max={BACKLOG_SIZE_MAX}
 							value={backlogSize(settings)}
 							onChange={(backlogSize) => onChange({ backlogSize })}
+						/>
+					</div>
+
+					<h3 className="settings-heading">Typing</h3>
+					<div className="settings-card">
+						<ToggleRow
+							name="showTyping"
+							label="Show who is typing"
+							hint="Below the composer, when the server supports it"
+							checked={settings.showTyping}
+							onChange={(showTyping) => onChange({ showTyping })}
+						/>
+						<ToggleRow
+							name="sendTyping"
+							label="Share when you're typing"
+							hint="Let others see that you're typing a message"
+							checked={settings.sendTyping}
+							onChange={(sendTyping) => onChange({ sendTyping })}
 						/>
 					</div>
 				</>
