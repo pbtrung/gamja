@@ -678,7 +678,8 @@ export default class Client extends EventTarget {
 				this.endPendingList("WHO", msg);
 				break;
 			case "PING":
-				this.send({ command: "PONG", params: [msg.params[0]] });
+				// The token is required, but some servers omit it
+				this.send({ command: "PONG", params: msg.params.slice(0, 1) });
 				break;
 			case "PONG": {
 				const token = msg.params[1] ?? "";
@@ -1170,9 +1171,10 @@ export default class Client extends EventTarget {
 				}
 				break;
 			case "NEW": {
-				console.log("Server added available caps:", args[0]);
+				const list = args[0] ?? "";
+				console.log("Server added available caps:", list);
 				// Only the new caps: the server rejected some of the others
-				const newCaps = args[0].split(" ").map((item) => item.split("=")[0].toLowerCase());
+				const newCaps = list.split(" ").map((item) => item.split("=")[0].toLowerCase());
 				this.requestCaps(newCaps);
 				break;
 			}
@@ -1185,7 +1187,7 @@ export default class Client extends EventTarget {
 			case "NAK":
 				console.log("Server nak'ed caps:", args[0]);
 				// An AWAY sent before CAP END without it was rejected
-				if (args[0].toLowerCase().split(" ").includes("draft/pre-away")) {
+				if ((args[0] ?? "").toLowerCase().split(" ").includes("draft/pre-away")) {
 					this.sentAway = null;
 				}
 				break;

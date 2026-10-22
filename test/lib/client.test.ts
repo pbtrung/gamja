@@ -126,6 +126,19 @@ describe("Client registration", () => {
 		expect(ws.sent).toEqual(["PONG token"]);
 	});
 
+	it("answers a PING without a token", () => {
+		const { ws } = register();
+		ws.receive("PING");
+		expect(ws.sent).toEqual(["PONG"]);
+	});
+
+	it("survives a CAP NEW or NAK without a list of caps", () => {
+		const { client, ws } = register("batch");
+		ws.receive(":srv CAP me NEW", ":srv CAP me NAK");
+		expect(ws.sent).toEqual([]);
+		expect(client.status).toBe(ClientStatus.REGISTERED);
+	});
+
 	it("binds to a bouncer network", () => {
 		const { ws } = connect({ bouncerNetwork: "42" });
 		ws.takeSent();
