@@ -406,8 +406,20 @@ export default class AppController {
 		queryParams: Record<string, string>,
 		connectParams: ConnectParams,
 	): Promise<boolean> {
+		// Strip the authorization response from the URL: reloading the page
+		// mustn't exchange the code again, or show the error again instead
+		// of starting a new authorization
+		const stripResponse = () => {
+			const url = new URL(window.location.toString());
+			for (const k of ["code", "state", "error", "error_description", "error_uri"]) {
+				url.searchParams.delete(k);
+			}
+			window.history.replaceState(null, "", url.toString());
+		};
+
 		if (queryParams.error) {
 			console.error("OAuth 2.0 authorization failed: ", queryParams.error);
+			stripResponse();
 			this.showError("Authentication failed: " + (queryParams.error_description || queryParams.error));
 			return false;
 		}
@@ -417,12 +429,7 @@ export default class AppController {
 			return false;
 		}
 
-		// Strip code from query params, to prevent page refreshes from
-		// trying to exchange the code again
-		const url = new URL(window.location.toString());
-		url.searchParams.delete("code");
-		url.searchParams.delete("state");
-		window.history.replaceState(null, "", url.toString());
+		stripResponse();
 
 		let saslOauthBearer;
 		try {

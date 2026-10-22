@@ -73,6 +73,8 @@ describe("AppController OAuth 2.0", () => {
 		const app = new AppController();
 		await app.handleConfig(oauth2Config);
 		expect(app.state.error).toBe("Authentication failed: Nope");
+		// Reloading starts a new authorization instead of failing again
+		expect(window.location.search).toBe("");
 		window.history.replaceState(null, "", "/");
 	});
 
