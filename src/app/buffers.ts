@@ -13,7 +13,7 @@ import { getReceipt, type HistoryBatch } from "./history";
 /** User details requested with WHO, see User in state.ts */
 const WHO_FIELDS: WhoxField[] = ["flags", "hostname", "nick", "realname", "username", "account"];
 
-/** Whether the side panes cover the whole screen, see app.css */
+/** Whether the side panes cover the whole screen, see styles/index.css */
 function isSmallScreen(): boolean {
 	return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches;
 }
@@ -104,12 +104,7 @@ export const buffersMethods = {
 
 		const server = this.state.servers.get(buf.server);
 		if (client && client.status === ClientStatus.REGISTERED) {
-			if (
-				buf.type === BufferType.NICK &&
-				!buf.hasInitialWho &&
-				server &&
-				!server.users.has(buf.name)
-			) {
+			if (buf.type === BufferType.NICK && !buf.hasInitialWho && server && !server.users.has(buf.name)) {
 				this.whoUserBuffer(buf.name, buf.server);
 			}
 
