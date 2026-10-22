@@ -1109,8 +1109,12 @@ describe("AppController chat history", () => {
 		"batch server-time echo-message message-tags labeled-response draft/chathistory draft/read-marker";
 
 	/** Connect with a stored #c buffer, so that its backlog gets fetched. */
-	async function withBacklog() {
+	async function withBacklog({ backlogSize = 100 as number | null, chathistory = 100 } = {}) {
 		const t = "2030-01-01T00:00:00.000Z";
+		// null: no stored setting, the default applies
+		if (backlogSize !== null) {
+			localStorage.setItem("gamja_settings", JSON.stringify({ backlogSize }));
+		}
 		localStorage.setItem(
 			"gamja_buffers",
 			JSON.stringify({
@@ -1125,7 +1129,11 @@ describe("AppController chat history", () => {
 		);
 		const h = await connectedApp({ register: false });
 		h.recv(`:srv CAP * LS :${caps}`, `:srv CAP me ACK :${caps}`);
-		h.recv(":srv 001 me :Welcome", ":srv 005 me CHANTYPES=# CHATHISTORY=100 :ok", ":srv 376 me :End");
+		h.recv(
+			":srv 001 me :Welcome",
+			`:srv 005 me CHANTYPES=# CHATHISTORY=${chathistory} :ok`,
+			":srv 376 me :End",
+		);
 		// Queued behind other CHATHISTORY requests
 		await flush();
 		const targets = h.sentRaw().find((l) => l.includes("CHATHISTORY TARGETS"))!;
@@ -1268,6 +1276,42 @@ describe("AppController chat history", () => {
 		expect(buf(app, "#c")!.messages).toHaveLength(100);
 		expect(buf(app, "#c")!.gap).toBeNull();
 		expect(buf(app, "#c")!.unread).toBe(Unread.MESSAGE);
+	});
+
+	it("loads 200 missed messages by default, in pages of the server's limit", async () => {
+		const { app, recv, sentRaw, reply, replyTargets } = await withBacklog({
+			backlogSize: null,
+		});
+		expect(app.state.settings.backlogSize).toBe(200);
+		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		const first = await replyTargets();
+		expect(first).toMatch(/BETWEEN #c timestamp=\S+ timestamp=2030-01-01T00:00:00.500Z 100$/);
+		// The newest page, then the one before it
+		const newer = Array.from({ length: 100 }, (_, i) => {
+			const t = new Date(Date.UTC(2030, 0, 1, 0, 5, i)).toISOString();
+			return `time=${t};msgid=n${i} :bob!u@h PRIVMSG #c :newer ${i}`;
+		});
+		reply(first, "chathistory #c", ...newer);
+		await flush();
+		const second = sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
+		expect(second).toMatch(
+			/BETWEEN #c msgid=n0 timestamp=2030-01-01T00:00:00.500Z 100$|BETWEEN #c timestamp=2030-01-01T00:05:00.000Z timestamp=2030-01-01T00:00:00.500Z 100$/,
+		);
+		reply(second, "chathistory #c", ...page(100));
+		await flush();
+
+		const texts = buf(app, "#c")!.messages.map((m) => m.params[1]);
+		expect(texts).toHaveLength(201);
+		expect(texts.slice(0, 3)).toEqual(["old", "page 0", "page 1"]);
+		expect(texts[101]).toBe("newer 0");
+		expect(buf(app, "#c")!.gap!.before).toEqual({ time: "2030-01-01T00:01:00.000Z", msgid: "p0" });
+	});
+
+	it("asks for the backlogSize setting when the server allows it", async () => {
+		const { app, replyTargets } = await withBacklog({ backlogSize: 250, chathistory: 1000 });
+		expect(await replyTargets()).toMatch(/BETWEEN #c timestamp=\S+ timestamp=\S+ 250$/);
+		app.handleSettingsChange({ backlogSize: 50 });
+		expect(app.state.settings.backlogSize).toBe(50);
 	});
 
 	it("drops the backlog of a server closed meanwhile", async () => {

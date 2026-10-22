@@ -22,7 +22,10 @@ import Dialog from "../Dialog";
 import Menu from "../Menu";
 import Switch from "./Switch";
 import {
+	BACKLOG_SIZE_MAX,
+	BACKLOG_SIZE_MIN,
 	BufferEventsDisplayMode,
+	backlogSize,
 	type MessageLayout,
 	type NickAlign,
 	type NotificationLevel,
@@ -82,6 +85,62 @@ function ToggleRow({ name, label, hint, checked, disabled, onChange }: ToggleRow
 				disabled={disabled}
 				aria-describedby={hint ? id + "-hint" : undefined}
 				onChange={onChange}
+			/>
+		</div>
+	);
+}
+
+interface NumberRowProps {
+	name: string;
+	label: string;
+	hint: string;
+	min: number;
+	max: number;
+	value: number;
+	onChange: (value: number) => void;
+}
+
+/** A setting with a label and a hint on the left and an integer on the right.
+ * onChange only gets integers within bounds: an invalid input is reset to the
+ * current value when leaving it. */
+function NumberRow({ name, label, hint, min, max, value, onChange }: NumberRowProps) {
+	const id = useId();
+	const [text, setText] = useState(String(value));
+	// Show the new value when it changes elsewhere
+	const [shown, setShown] = useState(value);
+	if (value !== shown) {
+		setShown(value);
+		setText(String(value));
+	}
+
+	function handleChange(s: string) {
+		setText(s);
+		const n = Number(s);
+		if (s.trim() !== "" && Number.isInteger(n) && n >= min && n <= max) {
+			onChange(n);
+		}
+	}
+
+	return (
+		<div className="settings-row">
+			<div className="settings-row-text">
+				<label htmlFor={id + "-input"}>{label}</label>
+				<span className="settings-row-hint" id={id + "-hint"}>
+					{hint}
+				</span>
+			</div>
+			<input
+				type="number"
+				id={id + "-input"}
+				className="settings-number"
+				name={name}
+				min={min}
+				max={max}
+				step={1}
+				value={text}
+				aria-describedby={id + "-hint"}
+				onChange={(event) => handleChange(event.target.value)}
+				onBlur={() => setText(String(value))}
 			/>
 		</div>
 	);
@@ -515,6 +574,15 @@ export default function SettingsForm(props: SettingsFormProps) {
 							options={eventModes}
 							value={settings.bufferEvents}
 							onChange={(bufferEvents) => onChange({ bufferEvents })}
+						/>
+						<NumberRow
+							name="backlogSize"
+							label="Missed messages to load on connect"
+							hint="Per buffer, the latest ones: older ones load on demand"
+							min={BACKLOG_SIZE_MIN}
+							max={BACKLOG_SIZE_MAX}
+							value={backlogSize(settings)}
+							onChange={(backlogSize) => onChange({ backlogSize })}
 						/>
 					</div>
 				</>

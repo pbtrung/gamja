@@ -247,6 +247,40 @@ describe("SettingsForm", () => {
 	});
 });
 
+describe("SettingsForm missed messages to load", () => {
+	it("reports integers within bounds only", async () => {
+		const onChange = vi.fn();
+		render(
+			<SettingsForm
+				settings={defaultSettings}
+				showProtocolHandler={false}
+				onChange={onChange}
+				onDisconnect={() => {}}
+				onClose={() => {}}
+			/>,
+		);
+		await userEvent.click(screen.getByRole("tab", { name: "Messages" }));
+		const input = screen.getByLabelText("Missed messages to load on connect");
+		expect(input).toHaveValue(200);
+
+		await userEvent.clear(input);
+		await userEvent.type(input, "500");
+		expect(onChange).toHaveBeenLastCalledWith({ backlogSize: 500 });
+
+		onChange.mockClear();
+		for (const invalid of ["0", "4001", "1.5"]) {
+			await userEvent.clear(input);
+			await userEvent.type(input, invalid);
+		}
+		expect(onChange.mock.calls.map((c) => c[0].backlogSize)).not.toContain(0);
+		expect(onChange.mock.calls.map((c) => c[0].backlogSize)).not.toContain(4001);
+		expect(onChange.mock.calls.map((c) => c[0].backlogSize)).not.toContain(1.5);
+		// An invalid input goes back to the current value
+		await userEvent.tab();
+		expect(input).toHaveValue(200);
+	});
+});
+
 describe("SettingsForm theme and layout", () => {
 	it("picks a theme and a layout", async () => {
 		const onChange = vi.fn();

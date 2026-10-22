@@ -54,6 +54,20 @@ function setup(names: string[] = []) {
 	};
 }
 
+describe("backlogSize", () => {
+	it("falls back to the default and stays within bounds", () => {
+		const size = (backlogSize: unknown) =>
+			S.backlogSize({ ...S.defaultSettings, backlogSize: backlogSize as number });
+		expect(S.defaultSettings.backlogSize).toBe(200);
+		expect(size(500)).toBe(500);
+		expect(size(12.7)).toBe(12);
+		expect(size(0)).toBe(1);
+		expect(size(10000)).toBe(4000);
+		expect(size("x")).toBe(200);
+		expect(size(undefined)).toBe(200);
+	});
+});
+
 describe("unread helpers", () => {
 	it("compares and unions", () => {
 		expect(S.compareUnread(Unread.HIGHLIGHT, Unread.MESSAGE)).toBeGreaterThan(0);

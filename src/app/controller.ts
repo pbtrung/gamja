@@ -34,12 +34,6 @@ import {
 } from "./config";
 
 const CHATHISTORY_MAX_SIZE = 4000;
-/**
- * The number of messages missed while disconnected fetched per buffer on
- * reconnect. Older missed messages are fetched on demand, see
- * fetchMissedMessages().
- */
-const BACKLOG_INITIAL_SIZE = 100;
 
 /** How far ahead of ours the IRC server's clock may be, in milliseconds */
 const MAX_CLOCK_SKEW = 24 * 60 * 60 * 1000;
@@ -51,6 +45,30 @@ const MAX_CLOCK_SKEW = 24 * 60 * 60 * 1000;
  */
 function latestHistoryBound(): string {
 	return irc.formatDate(new Date(Date.now() + MAX_CLOCK_SKEW));
+}
+
+/**
+ * Fetch up to limit of the latest messages between two bounds, newest page
+ * first: the server may send fewer messages per reply than asked for (its
+ * CHATHISTORY limit). more is set if older messages may remain.
+ */
+async function fetchLatestBetween(
+	client: Client,
+	target: string,
+	after: S.HistoryBound,
+	before: S.HistoryBound,
+	limit: number,
+): Promise<{ messages: Message[]; more: boolean }> {
+	let messages: Message[] = [];
+	for (;;) {
+		// The later bound goes first
+		const page = await client.fetchHistoryPageBetween(target, before, after, limit - messages.length);
+		messages = [...page.messages, ...messages];
+		if (!page.more || page.messages.length === 0 || messages.length >= limit) {
+			return { messages, more: page.more };
+		}
+		before = S.boundFromMessage(page.messages[0]);
+	}
 }
 
 /** User details requested with WHO, see User in state.ts */
@@ -1938,15 +1956,17 @@ export default class AppController {
 					client.fetchReadMarker(target.name);
 				}
 
-				// Only fetch the latest missed messages: the later bound goes
-				// first
+				// Only fetch the latest missed messages, as many as the
+				// backlogSize setting: older ones are fetched on demand, see
+				// fetchMissedMessages()
 				let result;
 				try {
-					result = await client.fetchHistoryPageBetween(
+					result = await fetchLatestBetween(
+						client,
 						target.name,
-						to,
 						from,
-						BACKLOG_INITIAL_SIZE,
+						to,
+						S.backlogSize(this.state.settings),
 					);
 				} catch (err) {
 					if (isClosed()) {

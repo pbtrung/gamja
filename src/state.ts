@@ -107,6 +107,9 @@ export interface Settings {
 	notifications: NotificationLevel;
 	/** Mark the user away after the page stays hidden this long, 0 to never */
 	autoAwayMinutes: number;
+	/** How many of the latest missed messages to load per buffer on
+	 * reconnect, see backlogSize(). Older ones are loaded on demand. */
+	backlogSize: number;
 }
 
 export type NotificationLevel = "mentions" | "all" | "none";
@@ -126,7 +129,22 @@ export const defaultSettings: Settings = {
 	pushNotifications: false,
 	notifications: "mentions",
 	autoAwayMinutes: 1,
+	backlogSize: 200,
 };
+
+/** Bounds of the backlogSize setting */
+export const BACKLOG_SIZE_MIN = 1;
+export const BACKLOG_SIZE_MAX = 4000;
+
+/** The backlogSize setting, falling back to the default for a stored value
+ * that isn't a number, and kept within bounds. */
+export function backlogSize(settings: Settings): number {
+	const n = Math.trunc(settings.backlogSize);
+	if (!Number.isFinite(n)) {
+		return defaultSettings.backlogSize;
+	}
+	return Math.min(Math.max(n, BACKLOG_SIZE_MIN), BACKLOG_SIZE_MAX);
+}
 
 /** Actions on channel members, from the member list */
 export type MemberAction =
