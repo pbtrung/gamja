@@ -60,6 +60,12 @@
 		min-width: 1.75rem;
 	}
 
+	/* Alone (no member list, e.g. a network or a conversation), it keeps
+	 * the full width, which leaves room to the edge of the screen */
+	#buffer-header .actions .btn-group > .btn[aria-haspopup="menu"]:last-child {
+		min-width: 2.5rem;
+	}
+
 	/* The unread dot sits on the corner of the icon, not of the larger
 	 * button around it */
 	#buffer-header .buffer-list-toggle .unread-indicator {
