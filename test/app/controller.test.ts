@@ -253,6 +253,20 @@ describe("AppController messaging", () => {
 		expect(buf(second.app, "carol")).toBeDefined();
 	});
 
+	it("joins channels both restored and auto-joined once", async () => {
+		const stored = new store.BufferStore();
+		stored.put({ name: "#a", server: {} });
+		stored.saveImmediately();
+		stored.dispose();
+
+		const { app, serverID, recv, sent } = await connectedApp({ register: false });
+		app.clients.get(serverID)!.params.autojoin = ["#A", "#b"];
+		recv(":srv CAP * LS :batch", ":srv 001 me :Welcome", ":srv 005 me CHANTYPES=# :ok");
+		sent();
+		recv(":srv 376 me :End");
+		expect(sent().filter((l) => l.startsWith("JOIN "))).toEqual(["JOIN #a,#b"]);
+	});
+
 	it("joins many channels with several short enough JOINs", async () => {
 		const stored = new store.BufferStore();
 		const channels = Array.from(

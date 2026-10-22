@@ -16,9 +16,19 @@ const MAX_JOIN_LENGTH = 400;
 
 /**
  * Join channels with as few JOIN commands as possible, each short enough
- * and with no more channels than the server accepts (TARGMAX).
+ * and with no more channels than the server accepts (TARGMAX). Each channel
+ * is joined once: restored and auto-joined channels may be the same.
  */
 function joinChannels(client: Client, channels: string[]): void {
+	const seen = new Set<string>();
+	channels = channels.filter((ch) => {
+		const key = client.cm(ch);
+		if (seen.has(key)) {
+			return false;
+		}
+		seen.add(key);
+		return true;
+	});
 	for (const chunk of irc.chunkTargets(channels, client.isupport.targMax("JOIN"), MAX_JOIN_LENGTH)) {
 		client.send({ command: "JOIN", params: [chunk.join(",")] });
 	}
