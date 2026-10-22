@@ -492,9 +492,12 @@ h3.settings-heading:not(:first-child) {
 	cursor: pointer;
 }
 
+/* As wide as its longest value (--digits, set from the maximum), plus the
+ * padding, the border and room for the browser's spin buttons */
 input.settings-number {
 	flex: none;
-	width: 6rem;
+	width: calc(var(--digits, 4) * 1ch + 1.5rem + 2px + 1.5rem);
+	font-variant-numeric: tabular-nums;
 	text-align: right;
 }
 

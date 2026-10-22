@@ -139,6 +139,7 @@ function NumberRow({ name, label, hint, min, max, value, onChange }: NumberRowPr
 				min={min}
 				max={max}
 				step={1}
+				style={{ "--digits": String(max).length } as CSSProperties}
 				value={text}
 				aria-describedby={id + "-hint"}
 				onChange={(event) => handleChange(event.target.value)}
