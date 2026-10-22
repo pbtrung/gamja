@@ -23,6 +23,9 @@ export function notificationForMessage(msg: Message): PushNotification | null {
 		case "PRIVMSG":
 		case "NOTICE": {
 			const [rawTarget, text = ""] = msg.params;
+			if (!rawTarget) {
+				return null;
+			}
 			// Without the server's CHANTYPES and STATUSMSG at hand: skip the
 			// prefix of messages sent to the ops of a channel, e.g. @#chan
 			const channel = /^[~&@%+]*([#&+!].*)$/.exec(rawTarget)?.[1];
@@ -40,13 +43,18 @@ export function notificationForMessage(msg: Message): PushNotification | null {
 				target: isChannel ? target : from,
 			};
 		}
-		case "INVITE":
+		case "INVITE": {
+			const channel = msg.params[1];
+			if (!channel) {
+				return null;
+			}
 			return {
-				title: `Invitation to ${msg.params[1]}`,
-				body: `${from} has invited you to ${msg.params[1]}`,
-				tag: `invite:${msg.params[1]}`,
-				target: msg.params[1],
+				title: `Invitation to ${channel}`,
+				body: `${from} has invited you to ${channel}`,
+				tag: `invite:${channel}`,
+				target: channel,
 			};
+		}
 		default:
 			return null;
 	}

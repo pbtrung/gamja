@@ -35,6 +35,9 @@ describe("service worker notifications", () => {
 		});
 		expect(notificationForMessage(parseMessage(":bob!u@h PRIVMSG me :\x01VERSION\x01"))).toBeNull();
 		expect(notificationForMessage(parseMessage(":bob!u@h JOIN #c"))).toBeNull();
+		// Malformed: nothing to show, nor a buffer to open
+		expect(notificationForMessage(parseMessage(":bob!u@h INVITE me"))).toBeNull();
+		expect(notificationForMessage(parseMessage(":bob!u@h PRIVMSG"))).toBeNull();
 	});
 
 	it("recognizes buffers read on another client, and ignores soju's NOTE", () => {
