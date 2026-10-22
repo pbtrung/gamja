@@ -122,6 +122,10 @@ export function mergeMessages(list: Message[], msgs: Message[]): Message[] {
 		// the messages it shares a time with
 		return added.concat(list);
 	}
+	if (added[0].tags.time! >= list[list.length - 1].tags.time!) {
+		// Newer messages, e.g. the backlog: no need to merge
+		return list.concat(added);
+	}
 
 	// Messages with the same time go after the ones already there, like
 	// insertMessage() does

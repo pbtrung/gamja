@@ -246,6 +246,13 @@ describe("buffers", () => {
 				]),
 			),
 		).toEqual(["b", "c", "c2", "d", "e"]);
+		// Newer messages, sharing a time with the last one or not, go after
+		expect(ids(S.mergeMessages(list, [m("2020-01-04", "d2"), m("2020-01-06", "f")]))).toEqual([
+			"b",
+			"d",
+			"d2",
+			"f",
+		]);
 		// Messages without msgid are never duplicates
 		expect(S.mergeMessages(list, [m("2020-01-03"), m("2020-01-03")])).toHaveLength(4);
 	});
@@ -343,6 +350,14 @@ describe("handleMessage", () => {
 		// Malformed: a membership mode without its nick
 		t.handle(":me!u@h MODE #c +o");
 		expect(t.buf("#c").members.get("bob")).toBe("~+");
+	});
+
+	it("keeps the buffers of a quit or renamed user in no channel", () => {
+		const t = setup(["#c"]);
+		const buffers = t.state.buffers;
+		t.handle(":stranger!u@h QUIT :bye");
+		t.handle(":stranger!u@h NICK other");
+		expect(t.state.buffers).toBe(buffers);
 	});
 
 	it("ignores replies missing their target", () => {
@@ -547,5 +562,12 @@ describe("reactions and typing", () => {
 		buf = { ...buf, ...S.applyTyping(buf, "BOB", "done", cm) };
 		expect(buf.typing.has("bob")).toBe(false);
 		expect(S.applyTyping(buf, "dave", "done", cm)).toBeUndefined();
+	});
+
+	it("drops expired typing notifications on updates", () => {
+		let buf = base();
+		buf = { ...buf, ...S.applyTyping(buf, "bob", "active", cm, 1000) };
+		buf = { ...buf, ...S.applyTyping(buf, "carol", "active", cm, 1000 + S.TYPING_TIMEOUT.active) };
+		expect([...buf.typing.keys()]).toEqual(["carol"]);
 	});
 });

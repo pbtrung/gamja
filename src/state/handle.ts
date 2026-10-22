@@ -26,12 +26,15 @@ import {
 
 /** Rename a nick in the channels of a server, or remove it with null. */
 function renameMember(state: State, serverID: number, nick: string, newNick: string | null): State {
-	const buffers = new Map(state.buffers);
+	let buffers: Map<number, Buffer> | null = null;
 	for (const buf of state.buffers.values()) {
 		const membership = buf.server === serverID ? buf.members.get(nick) : undefined;
 		if (membership === undefined) {
 			continue;
 		}
+		// Only copy the buffers if a channel changes: a new map re-renders
+		// everything showing buffers
+		buffers ??= new Map(state.buffers);
 		const members = new irc.CaseMapMap(buf.members);
 		members.delete(nick);
 		if (newNick !== null) {
@@ -39,7 +42,7 @@ function renameMember(state: State, serverID: number, nick: string, newNick: str
 		}
 		buffers.set(buf.id, { ...buf, members });
 	}
-	return { ...state, buffers };
+	return buffers ? { ...state, buffers } : state;
 }
 
 function computeFeatures(client: Pick<Client, "caps" | "isupport">): Features {

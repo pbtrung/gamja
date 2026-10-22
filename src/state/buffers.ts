@@ -59,7 +59,12 @@ export function displayGroups(
 		Boolean(getTargetMetadata(servers.get(buf.server), buf.name).pinned);
 	const byServer = new Map<number, Buffer[]>();
 	for (const buf of buffers.values()) {
-		byServer.set(buf.server, [...(byServer.get(buf.server) ?? []), buf]);
+		const group = byServer.get(buf.server);
+		if (group) {
+			group.push(buf);
+		} else {
+			byServer.set(buf.server, [buf]);
+		}
 	}
 	return [...byServer].map(([serverID, group]) => {
 		const server = servers.get(serverID);
@@ -453,14 +458,20 @@ export function applyTyping(
 	now = Date.now(),
 ): Partial<Buffer> | undefined {
 	const typing = new Map(buf.typing);
-	for (const k of typing.keys()) {
+	let had = false;
+	for (const [k, t] of typing) {
 		if (cm(k) === cm(nick)) {
+			typing.delete(k);
+			had = true;
+		} else if (now - t.time >= TYPING_TIMEOUT[t.status]) {
+			// Drop expired notifications while at it: users who never sent
+			// "done" would stay in the map otherwise
 			typing.delete(k);
 		}
 	}
 	if (status === "active" || status === "paused") {
 		typing.set(nick, { status, time: now });
-	} else if (typing.size === buf.typing.size) {
+	} else if (!had) {
 		return;
 	}
 	return { typing };
