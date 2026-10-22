@@ -156,6 +156,10 @@ export default function Menu({
 			const i = l.indexOf(document.activeElement as HTMLElement);
 			const next = event.key === "ArrowDown" ? i + 1 : i - 1;
 			l[(next + l.length) % l.length]?.focus();
+		} else if (event.key === "Home" || event.key === "End") {
+			event.preventDefault();
+			const l = menuItems();
+			l[event.key === "Home" ? 0 : l.length - 1]?.focus();
 		}
 	}
 
