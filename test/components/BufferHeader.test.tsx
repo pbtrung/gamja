@@ -179,7 +179,7 @@ describe("BufferHeader", () => {
 		expect(document.querySelector(".buffer-list-toggle .unread-highlight")).toBeInTheDocument();
 	});
 
-	it("puts actions in a menu on small screens", async () => {
+	function stubSmallScreen() {
 		vi.stubGlobal(
 			"matchMedia",
 			(query: string) =>
@@ -189,13 +189,20 @@ describe("BufferHeader", () => {
 					removeEventListener() {},
 				}) as unknown as MediaQueryList,
 		);
+	}
+
+	it("puts actions in a menu on small screens", async () => {
+		stubSmallScreen();
 		const props = setup({
 			buffer: { type: BufferType.CHANNEL, name: "#c", joined: true },
 			server: { bouncerNetID: "1" },
 			onSearch: vi.fn(),
 			onDetach: vi.fn(),
 		});
-		expect(buttons()).toEqual(["Open buffer list", "Open member list", "More actions"]);
+		// [buffer list] [title and description] [menu] [member list]
+		expect(buttons()).toEqual(["Open buffer list", "More actions", "Open member list"]);
+		expect(document.querySelector(".leading .buffer-list-toggle")).toBeInTheDocument();
+		expect(document.querySelector(".actions .buffer-list-toggle")).toBeNull();
 		const more = screen.getByRole("button", { name: "More actions" });
 		await userEvent.click(more);
 		expect(more).toHaveAttribute("aria-expanded", "true");
@@ -212,7 +219,7 @@ describe("BufferHeader", () => {
 		expect(screen.getAllByRole("menuitem")[0]).toHaveFocus();
 		await userEvent.tab({ shift: true });
 		expect(screen.queryByRole("menu")).toBeNull();
-		expect(screen.getByRole("button", { name: "Open member list" })).toHaveFocus();
+		expect(screen.getByRole("button", { name: "Open buffer list" })).toHaveFocus();
 		// Focus only goes back to the toggle for keyboard users
 		await userEvent.click(more);
 		await userEvent.keyboard("{Escape}");
@@ -224,6 +231,21 @@ describe("BufferHeader", () => {
 		await userEvent.keyboard("{Escape}");
 		expect(screen.queryByRole("menu")).toBeNull();
 		expect(more).toHaveFocus();
+	});
+
+	it("closes the small screen menu on outside clicks", async () => {
+		stubSmallScreen();
+		setup({ buffer: { type: BufferType.CHANNEL, name: "#c", joined: true } });
+		await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+		expect(screen.getByRole("menu")).toBeInTheDocument();
+		await userEvent.click(document.body);
+		expect(screen.queryByRole("menu")).toBeNull();
+	});
+
+	it("only shows the member list toggle in channels on small screens", () => {
+		stubSmallScreen();
+		setup({ buffer: { type: BufferType.NICK, name: "alice" } });
+		expect(buttons()).toEqual(["Open buffer list", "More actions"]);
 	});
 
 	it("shows Detach and Join as icons only", () => {

@@ -426,7 +426,7 @@ export default function BufferHeader(props: BufferHeaderProps) {
 
 	// Panel toggles are only shown on small screens (or when the member
 	// list is hidden via settings)
-	const toggles: ReactNode[] = [
+	const bufferListToggle = (
 		<ActionButton
 			key="buffer-list"
 			icon={PanelLeft}
@@ -441,10 +441,10 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			{props.unreadElsewhere !== Unread.NONE ? (
 				<span className={`unread-indicator unread-${props.unreadElsewhere}`} aria-hidden="true" />
 			) : null}
-		</ActionButton>,
-	];
-	if (buffer.type === BufferType.CHANNEL) {
-		toggles.push(
+		</ActionButton>
+	);
+	const memberListToggle =
+		buffer.type === BufferType.CHANNEL ? (
 			<ActionButton
 				key="member-list"
 				icon={Users}
@@ -454,12 +454,13 @@ export default function BufferHeader(props: BufferHeaderProps) {
 				expanded={props.memberListOpen}
 				controls="member-list"
 				onClick={props.onOpenMemberList}
-			/>,
-		);
-	}
+			/>
+		) : null;
 
+	// Small screens: [buffer list] [title and description] [menu] [member list]
 	return (
 		<>
+			{smallScreen ? <div className="leading">{bufferListToggle}</div> : null}
 			<div className="title">
 				<BufferTypeIcon type={buffer.type} className="title-icon" aria-hidden="true" />
 				<h1 className="title-text" title={name}>
@@ -473,17 +474,27 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			) : null}
 			<div className="actions">
 				<div className="btn-group" role="group" aria-label="Buffer actions">
-					{toggles}
-					{smallScreen
-						? actions.length > 0 && (
+					{smallScreen ? (
+						<>
+							{actions.length > 0 && (
 								<Menu
 									items={actions}
 									label="Buffer actions"
 									toggleLabel="More actions"
 									toggleIcon={EllipsisVertical}
 								/>
-							)
-						: actions.map(({ key, ...action }) => <ActionButton key={key} {...action} />)}
+							)}
+							{memberListToggle}
+						</>
+					) : (
+						<>
+							{bufferListToggle}
+							{memberListToggle}
+							{actions.map(({ key, ...action }) => (
+								<ActionButton key={key} {...action} />
+							))}
+						</>
+					)}
 				</div>
 			</div>
 		</>
