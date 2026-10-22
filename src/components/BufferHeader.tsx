@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import {
 	CirclePlus,
@@ -19,7 +19,6 @@ import {
 	Unplug,
 	Users,
 	X,
-	type LucideIcon,
 } from "lucide-react";
 import { strip as stripANSI } from "../lib/ansi";
 import { meaningfulRealname, unreadLabel } from "../format";
@@ -37,98 +36,13 @@ import {
 	type User,
 } from "../state";
 import RichText, { type LinkClickHandler } from "./RichText";
-import Menu, { type MenuItem } from "./Menu";
-
-const UserStatus = {
-	HERE: "here",
-	GONE: "gone",
-	OFFLINE: "offline",
-} as const;
-type UserStatus = (typeof UserStatus)[keyof typeof UserStatus];
-
-const statusText: Record<UserStatus, string> = {
-	here: "User is online",
-	gone: "User is away",
-	offline: "User is offline",
-};
-
-function NickStatus({ status }: { status: UserStatus }) {
-	return (
-		<span
-			className={`status status-${status}`}
-			title={statusText[status]}
-			role="img"
-			aria-label={statusText[status]}
-		/>
-	);
-}
+import Menu from "./Menu";
+import ActionButton, { type Action } from "./header/ActionButton";
+import Countdown from "./header/Countdown";
+import UserDescription from "./header/UserDescription";
 
 function formatLag(ms: number): string {
 	return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
-}
-
-function formatDuration(sec: number): string {
-	return sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`;
-}
-
-/** Seconds left until a date, updated every second */
-function Countdown({ to }: { to: number }) {
-	const [now, setNow] = useState(Date.now);
-	useEffect(() => {
-		const id = setInterval(() => setNow(Date.now()), 1000);
-		return () => clearInterval(id);
-	}, []);
-	return <>{formatDuration(Math.max(0, Math.ceil((to - now) / 1000)))}</>;
-}
-
-interface ActionButtonProps {
-	icon: LucideIcon;
-	label: string;
-	danger?: boolean;
-	iconOnly?: boolean;
-	className?: string;
-	/** Extra information for assistive technologies */
-	description?: string;
-	/** Panel toggles: whether the panel is open, and its ID */
-	expanded?: boolean;
-	controls?: string;
-	onClick: () => void;
-	children?: ReactNode;
-}
-
-/** A header action: a button on wide screens, a menu item on small ones */
-interface Action extends MenuItem {
-	iconOnly?: boolean;
-}
-
-function ActionButton({
-	icon: Icon,
-	label,
-	danger,
-	iconOnly,
-	className,
-	description,
-	expanded,
-	controls,
-	onClick,
-	children,
-}: ActionButtonProps) {
-	return (
-		<button
-			type="button"
-			className={`btn btn-sm ${danger ? "btn-danger-outline" : ""} ${className || ""}`}
-			title={label}
-			aria-label={iconOnly ? label : undefined}
-			aria-description={description}
-			aria-expanded={expanded}
-			aria-controls={controls}
-			onClick={onClick}
-		>
-			<Icon aria-hidden="true" />
-			{iconOnly ? null : <span className="action-label">{label}</span>}
-			{children}
-		</button>
-	);
 }
 
 export interface BufferHeaderProps {
@@ -310,64 +224,8 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			break;
 		case BufferType.NICK: {
 			if (user) {
-				let status: UserStatus = UserStatus.HERE;
-				if (user.offline) {
-					status = UserStatus.OFFLINE;
-				} else if (user.away) {
-					status = UserStatus.GONE;
-				}
-
-				const realname = meaningfulRealname(user, buffer.name) ?? buffer.name;
-
-				const details: ReactNode[] = [];
-				if (user.username && user.hostname) {
-					details.push(`${user.username}@${user.hostname}`);
-				}
-				if (user.account) {
-					const desc = `This user is verified and has logged in to the server with the account ${user.account}.`;
-					const item =
-						user.account === buffer.name ? "authenticated" : `authenticated as ${user.account}`;
-					details.push(
-						<abbr key="account" title={desc}>
-							{item}
-						</abbr>,
-					);
-				} else if (server.reliableUserAccounts) {
-					// If the server supports MONITOR and WHOX, we can faithfully
-					// keep user.account up-to-date for user queries
-					details.push(
-						<abbr key="account" title="This user has not been verified and is not logged in.">
-							unauthenticated
-						</abbr>,
-					);
-				}
-				if (user.operator) {
-					details.push(
-						<abbr
-							key="oper"
-							title="This user is a server operator, they have administrator privileges."
-						>
-							server operator
-						</abbr>,
-					);
-				}
-				if (user.bot) {
-					details.push(
-						<abbr key="bot" title="This user is an automated bot.">
-							bot
-						</abbr>,
-					);
-				}
-
-				descriptionTitle = realname;
-				description = (
-					<>
-						<NickStatus status={status} /> {realname}
-						{details.length > 0 && (
-							<> ({details.flatMap((d, i) => (i === 0 ? [d] : [", ", d]))})</>
-						)}
-					</>
-				);
+				descriptionTitle = meaningfulRealname(user, buffer.name) ?? buffer.name;
+				description = <UserDescription user={user} buffer={buffer} server={server} />;
 			}
 
 			actions.push({ key: "close", icon: X, label: "Close", danger: true, onClick: props.onClose });
