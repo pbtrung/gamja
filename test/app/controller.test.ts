@@ -149,6 +149,26 @@ describe("AppController messaging", () => {
 		expect(buf(app, "bob")!.unread).toBe(Unread.HIGHLIGHT);
 	});
 
+	it("queries the user of a conversation once", async () => {
+		const { app, recv, sent } = await connectedApp();
+		sent();
+		const queries = async () => {
+			await flush();
+			return sent().filter((l) => /^(WHO|MONITOR|MARKREAD) /.test(l));
+		};
+		app.handleComposerSubmit("/query bob");
+		const opened = await queries();
+		expect(opened.filter((l) => l.startsWith("WHO "))).toHaveLength(1);
+		expect(opened.filter((l) => l.startsWith("MARKREAD "))).toEqual(["MARKREAD bob"]);
+
+		// bob is offline: not known, but not worth querying again
+		recv(":srv 315 me bob :End of WHO");
+		await flush();
+		app.switchBuffer(buf(app, SERVER_BUFFER)!.id);
+		app.switchBuffer(buf(app, "bob")!.id);
+		expect(await queries()).toEqual([]);
+	});
+
 	it("routes notices from unknown users to the server buffer", async () => {
 		const { app, recv } = await connectedApp();
 		recv(":bob!u@h NOTICE me :fyi");

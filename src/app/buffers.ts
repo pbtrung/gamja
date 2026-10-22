@@ -104,7 +104,12 @@ export const buffersMethods = {
 
 		const server = this.state.servers.get(buf.server);
 		if (client && client.status === ClientStatus.REGISTERED) {
-			if (buf.type === BufferType.NICK && server && !server.users.has(buf.name)) {
+			if (
+				buf.type === BufferType.NICK &&
+				!buf.hasInitialWho &&
+				server &&
+				!server.users.has(buf.name)
+			) {
 				this.whoUserBuffer(buf.name, buf.server);
 			}
 
@@ -222,15 +227,23 @@ export const buffersMethods = {
 		return true;
 	},
 
+	/**
+	 * Query a user of a conversation: their details, presence and our read
+	 * marker. Once per connection, unless the WHO fails: switching to the
+	 * conversation again doesn't query an unknown (e.g. offline) user again.
+	 */
 	whoUserBuffer(this: AppController, target: string, serverID: number): void {
 		const client = this.clients.get(serverID);
 		if (!client || client.status !== ClientStatus.REGISTERED) {
 			return;
 		}
 
-		client
-			.who(target, { fields: WHO_FIELDS })
-			.catch((err) => console.warn(`Failed to WHO ${target}:`, err));
+		const id = { server: serverID, name: target };
+		this.setBufferState(id, { hasInitialWho: true });
+		client.who(target, { fields: WHO_FIELDS }).catch((err) => {
+			console.warn(`Failed to WHO ${target}:`, err);
+			this.setBufferState(id, { hasInitialWho: false });
+		});
 		client.monitor(target);
 
 		if (client.supportsReadMarker()) {
@@ -287,8 +300,8 @@ export const buffersMethods = {
 					this.showError(err);
 				});
 		} else {
-			this.whoUserBuffer(target, serverID);
 			this.createBuffer(serverID, target);
+			this.whoUserBuffer(target, serverID);
 			this.switchBuffer({ server: serverID, name: target });
 		}
 	},
