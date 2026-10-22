@@ -177,10 +177,20 @@ describe("commands", () => {
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		app.handleComposerSubmit("/join");
 		expect(app.state.error).toBe("Missing channel name");
+		// With the cause
 		app.handleComposerSubmit("/quote @bad");
-		expect(app.state.error).toBe("Failed to parse IRC command");
+		expect(app.state.error).toBe("Failed to parse IRC command: expected a space after tags");
 		app.handleComposerSubmit("/setname x");
 		expect(app.state.error).toBe("Server doesn't support changing the realname");
+	});
+
+	it("reports failures of asynchronous commands", async () => {
+		const { app } = await inChannel();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		vi.spyOn(app, "detachChannel").mockRejectedValue("refused");
+		app.handleComposerSubmit("/detach");
+		await flush();
+		expect(app.state.error).toBe("refused");
 	});
 
 	it("requires registration, except for raw commands", async () => {

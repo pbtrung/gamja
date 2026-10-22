@@ -2283,17 +2283,17 @@ export default class AppController {
 			return;
 		}
 
+		const fail = (error: unknown) => {
+			console.error(`Failed to execute command "${name}":`, error);
+			this.showError(error);
+		};
 		try {
 			const result = cmd.execute(this, args, text);
 			if (result instanceof Promise) {
-				result.catch((error: Error) => {
-					console.error(`Failed to execute command "${name}":`, error);
-					this.showError(error.message);
-				});
+				result.catch(fail);
 			}
 		} catch (error) {
-			console.error(`Failed to execute command "${name}":`, error);
-			this.showError(error instanceof Error ? error.message : error);
+			fail(error);
 		}
 	}
 
