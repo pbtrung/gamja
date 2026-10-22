@@ -33,6 +33,25 @@ if [ -n "${GAMJA_VERSION:-}" ]; then
 	echo "GAMJA_VERSION is set, the badge wouldn't come from the tag" >&2
 	exit 1
 fi
+for cmd in zip ${notes:+gh}; do
+	if ! command -v "$cmd" >/dev/null; then
+		echo "$cmd is required" >&2
+		exit 1
+	fi
+done
+
+# Delete a tag created here if the release fails before it's pushed, so that
+# running the script again from a fixed commit doesn't find it in the way
+created_tag=""
+tmp=""
+cleanup() {
+	status=$?
+	[ -n "$tmp" ] && rm -rf "$tmp"
+	if [ "$status" -ne 0 ] && [ -n "$created_tag" ]; then
+		git tag -d "$created_tag" >/dev/null && echo "deleted the tag $created_tag" >&2
+	fi
+}
+trap cleanup EXIT
 
 # The badge comes from the latest tag when building: tag first
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
@@ -42,6 +61,7 @@ if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
 	fi
 else
 	git tag "$tag"
+	created_tag="$tag"
 fi
 latest="$(git describe --tags --abbrev=0)"
 if [ "$latest" != "$tag" ]; then
@@ -59,7 +79,6 @@ fi
 
 zip="gamja-$tag.zip"
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
 cp -R dist "$tmp/gamja"
 rm -f "$zip"
 (cd "$tmp" && zip -qr "$OLDPWD/$zip" gamja)
@@ -70,4 +89,6 @@ if [ -z "$notes" ]; then
 	exit 0
 fi
 git push "$remote" "refs/tags/$tag"
+# Pushed: keep the tag even if creating the release fails
+created_tag=""
 gh release create "$tag" -R "$repo" --title "$tag" --notes-file "$notes" "$zip"
