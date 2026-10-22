@@ -113,15 +113,25 @@ function parseStoredBuffer(v: unknown): StoredBuffer | null {
 	};
 }
 
+/** Merge receipts into others, keeping the newest. Returns true if any
+ * changed. */
+function mergeReceipts(into: Receipts, from: Receipts): boolean {
+	let changed = false;
+	for (const k of Object.keys(from) as ReceiptType[]) {
+		const r = from[k];
+		const cur = into[k];
+		if (r && (!cur || cur.time < r.time)) {
+			into[k] = r;
+			changed = true;
+		}
+	}
+	return changed;
+}
+
 /** Merge two stored copies of the same buffer, keeping the newest receipts. */
 function mergeStoredBuffers(a: StoredBuffer, b: StoredBuffer): StoredBuffer {
 	const receipts: Receipts = { ...a.receipts };
-	for (const k of Object.keys(b.receipts) as ReceiptType[]) {
-		const r = b.receipts[k];
-		if (r && (!receipts[k] || receipts[k].time < r.time)) {
-			receipts[k] = r;
-		}
-	}
+	mergeReceipts(receipts, b.receipts);
 	return {
 		...a,
 		unread: unionUnread(a.unread, b.unread),
@@ -204,16 +214,8 @@ export class BufferStore {
 
 		const receipts: Receipts = { ...prev.receipts };
 		if (buf.receipts) {
-			for (const k of Object.keys(buf.receipts) as ReceiptType[]) {
-				const r = buf.receipts[k];
-				if (!r) {
-					continue;
-				}
-				const cur = receipts[k];
-				if (!cur || cur.time < r.time) {
-					receipts[k] = r;
-					updated = true;
-				}
+			if (mergeReceipts(receipts, buf.receipts)) {
+				updated = true;
 			}
 			const delivered = receipts[ReceiptType.DELIVERED];
 			const read = receipts[ReceiptType.READ];

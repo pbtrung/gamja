@@ -34,13 +34,7 @@ export function isMessageBeforeReceipt(msg: Message, receipt: Receipt | null | u
 	if (!receipt) {
 		return false;
 	}
-	if (!msg.tags.time) {
-		throw new Error("Missing time message tag");
-	}
-	if (!receipt.time) {
-		throw new Error("Missing receipt time");
-	}
-	return msg.tags.time <= receipt.time;
+	return isReceiptBefore(receiptFromMessage(msg), receipt);
 }
 
 /** Index of the first message of a sorted list newer than the given time. */
