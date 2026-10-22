@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-/** Small screens, where the side panels cover the whole screen, see app.css */
+/** Small screens, where the side panels cover the whole screen, see styles/index.css */
 export const SMALL_SCREEN = "(max-width: 640px)";
 
 function supported(): boolean {

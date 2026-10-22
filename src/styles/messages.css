@@ -1,0 +1,418 @@
+/* Chat log */
+
+/* A column keeps messages anchored to the bottom when the log is short */
+#buffer {
+	display: flex;
+	flex-direction: column;
+	grid-row: 2;
+	grid-column: 2;
+	width: 100%;
+	height: 100%;
+	overflow-x: hidden;
+	overflow-y: auto;
+	background-color: var(--bg);
+	color: var(--fg-muted);
+	font-size: var(--chat-font-size);
+	overflow-wrap: break-word;
+}
+
+#buffer:focus {
+	outline: none;
+}
+
+#buffer .logline-list {
+	margin-top: auto;
+	/* No bottom padding: the composer's own padding spaces it from the input */
+	padding: 0.75rem 0 0;
+}
+
+#buffer .logline {
+	--logline-line-height: 1.55;
+	position: relative;
+	padding: 0.125rem 1rem;
+	border-left: 3px solid transparent;
+	line-height: var(--logline-line-height);
+	white-space: pre-wrap;
+}
+
+#buffer .logline:hover,
+#buffer .logline:focus-within {
+	background-color: var(--bg-hover);
+}
+
+#buffer .logline.flash {
+	animation: flash 1.6s ease-out;
+}
+
+@keyframes flash {
+	0%,
+	30% {
+		background-color: var(--accent-soft);
+	}
+}
+
+/* Comfortable layout: messages grouped under the sender */
+
+#buffer .logline.comfortable {
+	display: grid;
+	grid-template-columns: 3.25rem minmax(0, 1fr);
+	column-gap: 0.5rem;
+	padding: 0.0625rem 1rem 0.0625rem 0.75rem;
+	white-space: normal;
+}
+
+#buffer .logline.comfortable.group-first {
+	margin-top: 0.625rem;
+	padding-top: 0.25rem;
+}
+
+#buffer .logline.comfortable .logline-gutter {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: 0.15rem;
+}
+
+#buffer .logline.comfortable .logline-content {
+	white-space: pre-wrap;
+}
+
+#buffer .logline.comfortable .timestamp {
+	min-width: 0;
+	margin: 0;
+}
+
+#buffer .logline.comfortable.group-continuation .logline-gutter .timestamp,
+#buffer .logline.comfortable.event .logline-gutter .timestamp {
+	visibility: hidden;
+	padding-top: 0.15rem;
+}
+
+#buffer .logline.comfortable:hover .logline-gutter .timestamp,
+#buffer .logline.comfortable:focus-within .logline-gutter .timestamp {
+	visibility: visible;
+}
+
+#buffer .logline.comfortable.event {
+	color: var(--fg-muted);
+	font-size: 0.875em;
+}
+
+#buffer .logline.comfortable.event .logline-gutter .timestamp {
+	font-size: 0.9em;
+}
+
+#buffer .logline.comfortable.notice .logline-content {
+	color: var(--fg-muted);
+}
+
+.logline-header {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	line-height: 1.4;
+}
+
+#buffer .logline-header .timestamp {
+	font-size: 0.75rem;
+}
+
+.avatar {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 50%;
+	background-color: var(--nick-color, var(--fg-subtle));
+	color: var(--avatar-fg);
+	font-size: 0.95rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	user-select: none;
+}
+
+.tag-badge {
+	padding: 0 0.35rem;
+	border-radius: var(--radius-sm);
+	background-color: var(--bg-subtle);
+	color: var(--fg-muted);
+	font-size: 0.6875rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+#buffer .logline.comfortable .reactions,
+#buffer .logline.comfortable .reply-quote {
+	margin-left: 0;
+}
+
+/* Columns layout: WeeChat style, senders right-aligned before a rule */
+
+/* Registered as a length, so that a width in "ch" set on the message list
+   is converted there, with the list's font, and inherited as is: resolved on
+   each line, it would vary with the line's font, e.g. smaller or italic text,
+   and misalign the rule */
+@property --nick-column-width {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 0px;
+}
+
+#buffer .logline.columns {
+	/* Rows pad their cells so that the rule runs unbroken between rows.
+	   Spaced like the compact layout: evenly, without gaps between groups. */
+	--row-pad: 0.125rem;
+	display: grid;
+	/* The sender column fits --nick-column-width characters, plus its
+	   padding before the rule */
+	grid-template-columns: max-content calc(var(--nick-column-width) + 0.625rem) minmax(0, 1fr);
+	align-items: baseline;
+	padding-top: 0;
+	padding-bottom: 0;
+	white-space: normal;
+}
+
+#buffer .logline.columns > * {
+	padding-top: var(--row-pad);
+	padding-bottom: var(--row-pad);
+}
+
+#buffer .logline.columns .timestamp {
+	min-width: 0;
+	margin-right: 0.75rem;
+	color: var(--fg-subtle);
+	font-size: 0.75rem;
+	font-style: normal;
+}
+
+#buffer .logline.columns:hover .timestamp,
+#buffer .logline.columns:focus-within .timestamp {
+	color: var(--fg-muted);
+}
+
+#buffer .logline.columns .logline-prefix {
+	align-self: stretch;
+	overflow: hidden;
+	padding-right: 0.625rem;
+	border-right: 1px solid var(--border);
+	font-style: normal;
+	font-weight: 600;
+	text-align: right;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#buffer .nick-align-left .logline.columns .logline-prefix {
+	text-align: left;
+}
+
+#buffer .logline.columns .logline-prefix.info,
+#buffer .logline.columns .logline-prefix.action {
+	color: var(--fg-subtle);
+}
+
+#buffer .logline.columns .logline-prefix.join {
+	color: var(--success);
+}
+
+#buffer .logline.columns .logline-prefix.part,
+#buffer .logline.columns .logline-prefix.error {
+	color: var(--danger-fg);
+}
+
+#buffer .logline.columns .logline-main {
+	min-width: 0;
+	padding-left: 0.75rem;
+}
+
+#buffer .logline.columns .logline-content {
+	white-space: pre-wrap;
+}
+
+#buffer .logline.columns .reactions,
+#buffer .logline.columns .reply-quote {
+	margin-left: 0;
+}
+
+#buffer .logline.columns.event .logline-content,
+#buffer .logline.columns.notice .logline-content {
+	color: var(--fg-muted);
+}
+
+#buffer .logline.columns.event {
+	font-size: 0.9375em;
+	/* Same line height as other lines, despite the smaller text */
+	line-height: calc(var(--logline-line-height) / 0.9375);
+}
+
+/* Bubbles layout: messenger style, our own messages on the right */
+
+#buffer .logline.bubbles {
+	--bubble-bg: color-mix(in srgb, var(--fg) 7%, var(--bg));
+	--bubble-fg: var(--fg);
+	--bubble-radius: 1.125rem;
+	--bubble-joined: 0.3125rem;
+	display: grid;
+	grid-template-columns: 2rem minmax(0, 1fr);
+	column-gap: 0.5rem;
+	justify-items: start;
+	padding-top: 0.0625rem;
+	padding-bottom: 0.0625rem;
+	white-space: normal;
+}
+
+#buffer .logline.bubbles > * {
+	grid-column: 2;
+}
+
+#buffer .logline.bubbles:hover,
+#buffer .logline.bubbles:focus-within {
+	background-color: transparent;
+}
+
+#buffer .logline.bubbles.group-first {
+	margin-top: 0.625rem;
+}
+
+#buffer .logline.bubbles > .avatar {
+	grid-row: 1 / span 2;
+	grid-column: 1;
+	align-self: start;
+	width: 2rem;
+	height: 2rem;
+	margin-top: 0.125rem;
+	font-size: 0.875rem;
+	font-style: normal;
+}
+
+#buffer .logline.bubbles.mine {
+	--bubble-bg: var(--accent);
+	--bubble-fg: var(--accent-fg);
+	grid-template-columns: minmax(0, 1fr);
+	justify-items: end;
+}
+
+#buffer .logline.bubbles.mine > * {
+	grid-column: 1;
+}
+
+.bubble-sender {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	margin: 0 0 0.1875rem 0.75rem;
+	font-size: 0.8125rem;
+	font-style: normal;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.bubble {
+	max-width: min(38rem, 80%);
+	padding: 0.4375rem 0.875rem;
+	border-radius: var(--bubble-radius);
+	background-color: var(--bubble-bg);
+	color: var(--bubble-fg);
+	overflow-wrap: anywhere;
+}
+
+/* Bubbles of a group are joined on the sender's side */
+.logline.bubbles.group-continuation .bubble {
+	border-top-left-radius: var(--bubble-joined);
+}
+
+.logline.bubbles:has(+ .logline.bubbles.group-continuation) .bubble {
+	border-bottom-left-radius: var(--bubble-joined);
+}
+
+.logline.bubbles.mine.group-continuation .bubble {
+	border-top-left-radius: var(--bubble-radius);
+	border-top-right-radius: var(--bubble-joined);
+}
+
+.logline.bubbles.mine:has(+ .logline.bubbles.group-continuation) .bubble {
+	border-bottom-left-radius: var(--bubble-radius);
+	border-bottom-right-radius: var(--bubble-joined);
+}
+
+/* Text on the accent color takes its foreground color */
+#buffer .logline.bubbles.mine .bubble :is(a, .nick, .timestamp, .reply-quote, .reply-nick, .reply-text) {
+	color: inherit;
+}
+
+#buffer .logline.bubbles.mine .bubble :is(.timestamp, .reply-quote) {
+	opacity: 0.8;
+}
+
+/* Our bubbles are on the right, where the actions would cover them */
+.logline.bubbles.mine > .message-actions {
+	right: auto;
+	left: 1rem;
+}
+
+.logline.bubbles.highlight .bubble {
+	background-color: color-mix(in srgb, var(--highlight-border) 16%, var(--bubble-bg));
+	box-shadow: inset 0 0 0 1px var(--highlight-border);
+}
+
+#buffer .logline.bubbles.highlight {
+	border-left-color: transparent;
+	background-color: transparent;
+}
+
+#buffer .logline.bubbles .logline-content {
+	white-space: pre-wrap;
+}
+
+/* Notices are told apart from messages by an outlined bubble */
+#buffer .logline.bubbles.notice .bubble {
+	background-color: transparent;
+	box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+#buffer .logline.bubbles.notice:not(.mine) .logline-content {
+	color: var(--fg-muted);
+}
+
+#buffer .logline.bubbles.mine.notice .bubble {
+	--bubble-fg: var(--fg);
+	box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+#buffer .logline.bubbles .bubble .timestamp {
+	min-width: 0;
+	margin: 0 0 0 0.625rem;
+	padding-top: 0.35em;
+	color: var(--fg-subtle);
+	font-size: 0.6875rem;
+	font-style: normal;
+	float: right;
+}
+
+#buffer .logline.bubbles .reactions,
+#buffer .logline.bubbles .reply-quote {
+	margin-left: 0;
+}
+
+#buffer .logline.bubbles .reply-quote {
+	margin-bottom: 0.1875rem;
+}
+
+#buffer .logline.bubbles.event {
+	display: flex;
+	justify-content: center;
+	margin: 0.5rem 0;
+	text-align: center;
+}
+
+#buffer .logline.bubbles.event .logline-content {
+	max-width: 80%;
+	padding: 0.1875rem 0.75rem;
+	border-radius: 999px;
+	background-color: var(--bg-subtle);
+	color: var(--fg-muted);
+	font-size: 0.8125em;
+	white-space: normal;
+}

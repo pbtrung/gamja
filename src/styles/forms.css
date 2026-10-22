@@ -1,0 +1,75 @@
+/* Forms */
+
+.field {
+	margin-bottom: 1rem;
+}
+
+.field > label {
+	display: block;
+	margin-bottom: 0.35rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: var(--fg-emphasis);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+select,
+textarea {
+	display: block;
+	width: 100%;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	background-color: var(--bg);
+	color: var(--fg);
+	font: inherit;
+	font-size: 0.9375rem;
+	transition:
+		border-color var(--transition),
+		box-shadow var(--transition);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--focus-ring);
+	outline: none;
+}
+
+input:disabled {
+	opacity: 0.7;
+}
+
+input::placeholder,
+textarea::placeholder {
+	color: var(--fg-subtle);
+}
+
+fieldset {
+	margin: 0 0 1.25rem;
+	padding: 0;
+	border: none;
+}
+
+.settings-heading {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0 0 0.75rem;
+	padding: 0;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--fg-muted);
+}
+
+h3.settings-heading:not(:first-child) {
+	margin-top: 1.5rem;
+}

@@ -1,0 +1,84 @@
+/* Responsive */
+
+@media (max-width: 1024px) {
+	#buffer-header .action-label {
+		display: none;
+	}
+}
+
+@media (max-width: 640px) {
+	/* Side panes are opened from the buffer header instead */
+	#buffer-list:not(.expand),
+	#member-list:not(.expand) {
+		display: none;
+	}
+
+	#buffer-header .title-icon {
+		display: none;
+	}
+
+	/* One row: [buffer list] [title and description] [menu, member list] */
+	#buffer-header {
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		column-gap: 0.5rem;
+		padding: 0 0.5rem;
+	}
+
+	#buffer-header .leading {
+		grid-row: 1 / 3;
+		grid-column: 1;
+	}
+
+	#buffer-header .title,
+	#buffer-header .description {
+		grid-column: 2;
+	}
+
+	#buffer-header .actions {
+		grid-column: 3;
+	}
+
+	/* The buttons span both header lines, so they can be bigger */
+	#buffer-header .leading > .btn,
+	#buffer-header .actions .btn-group > .btn {
+		padding: 0.45rem 0.75rem;
+		font-size: 1rem;
+	}
+
+	.panel-close {
+		display: inline-flex;
+	}
+
+	#buffer-header .buffer-list-toggle,
+	#buffer-header .member-list-toggle:not(.always) {
+		display: inline-flex;
+	}
+
+	#buffer-list.expand,
+	#member-list.expand {
+		z-index: 999;
+		grid-column: 1 / 4;
+		border: none;
+		box-shadow: var(--shadow-lg);
+	}
+
+	#buffer-list.expand .buffer-list-panel,
+	#member-list.expand .member-list-panel {
+		flex: 1;
+		width: auto;
+	}
+
+	#buffer .logline {
+		padding: 0.125rem 0.75rem;
+	}
+
+	#composer {
+		padding: 0.75rem 0.5rem 0.5rem;
+	}
+
+	.toast {
+		right: 0.5rem;
+		left: 0.5rem;
+		max-width: none;
+	}
+}

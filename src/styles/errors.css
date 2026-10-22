@@ -1,0 +1,72 @@
+/* Error toast */
+
+.toast {
+	position: fixed;
+	right: 1rem;
+	bottom: 5rem;
+	z-index: 1080;
+	max-width: min(28rem, calc(100vw - 2rem));
+	margin: 0;
+	border-color: var(--danger);
+	background-color: var(--bg-elevated);
+	box-shadow: var(--shadow-lg);
+	animation: pop-in 0.14s ease-out;
+}
+
+.toast .alert-text {
+	flex: 1;
+	align-self: center;
+}
+
+.toast .icon-btn {
+	width: 1.75rem;
+	height: 1.75rem;
+	margin: -0.25rem -0.5rem -0.25rem 0;
+}
+
+/* Error boundary */
+
+.error-boundary {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background-color: var(--bg);
+}
+
+.error-boundary-card {
+	max-width: 32rem;
+	padding: 2rem;
+	text-align: center;
+}
+
+.error-boundary-icon {
+	margin-bottom: 1rem;
+	color: var(--danger);
+	font-size: 2.5rem;
+}
+
+.error-boundary h1 {
+	margin-bottom: 0.5rem;
+	font-size: 1.375rem;
+}
+
+.error-boundary-details {
+	max-height: 10rem;
+	margin: 1rem 0;
+	padding: 0.75rem;
+	border-radius: var(--radius);
+	background-color: var(--bg-subtle);
+	color: var(--danger-fg);
+	text-align: left;
+	white-space: pre-wrap;
+	overflow: auto;
+}
+
+.row-actions {
+	display: flex;
+	justify-content: center;
+	gap: 0.5rem;
+}

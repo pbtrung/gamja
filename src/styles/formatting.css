@@ -1,0 +1,72 @@
+/* IRC formatting */
+
+.fmt-bold {
+	font-weight: 700;
+}
+.fmt-italic {
+	font-style: italic;
+}
+.fmt-underline {
+	text-decoration: underline;
+}
+.fmt-strikethrough {
+	text-decoration: line-through;
+}
+.fmt-underline.fmt-strikethrough {
+	text-decoration: underline line-through;
+}
+.fmt-monospace {
+	font-family: var(--font-mono);
+	font-size: 0.9em;
+}
+
+/* Nick colors */
+
+.nick-1 {
+	--nick-color: var(--nick-1);
+}
+.nick-2 {
+	--nick-color: var(--nick-2);
+}
+.nick-3 {
+	--nick-color: var(--nick-3);
+}
+.nick-4 {
+	--nick-color: var(--nick-4);
+}
+.nick-5 {
+	--nick-color: var(--nick-5);
+}
+.nick-6 {
+	--nick-color: var(--nick-6);
+}
+.nick-7 {
+	--nick-color: var(--nick-7);
+}
+.nick-8 {
+	--nick-color: var(--nick-8);
+}
+.nick-9 {
+	--nick-color: var(--nick-9);
+}
+.nick-10 {
+	--nick-color: var(--nick-10);
+}
+.nick-11 {
+	--nick-color: var(--nick-11);
+}
+.nick-12 {
+	--nick-color: var(--nick-12);
+}
+.nick-13 {
+	--nick-color: var(--nick-13);
+}
+.nick-14 {
+	--nick-color: var(--nick-14);
+}
+.nick-15 {
+	--nick-color: var(--nick-15);
+}
+.nick-16 {
+	--nick-color: var(--nick-16);
+}

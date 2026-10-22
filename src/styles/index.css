@@ -1,3 +1,31 @@
+/*
+ * Breakpoints (media queries can't use variables):
+ * - 640px: small screens, where the side panels cover the whole screen
+ *   (also SMALL_SCREEN in components/useMediaQuery.ts)
+ * - 720px: the connect form takes less padding
+ * - 1024px: header actions only show their icon
+ */
+
 @import "./tokens.css";
 @import "./themes.css";
-@import "./app.css";
+@import "./base.css";
+@import "./buttons.css";
+@import "./forms.css";
+@import "./settings.css";
+@import "./settings-previews.css";
+@import "./settings-mobile.css";
+@import "./sidebars.css";
+@import "./header.css";
+@import "./messages.css";
+@import "./message-actions.css";
+@import "./message-options.css";
+@import "./formatting.css";
+@import "./composer.css";
+@import "./connect.css";
+@import "./dialogs.css";
+@import "./search.css";
+@import "./errors.css";
+@import "./responsive.css";
+@import "./self-status.css";
+@import "./floating-buttons.css";
+@import "./reduced-motion.css";

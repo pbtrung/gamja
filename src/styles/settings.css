@@ -1,0 +1,254 @@
+/* Settings dialog: the sections in tabs on the left, the current one on the right */
+
+.dialog:has(.settings-form) {
+	max-width: 52rem;
+	height: min(40rem, calc(100dvh - 2rem));
+}
+
+.dialog:has(.settings-form) .dialog-body {
+	--dialog-padding: 0;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.settings-form {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.settings-layout {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+.settings-nav {
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	gap: 0.25rem;
+	width: 12rem;
+	padding: 0.75rem;
+	border-right: 1px solid var(--border);
+	background-color: var(--bg-sidebar);
+}
+
+.settings-nav-item {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	padding: 0.5rem 0.75rem;
+	border: none;
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--fg-muted);
+	font: inherit;
+	font-size: 0.875rem;
+	font-weight: 500;
+	text-align: left;
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background-color var(--transition),
+		color var(--transition);
+}
+
+.settings-nav-item svg.lucide {
+	flex-shrink: 0;
+	width: 1rem;
+	height: 1rem;
+}
+
+.settings-nav-item:hover {
+	background-color: var(--bg-hover);
+	color: var(--fg-emphasis);
+}
+
+.settings-nav-item.active {
+	background-color: var(--bg-active);
+	color: var(--fg-active);
+}
+
+.settings-nav-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.settings-pane {
+	flex: 1;
+	min-width: 0;
+	padding: 1.25rem 1.5rem;
+	overflow-y: auto;
+}
+
+.settings-fieldset {
+	margin: 0;
+}
+
+.settings-fieldset + .settings-fieldset {
+	margin-top: 1.5rem;
+}
+
+/* A legend can't be a flex item: float it to lay it out like the headings */
+.settings-fieldset > legend.settings-heading {
+	float: left;
+	width: 100%;
+}
+
+.settings-fieldset > legend.settings-heading + * {
+	clear: both;
+}
+
+.settings-card {
+	margin: 0;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	background-color: var(--bg);
+}
+
+.settings-row {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.75rem 0.875rem;
+}
+
+.settings-row + .settings-row {
+	border-top: 1px solid var(--border);
+}
+
+.settings-row > .alert {
+	flex: 1;
+}
+
+.settings-row-text {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 0.125rem;
+	min-width: 0;
+	color: var(--fg-emphasis);
+	font-size: 0.875rem;
+	font-weight: 500;
+}
+
+.settings-row-text label {
+	cursor: pointer;
+}
+
+/* As wide as its longest value (--digits, set from the maximum), plus the
+ * padding, the border and room for the browser's spin buttons */
+input.settings-number {
+	flex: none;
+	width: calc(var(--digits, 4) * 1ch + 1.5rem + 2px + 1.5rem);
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+}
+
+.settings-row-hint {
+	color: var(--fg-muted);
+	font-size: 0.8125rem;
+	font-weight: 400;
+}
+
+/* Checkbox styled as a switch */
+input.switch {
+	position: relative;
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 1.25rem;
+	margin: 0;
+	border-radius: 999px;
+	background-color: var(--border-strong);
+	appearance: none;
+	cursor: pointer;
+	transition: background-color var(--transition);
+}
+
+input.switch::after {
+	content: "";
+	position: absolute;
+	top: 0.1875rem;
+	left: 0.1875rem;
+	width: 0.875rem;
+	height: 0.875rem;
+	border-radius: 50%;
+	/* Dimmed when off, like the other inactive controls */
+	background-color: var(--fg-muted);
+	box-shadow: var(--shadow-sm);
+	transition:
+		transform var(--transition),
+		background-color var(--transition);
+}
+
+input.switch:checked {
+	background-color: var(--accent);
+}
+
+input.switch:checked::after {
+	background-color: var(--accent-fg);
+	transform: translateX(1rem);
+}
+
+input.switch:disabled {
+	opacity: 0.5;
+	cursor: wait;
+}
+
+input.switch:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Visually hidden radios inside selectable cards */
+.theme-option input,
+.layout-option input,
+.segmented-option input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.theme-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+	gap: 0.625rem;
+}
+
+.theme-option,
+.layout-option {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.375rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background-color: var(--bg-elevated);
+	cursor: pointer;
+	transition:
+		border-color var(--transition),
+		box-shadow var(--transition);
+}
+
+.theme-option:hover,
+.layout-option:hover {
+	border-color: var(--border-strong);
+}
+
+.theme-option.selected,
+.layout-option.selected {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 1px var(--accent);
+}
+
+.theme-option:has(input:focus-visible),
+.layout-option:has(input:focus-visible),
+.segmented-option:has(input:focus-visible) {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}

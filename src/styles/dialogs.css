@@ -1,0 +1,209 @@
+/* Dialogs */
+
+.dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background-color: var(--backdrop);
+	animation: fade-in 0.12s ease-out;
+}
+
+.dialog {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-height: calc(100vh - 2rem);
+	/* The dynamic viewport excludes mobile browser bars */
+	max-height: calc(100dvh - 2rem);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	background-color: var(--bg-elevated);
+	box-shadow: var(--shadow-lg);
+	animation: pop-in 0.14s ease-out;
+}
+
+.dialog:focus {
+	outline: none;
+}
+
+.dialog-sm {
+	max-width: 24rem;
+}
+
+.dialog-md {
+	max-width: 32rem;
+}
+
+.dialog-lg {
+	max-width: 44rem;
+}
+
+.dialog-header {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.625rem 0.5rem 0.625rem 0.75rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.dialog-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: var(--radius);
+	background-color: var(--accent-soft);
+	color: var(--accent);
+	font-size: 1.125rem;
+}
+
+.dialog-heading {
+	flex: 1;
+	min-width: 0;
+}
+
+.dialog-header h2 {
+	overflow: hidden;
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.3;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dialog-description {
+	margin: 0.0625rem 0 0;
+	color: var(--fg-muted);
+	font-size: 0.8125rem;
+}
+
+.dialog-body {
+	/* Shared with the footer, which spans the full width */
+	--dialog-padding: 1rem;
+	padding: var(--dialog-padding);
+	overflow-y: auto;
+}
+
+/* Footer with the dialog's buttons, kept in view while the body scrolls */
+.dialog-actions {
+	position: sticky;
+	bottom: calc(-1 * var(--dialog-padding));
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin: 1.25rem calc(-1 * var(--dialog-padding)) calc(-1 * var(--dialog-padding));
+	padding: 0.625rem var(--dialog-padding);
+	border-top: 1px solid var(--border);
+	border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+	background-color: var(--bg-elevated);
+}
+
+/* Explanations in dialogs */
+.dialog-text {
+	margin: 0 0 0.75rem;
+	color: var(--fg);
+	font-size: 0.9375rem;
+	line-height: 1.5;
+}
+
+.dialog-note {
+	margin: 0 0 1rem;
+	padding: 0.625rem 0.75rem;
+	border-radius: var(--radius);
+	background-color: var(--bg-subtle);
+	color: var(--fg-muted);
+	font-size: 0.875rem;
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes pop-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.98);
+	}
+}
+
+.help-list {
+	margin: 0;
+	font-size: 0.875rem;
+}
+
+.help-list > div {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+	gap: 1rem;
+	padding: 0.35rem 0;
+	border-bottom: 1px solid var(--border);
+}
+
+.help-list dt,
+.help-list dd {
+	margin: 0;
+}
+
+.help-commands > div {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.switcher-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	overflow-y: auto;
+}
+
+.switcher-list li[role="option"] {
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.5rem 0.75rem;
+	border-radius: var(--radius);
+	color: var(--fg);
+	text-decoration: none;
+}
+
+.switcher-list li[role="option"]:hover {
+	background-color: var(--bg-hover);
+}
+
+.switcher-list li.active,
+.switcher-list li.active:hover {
+	background-color: var(--accent);
+	color: var(--accent-fg);
+}
+
+.switcher-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.switcher-server {
+	max-width: 40%;
+	margin-left: auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.8125rem;
+	color: var(--fg-muted);
+}
+
+.switcher-list li.active .switcher-server {
+	color: inherit;
+}
+
+.switcher-empty {
+	padding: 0.5rem 0.75rem;
+}
