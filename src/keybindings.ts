@@ -125,7 +125,9 @@ export function setup(app: AppController, target: Window = window): () => void {
 	}
 
 	const handleKeyDown = (event: KeyboardEvent) => {
-		let candidates = byKey.get(event.key);
+		// With Caps Lock, letters come uppercase without Shift
+		const key = event.key.length === 1 && !event.shiftKey ? event.key.toLowerCase() : event.key;
+		let candidates = byKey.get(key);
 		// On macOS, Alt+letter types another character (e.g. Alt+H is "˙"):
 		// fall back to the physical key
 		// Only when Alt didn't type a letter: some layouts need Alt for letters

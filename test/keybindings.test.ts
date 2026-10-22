@@ -88,6 +88,14 @@ describe("keybindings", () => {
 		cleanup();
 	});
 
+	it("works with Caps Lock, not with Shift", async () => {
+		const { app, cleanup } = await withBuffers();
+		expect(press("K", { ctrlKey: true, shiftKey: true }).defaultPrevented).toBe(false);
+		press("K", { ctrlKey: true });
+		expect(app.state.dialog).toEqual({ kind: "switch" });
+		cleanup();
+	});
+
 	it("opens the switcher and search, ignoring other modifiers", async () => {
 		const { app, cleanup } = await withBuffers();
 		expect(press("k", { ctrlKey: true, altKey: true }).defaultPrevented).toBe(false);
