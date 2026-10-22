@@ -473,6 +473,37 @@ describe("AppController messaging", () => {
 		expect(app.clients.get(serverID)!.autoReconnect).toBe(true);
 	});
 
+	it("fetches older messages again after a disconnection interrupted them", async () => {
+		const { app, ws, recv, sent } = await connectedApp();
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		const p = app.fetchOlderMessages();
+		await flush();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		ws.serverClose(1006);
+		// Not an error: scrolling up fetches them again once reconnected
+		await p;
+		expect(buf(app, "#c")!.history).toBe("unknown");
+		app.destroy();
+	});
+
+	it("ignores older messages of a server closed meanwhile", async () => {
+		const { app, serverID, recv, sent } = await connectedApp();
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		const p = app.fetchOlderMessages();
+		await flush();
+		const params = app.clients.get(serverID)!.params;
+		app.close({ server: serverID, name: SERVER_BUFFER });
+		await p;
+		expect(app.state.error).toBeNull();
+		expect(app.bufferStore.list(params)).toEqual([]);
+	});
+
 	it("stops fetching history after an error until retried", async () => {
 		const { app, recv, sent, sentRaw } = await connectedApp();
 		recv(":me!u@h JOIN #c");
@@ -1332,6 +1363,33 @@ describe("AppController chat history", () => {
 		expect(await replyTargets()).toMatch(/BETWEEN #c timestamp=\S+ timestamp=\S+ 250$/);
 		app.handleSettingsChange({ backlogSize: 150 });
 		expect(app.state.settings.backlogSize).toBe(150);
+	});
+
+	it("doesn't report a backlog interrupted by a disconnection", async () => {
+		const { app, ws, replyTargets } = await withBacklog();
+		await replyTargets();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		ws.serverClose(1006);
+		await flush();
+		// The disconnection is reported, not the backlog request it failed
+		expect(app.state.error).toBe("Connection error (abnormal closure)");
+		app.destroy();
+	});
+
+	it("keeps a gap to load once reconnected when loading is interrupted", async () => {
+		const { app, ws, recv, sentRaw, reply, replyTargets } = await withBacklog();
+		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		reply(await replyTargets(), "chathistory #c", ...page(100));
+		await flush();
+
+		const loading = app.fetchMissedMessages(buf(app, "#c")!.id);
+		await flush();
+		expect(sentRaw().some((l) => l.includes("CHATHISTORY BETWEEN"))).toBe(true);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		ws.serverClose(1006);
+		await loading;
+		expect(buf(app, "#c")!.gap!.status).toBe("idle");
+		app.destroy();
 	});
 
 	it("drops the backlog of a server closed meanwhile", async () => {

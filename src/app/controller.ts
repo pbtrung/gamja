@@ -1450,6 +1450,9 @@ export default class AppController {
 		const loaded = buf.messages.some((m) => m.tags.msgid === msgid);
 		if (!loaded && client.caps.enabled.has("draft/chathistory")) {
 			const messages = await client.fetchHistoryAround(target, { msgid, time }, 50);
+			if (this.clients.get(serverID) !== client || !S.getBuffer(this.state, buf.id)) {
+				return; // Closed meanwhile
+			}
 			this.applyHistory(serverID, messages);
 		}
 		this.update({ jumpTo: { buffer: buf.id, msgid } });
@@ -1932,6 +1935,9 @@ export default class AppController {
 
 		// The server may be closed while waiting for the history
 		const isClosed = () => this.clients.get(serverID) !== client;
+		// A disconnection fails the pending requests: not worth an error, the
+		// backlog is fetched again once reconnected
+		const isInterrupted = () => isClosed() || client.status !== ClientStatus.REGISTERED;
 
 		const bound = latestHistoryBound();
 		const targets = await client.fetchHistoryTargets(bound, lastReceipt.time);
@@ -1978,7 +1984,7 @@ export default class AppController {
 						S.backlogSize(this.state.settings),
 					);
 				} catch (err) {
-					if (isClosed()) {
+					if (isInterrupted()) {
 						return;
 					}
 					console.error("Failed to fetch backlog for '" + target.name + "': ", err);
@@ -2555,9 +2561,16 @@ export default class AppController {
 					CHATHISTORY_MAX_SIZE - total,
 				);
 			} catch (err) {
-				if (!isClosed()) {
-					setGap({ after, before, status: "error" });
+				if (isClosed()) {
+					return;
 				}
+				if (client.status !== ClientStatus.REGISTERED) {
+					// Interrupted by a disconnection, not an error: the user can
+					// try again once reconnected
+					setGap({ after, before, status: "idle" });
+					return;
+				}
+				setGap({ after, before, status: "error" });
 				throw err;
 			}
 			if (isClosed()) {
@@ -2624,6 +2637,7 @@ export default class AppController {
 
 		// Avoids sending multiple CHATHISTORY commands in parallel
 		this.setBufferState(buf.id, { history: "loading" });
+		const isClosed = () => this.clients.get(buf.server) !== client || !S.getBuffer(this.state, buf.id);
 
 		let limit = 100;
 		if (client.caps.enabled.has("draft/event-playback")) {
@@ -2634,9 +2648,21 @@ export default class AppController {
 		try {
 			result = await client.fetchHistoryBefore(buf.name, before, limit);
 		} catch (err) {
+			if (isClosed()) {
+				return;
+			}
+			if (client.status !== ClientStatus.REGISTERED) {
+				// Interrupted by a disconnection, not an error: fetch again
+				// once reconnected
+				this.setBufferState(buf.id, { history: buf.history });
+				return;
+			}
 			// Don't retry automatically, the user can retry from the UI
 			this.setBufferState(buf.id, { history: "error" });
 			throw err;
+		}
+		if (isClosed()) {
+			return;
 		}
 		this.setBufferState(buf.id, { history: result.more ? "more" : "end" });
 
