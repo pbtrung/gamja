@@ -60,4 +60,50 @@ describe("ChatScroller", () => {
 		fireEvent.scroll(log);
 		expect(latestButton()).toBeNull();
 	});
+
+	it("restores the first visible message of a buffer, measuring few lines", () => {
+		// 1000 lines of 10px: a line's top is its offset minus the scroll
+		const lines = Array.from({ length: 1000 }, (_, i) => (
+			<div key={i} className="msg" data-key={String(i)}>
+				{i}
+			</div>
+		));
+		let measured = 0;
+		vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+			const el = this as HTMLElement;
+			const log = el.closest("[role=log]");
+			let top = 0;
+			if (el.dataset.key && log) {
+				measured++;
+				top = Number(el.dataset.key) * 10 - log.scrollTop;
+			}
+			return { top, bottom: top + 10, left: 0, right: 0, width: 0, height: 10 } as DOMRect;
+		});
+		const props = { stickTo: ".msg", onScrollTop: vi.fn(), label: "Messages" };
+		const { rerender } = render(
+			<ChatScroller scrollKey="a" {...props}>
+				{lines}
+			</ChatScroller>,
+		);
+		const log = screen.getByRole("log");
+
+		log.scrollTop = 405;
+		measured = 0;
+		fireEvent.scroll(log);
+		expect(measured).toBeLessThan(20);
+
+		// Line 41 is the first one in view, 5px down: it's put back there
+		rerender(
+			<ChatScroller scrollKey="b" {...props}>
+				{lines}
+			</ChatScroller>,
+		);
+		expect(log.scrollTop).toBe(SCROLL_HEIGHT - CLIENT_HEIGHT);
+		rerender(
+			<ChatScroller scrollKey="a" {...props}>
+				{lines}
+			</ChatScroller>,
+		);
+		expect(log.scrollTop).toBe(405);
+	});
 });

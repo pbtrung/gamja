@@ -43,10 +43,24 @@ function prefersReducedMotion(): boolean {
 
 function firstVisibleAnchor(el: HTMLElement, stickTo: string): Anchor | null {
 	const top = el.getBoundingClientRect().top;
-	for (const child of el.querySelectorAll<HTMLElement>(stickTo)) {
-		const childTop = child.getBoundingClientRect().top;
-		if (childTop >= top && child.dataset.key) {
-			return { key: child.dataset.key, offset: childTop - top };
+	const anchors = el.querySelectorAll<HTMLElement>(stickTo);
+	// Anchors are laid out from top to bottom: find the first one starting
+	// in view with a binary search. This runs on every scroll event, and
+	// measuring each of the thousands of lines above the view is slow.
+	let lo = 0;
+	let hi = anchors.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >>> 1;
+		if (anchors[mid].getBoundingClientRect().top >= top) {
+			hi = mid;
+		} else {
+			lo = mid + 1;
+		}
+	}
+	for (let i = lo; i < anchors.length; i++) {
+		const key = anchors[i].dataset.key;
+		if (key) {
+			return { key, offset: anchors[i].getBoundingClientRect().top - top };
 		}
 	}
 	return null;
