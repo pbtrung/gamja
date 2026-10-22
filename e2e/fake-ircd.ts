@@ -1173,9 +1173,16 @@ export class FakeServer {
 				entries = entries.filter((e) => e.time > resolve(bound!)).slice(0, limit);
 				break;
 			case "BETWEEN": {
-				// Both bounds are exclusive; only the ascending order is needed
+				// Both bounds are exclusive. Like soju, the messages closest to
+				// the first bound are returned: the oldest ones in ascending
+				// order, the latest ones when the later bound goes first.
+				const start = resolve(bound!);
 				const end = resolve(parseBound(msg.params[3])!);
-				entries = entries.filter((e) => e.time > resolve(bound!) && e.time < end).slice(0, limit);
+				if (start <= end) {
+					entries = entries.filter((e) => e.time > start && e.time < end).slice(0, limit);
+				} else {
+					entries = entries.filter((e) => e.time > end && e.time < start).slice(-limit);
+				}
 				break;
 			}
 			case "LATEST":
