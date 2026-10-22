@@ -144,7 +144,8 @@ export function formatWindowHash(host: string | null | undefined, entity: string
 	if (!host && entity.startsWith("/")) {
 		loc += "//"; // for disambiguation
 	}
-	return loc + "/" + entity;
+	// parseWindowHash() decodes percent-escapes: keep "%" itself
+	return loc + "/" + entity.replace(/%/g, "%25");
 }
 
 export function randomNick(template: string): string {

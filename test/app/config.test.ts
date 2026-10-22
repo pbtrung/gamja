@@ -38,6 +38,9 @@ describe("config helpers", () => {
 			["irc.libera.chat", null, "#//irc.libera.chat"],
 			["irc.libera.chat", "#soju", "#//irc.libera.chat/#soju"],
 			[null, "/weird", "#////weird"],
+			// Percent signs survive the decoding
+			[null, "#50%off", "#/#50%25off"],
+			["irc.libera.chat", "#a%23b", "#//irc.libera.chat/#a%2523b"],
 		];
 		for (const [host, entity, hash] of cases) {
 			expect(formatWindowHash(host, entity)).toBe(hash);
