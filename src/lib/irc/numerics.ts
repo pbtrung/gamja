@@ -1,0 +1,79 @@
+/** IRC numeric replies. */
+
+// RFC 1459
+export const RPL_WELCOME = "001";
+export const RPL_YOURHOST = "002";
+export const RPL_MYINFO = "004";
+export const RPL_ISUPPORT = "005";
+export const RPL_UMODEIS = "221";
+export const RPL_TRYAGAIN = "263";
+export const RPL_AWAY = "301";
+export const RPL_WHOISUSER = "311";
+export const RPL_WHOISSERVER = "312";
+export const RPL_WHOISOPERATOR = "313";
+export const RPL_WHOISIDLE = "317";
+export const RPL_ENDOFWHOIS = "318";
+export const RPL_WHOISCHANNELS = "319";
+export const RPL_WHOISACCOUNT = "330";
+export const RPL_ENDOFWHO = "315";
+export const RPL_CHANNELMODEIS = "324";
+export const RPL_NOTOPIC = "331";
+export const RPL_TOPIC = "332";
+export const RPL_TOPICWHOTIME = "333";
+export const RPL_INVITING = "341";
+export const RPL_INVITELIST = "346";
+export const RPL_ENDOFINVITELIST = "347";
+export const RPL_EXCEPTLIST = "348";
+export const RPL_ENDOFEXCEPTLIST = "349";
+export const RPL_WHOREPLY = "352";
+export const RPL_NAMREPLY = "353";
+export const RPL_WHOSPCRPL = "354";
+export const RPL_ENDOFNAMES = "366";
+export const RPL_BANLIST = "367";
+export const RPL_ENDOFBANLIST = "368";
+export const RPL_MOTD = "372";
+export const RPL_ENDOFMOTD = "376";
+export const ERR_UNKNOWNERROR = "400";
+export const ERR_NOSUCHNICK = "401";
+export const ERR_NOSUCHCHANNEL = "403";
+export const ERR_TOOMANYCHANNELS = "405";
+export const ERR_UNKNOWNCOMMAND = "421";
+export const ERR_NOMOTD = "422";
+export const ERR_ERRONEUSNICKNAME = "432";
+export const ERR_NICKNAMEINUSE = "433";
+export const ERR_NICKCOLLISION = "436";
+export const ERR_NEEDMOREPARAMS = "461";
+export const ERR_NOPERMFORHOST = "463";
+export const ERR_PASSWDMISMATCH = "464";
+export const ERR_YOUREBANNEDCREEP = "465";
+export const ERR_LINKCHANNEL = "470";
+export const ERR_CHANNELISFULL = "471";
+export const ERR_INVITEONLYCHAN = "473";
+export const ERR_BANNEDFROMCHAN = "474";
+export const ERR_BADCHANNELKEY = "475";
+export const ERR_BADCHANMASK = "476";
+export const ERR_NEEDREGGEDNICK = "477";
+// RFC 2812
+export const ERR_UNAVAILRESOURCE = "437";
+// Other
+export const RPL_CHANNEL_URL = "328";
+export const RPL_CREATIONTIME = "329";
+export const RPL_QUIETLIST = "728";
+export const RPL_ENDOFQUIETLIST = "729";
+// IRCv3 MONITOR: https://ircv3.net/specs/extensions/monitor
+export const RPL_MONONLINE = "730";
+// IRCv3 metadata: https://ircv3.net/specs/extensions/metadata
+export const RPL_KEYVALUE = "761";
+export const RPL_METADATASUBOK = "770";
+export const RPL_METADATAUNSUBOK = "771";
+export const RPL_MONOFFLINE = "731";
+export const ERR_MONLISTFULL = "734";
+// IRCv3 SASL: https://ircv3.net/specs/extensions/sasl-3.1
+export const RPL_LOGGEDIN = "900";
+export const RPL_LOGGEDOUT = "901";
+export const ERR_NICKLOCKED = "902";
+export const RPL_SASLSUCCESS = "903";
+export const ERR_SASLFAIL = "904";
+export const ERR_SASLTOOLONG = "905";
+export const ERR_SASLABORTED = "906";
+export const ERR_SASLALREADY = "907";
