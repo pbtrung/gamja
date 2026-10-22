@@ -16,10 +16,12 @@ Then [configure an HTTP server] to serve the files in `dist/`. The version
 shown in the UI is the latest git tag; set `GAMJA_VERSION` to override it
 when building outside a git checkout.
 
-To make a release, run `tools/release.sh vX.Y.Z [notes.md]`. It tags HEAD
-before building, so that the version badge shows the new tag, checks the
-badge and zips `dist/` as `gamja-vX.Y.Z.zip`. With a release notes file, it
-also pushes the tag and publishes the release on GitHub.
+To make a release, run `tools/release.sh vX.Y.Z [notes.md]` from a clean
+tree. It tags HEAD before building, so that the version badge shows the new
+tag, checks the badge and zips `dist/` as `gamja-vX.Y.Z.zip`. With a release
+notes file, it also pushes the tag to the `github` remote and publishes the
+release on GitHub with `gh`. If it fails before pushing, the tag it created
+is deleted again.
 
 ### Development server
 
@@ -50,6 +52,28 @@ networks, search, Web Push notifications, detaching channels
 While the page stays hidden for a while (a minute by default, see the
 settings), gamja tells soju it's away (`draft/pre-away`), so soju can mark
 you away once all your clients are.
+
+When reconnecting, gamja loads the latest missed messages of each buffer (200
+by default, see the settings). If more were missed, a "Load missed messages"
+button where they're missing loads the others, and the read marker doesn't
+move past them until then. The server's CHATHISTORY limit (e.g. soju-rs's
+`chathistory-limit`) only changes how many requests that takes.
+
+### Settings
+
+Settings, opened from the header of a server buffer, are stored per browser:
+
+- **Appearance**: theme, message layout (comfortable, compact, columns or
+  bubbles), timestamps, day separators, wrapped line indent (compact layout),
+  text size (90–125%), nick colors, channel modes before nicks, and for the
+  columns layout the nick alignment, column width, repeated nicks and
+  brackets.
+- **Messages**: seconds in the time indicator, 12-hour clock, member list,
+  chat events (joins, parts, quits and nick changes), missed messages to load
+  per buffer on connect (100–4000, default 200), and typing notifications
+  (showing who is typing, sharing when you are).
+- **Notifications**: desktop notifications, away in the background (never, 1,
+  5 or 15 minutes) and, with soju, Web Push notifications.
 
 ### Checks
 
