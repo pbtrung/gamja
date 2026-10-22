@@ -248,6 +248,12 @@ describe("BufferHeader", () => {
 		expect(buttons()).toEqual(["Open buffer list", "More actions"]);
 	});
 
+	it("labels the join channel button of networks", () => {
+		setup({ server: { isBouncer: true, bouncerNetID: "1" } });
+		const join = screen.getByRole("button", { name: "Join channel" });
+		expect(join.querySelector(".action-label")).toHaveTextContent("Join channel");
+	});
+
 	it("shows Detach and Join as icons only", () => {
 		setup({
 			buffer: { type: BufferType.CHANNEL, name: "#c", joined: true },

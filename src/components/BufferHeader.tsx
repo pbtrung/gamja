@@ -216,11 +216,11 @@ export default function BufferHeader(props: BufferHeaderProps) {
 					break;
 			}
 
+			// Labelled on wide screens, see .action-label
 			const joinButton = {
 				key: "join",
 				icon: Plus,
 				label: "Join channel",
-				iconOnly: true,
 				onClick: props.onJoin,
 			};
 			const reconnectButton = {
