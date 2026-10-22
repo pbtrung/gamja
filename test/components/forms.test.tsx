@@ -268,11 +268,12 @@ describe("SettingsForm missed messages to load", () => {
 		expect(onChange).toHaveBeenLastCalledWith({ backlogSize: 500 });
 
 		onChange.mockClear();
-		for (const invalid of ["0", "4001", "1.5"]) {
+		for (const invalid of ["0", "99", "4001", "1.5"]) {
 			await userEvent.clear(input);
 			await userEvent.type(input, invalid);
 		}
 		expect(onChange.mock.calls.map((c) => c[0].backlogSize)).not.toContain(0);
+		expect(onChange.mock.calls.map((c) => c[0].backlogSize)).not.toContain(99);
 		expect(onChange.mock.calls.map((c) => c[0].backlogSize)).not.toContain(4001);
 		expect(onChange.mock.calls.map((c) => c[0].backlogSize)).not.toContain(1.5);
 		// An invalid input goes back to the current value

@@ -133,7 +133,7 @@ export const defaultSettings: Settings = {
 };
 
 /** Bounds of the backlogSize setting */
-export const BACKLOG_SIZE_MIN = 1;
+export const BACKLOG_SIZE_MIN = 100;
 export const BACKLOG_SIZE_MAX = 4000;
 
 /** The backlogSize setting, falling back to the default for a stored value

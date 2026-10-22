@@ -1310,8 +1310,8 @@ describe("AppController chat history", () => {
 	it("asks for the backlogSize setting when the server allows it", async () => {
 		const { app, replyTargets } = await withBacklog({ backlogSize: 250, chathistory: 1000 });
 		expect(await replyTargets()).toMatch(/BETWEEN #c timestamp=\S+ timestamp=\S+ 250$/);
-		app.handleSettingsChange({ backlogSize: 50 });
-		expect(app.state.settings.backlogSize).toBe(50);
+		app.handleSettingsChange({ backlogSize: 150 });
+		expect(app.state.settings.backlogSize).toBe(150);
 	});
 
 	it("drops the backlog of a server closed meanwhile", async () => {

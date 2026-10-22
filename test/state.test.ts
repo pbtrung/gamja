@@ -60,8 +60,9 @@ describe("backlogSize", () => {
 			S.backlogSize({ ...S.defaultSettings, backlogSize: backlogSize as number });
 		expect(S.defaultSettings.backlogSize).toBe(200);
 		expect(size(500)).toBe(500);
-		expect(size(12.7)).toBe(12);
-		expect(size(0)).toBe(1);
+		expect(size(150.7)).toBe(150);
+		expect(size(99)).toBe(100);
+		expect(size(0)).toBe(100);
 		expect(size(10000)).toBe(4000);
 		expect(size("x")).toBe(200);
 		expect(size(undefined)).toBe(200);
