@@ -38,11 +38,26 @@
 		grid-column: 3;
 	}
 
-	/* The buttons span both header lines, so they can be bigger */
+	/* Plain icons, like a drawer toggle: no border or background at rest.
+	 * They span both header lines, so they can be big enough to tap. */
 	#buffer-header .leading > .btn,
 	#buffer-header .actions .btn-group > .btn {
-		padding: 0.45rem 0.75rem;
-		font-size: 1rem;
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		margin: 0;
+		padding: 0;
+		border-color: transparent;
+		border-radius: var(--radius);
+		background-color: transparent;
+		color: var(--fg-muted);
+		font-size: 1.25rem;
+	}
+
+	#buffer-header .leading > .btn:hover,
+	#buffer-header .actions .btn-group > .btn:hover,
+	#buffer-header .actions .btn-group > .btn[aria-expanded="true"] {
+		background-color: var(--bg-hover);
+		color: var(--fg-emphasis);
 	}
 
 	.panel-close {

@@ -202,6 +202,8 @@ describe("BufferHeader", () => {
 		// [buffer list] [title and description] [menu] [member list]
 		expect(buttons()).toEqual(["Open buffer list", "More actions", "Open member list"]);
 		expect(document.querySelector(".leading .buffer-list-toggle")).toBeInTheDocument();
+		// A drawer toggle: three horizontal lines
+		expect(document.querySelector(".leading .buffer-list-toggle svg.lucide-menu")).toBeInTheDocument();
 		expect(document.querySelector(".actions .buffer-list-toggle")).toBeNull();
 		const more = screen.getByRole("button", { name: "More actions" });
 		await userEvent.click(more);

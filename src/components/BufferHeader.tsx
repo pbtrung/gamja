@@ -4,6 +4,7 @@ import {
 	CirclePlus,
 	EllipsisVertical,
 	LogOut,
+	Menu as MenuIcon,
 	PanelLeft,
 	Plus,
 	RotateCw,
@@ -429,7 +430,8 @@ export default function BufferHeader(props: BufferHeaderProps) {
 	const bufferListToggle = (
 		<ActionButton
 			key="buffer-list"
-			icon={PanelLeft}
+			// A drawer toggle on small screens, where the buffer list slides in
+			icon={smallScreen ? MenuIcon : PanelLeft}
 			label="Open buffer list"
 			iconOnly
 			className="buffer-list-toggle"
