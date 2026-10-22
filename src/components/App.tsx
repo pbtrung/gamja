@@ -362,6 +362,12 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 	const handleRetryHistory = useCallback(() => {
 		app.fetchOlderMessages(true).catch((err) => app.showError(err));
 	}, [app]);
+	const handleLoadGap = useCallback(() => {
+		const id = app.state.activeBuffer;
+		if (id !== null) {
+			app.fetchMissedMessages(id).catch((err) => app.showError(err));
+		}
+	}, [app]);
 	// The server is read when called, so that these stay the same
 	const handleAuthClick = useCallback(() => {
 		const serverID = activeServerID(app);
@@ -421,6 +427,7 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 						onRegisterClick={handleRegisterClick}
 						onVerifyClick={handleVerifyClick}
 						onRetryHistory={handleRetryHistory}
+						onLoadGap={handleLoadGap}
 					/>
 				)}
 			</ErrorBoundary>

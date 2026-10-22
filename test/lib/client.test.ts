@@ -590,37 +590,31 @@ describe("commands", () => {
 		expect(lists).toEqual([["@alice bob", "carol"]]);
 	});
 
-	it("fetches chat history in pages", async () => {
+	it("fetches a page of chat history between two bounds", async () => {
 		const { client, ws } = register("batch draft/chathistory server-time", "CHATHISTORY=2 CHANTYPES=#");
-		const p = client.fetchHistoryBetween(
+		const p = client.fetchHistoryPageBetween(
 			"#c",
-			{ time: "2020-01-01T00:00:00.000Z" },
 			{ time: "2021-01-01T00:00:00.000Z" },
+			{ time: "2020-01-01T00:00:00.000Z" },
 			100,
 		);
 		await flush();
 		expect(ws.takeSent()[0].params).toEqual([
 			"BETWEEN",
 			"#c",
-			"timestamp=2020-01-01T00:00:00.000Z",
 			"timestamp=2021-01-01T00:00:00.000Z",
+			"timestamp=2020-01-01T00:00:00.000Z",
 			"2",
 		]);
 		ws.receive(
 			":srv BATCH +a chathistory #c",
-			"@batch=a;time=2020-01-02T00:00:00.000Z :x PRIVMSG #c :1",
-			"@batch=a;time=2020-01-03T00:00:00.000Z :x PRIVMSG #c :2",
+			"@batch=a;time=2020-12-30T00:00:00.000Z :x PRIVMSG #c :1",
+			"@batch=a;time=2020-12-31T00:00:00.000Z :x PRIVMSG #c :2",
 			":srv BATCH -a",
 		);
-		await flush();
-		expect(ws.takeSent()[0].params[2]).toBe("timestamp=2020-01-03T00:00:00.000Z");
-		ws.receive(
-			":srv BATCH +b chathistory #c",
-			"@batch=b;time=2020-01-04T00:00:00.000Z :x PRIVMSG #c :3",
-			":srv BATCH -b",
-		);
-		const { messages } = await p;
-		expect(messages.map((m) => m.params[1])).toEqual(["1", "2", "3"]);
+		const { messages, more } = await p;
+		expect(messages.map((m) => m.params[1])).toEqual(["1", "2"]);
+		expect(more).toBe(true);
 	});
 
 	it("fetches history before a date and chat history targets", async () => {

@@ -1159,7 +1159,8 @@ describe("AppController chat history", () => {
 		sent();
 
 		const between = await replyTargets();
-		expect(between).toMatch(/BETWEEN #c timestamp=2030-01-01T00:00:00.000Z /);
+		// The latest missed messages: the later bound goes first
+		expect(between).toMatch(/BETWEEN #c timestamp=\S+ timestamp=2030-01-01T00:00:00.000Z 100$/);
 		const updates = vi.fn();
 		const unsubscribe = app.store.subscribe(updates);
 		reply(
@@ -1191,6 +1192,82 @@ describe("AppController chat history", () => {
 		expect(buf(app, "#c")!.messages).toHaveLength(2);
 		expect(buf(app, "#c")!.unread).toBe(Unread.HIGHLIGHT);
 		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
+	});
+
+	/** A page of n chat messages, one per second from 00:01:00 */
+	const page = (n: number) =>
+		Array.from({ length: n }, (_, i) => {
+			const t = new Date(Date.UTC(2030, 0, 1, 0, 1, i)).toISOString();
+			return `time=${t};msgid=p${i} :bob!u@h PRIVMSG #c :page ${i}`;
+		});
+
+	it("fetches older missed messages on demand", async () => {
+		vi.spyOn(document, "hasFocus").mockReturnValue(true);
+		const { app, recv, sent, sentRaw, reply, replyTargets } = await withBacklog();
+		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+
+		const between = await replyTargets();
+		expect(between).toMatch(/BETWEEN #c timestamp=\S+ timestamp=2030-01-01T00:00:00.500Z 100$/);
+		reply(between, "chathistory #c", ...page(100));
+		await flush();
+
+		expect(buf(app, "#c")!.messages).toHaveLength(101);
+		expect(buf(app, "#c")!.gap).toEqual({
+			after: { time: "2030-01-01T00:00:00.500Z", msgid: "old" },
+			before: { time: "2030-01-01T00:01:00.000Z", msgid: "p0" },
+			status: "idle",
+		});
+		// The missed messages before the page weren't read
+		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
+
+		const loading = app.fetchMissedMessages(buf(app, "#c")!.id);
+		await flush();
+		expect(buf(app, "#c")!.gap!.status).toBe("loading");
+		const req = sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
+		expect(req).toMatch(
+			/BETWEEN #c timestamp=2030-01-01T00:00:00.500Z timestamp=2030-01-01T00:01:00.000Z 100$/,
+		);
+		reply(
+			req,
+			"chathistory #c",
+			"time=2030-01-01T00:00:10.000Z;msgid=g1 :bob!u@h PRIVMSG #c :gap 1",
+			"time=2030-01-01T00:00:20.000Z;msgid=g2 :bob!u@h PRIVMSG #c :gap 2",
+		);
+		await loading;
+
+		const texts = buf(app, "#c")!.messages.map((m) => m.params[1]);
+		expect(texts.slice(0, 4)).toEqual(["old", "gap 1", "gap 2", "page 0"]);
+		expect(texts).toHaveLength(103);
+		expect(buf(app, "#c")!.gap).toBeNull();
+		expect(sent()).toEqual(["MARKREAD #c timestamp=2030-01-01T00:02:39.000Z"]);
+	});
+
+	it("keeps a gap to retry when loading missed messages fails", async () => {
+		const { app, recv, sentRaw, reply, replyTargets } = await withBacklog();
+		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		reply(await replyTargets(), "chathistory #c", ...page(100));
+		await flush();
+
+		const loading = app.fetchMissedMessages(buf(app, "#c")!.id);
+		await flush();
+		const req = sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
+		const label = req.match(/label=(\d+)/)![1];
+		recv(`@label=${label} FAIL CHATHISTORY MESSAGE_ERROR #c :Messages could not be retrieved`);
+		await expect(loading).rejects.toThrow();
+		expect(buf(app, "#c")!.gap!.status).toBe("error");
+	});
+
+	it("doesn't mark a gap without loaded messages", async () => {
+		const { app, recv, reply, replyTargets } = await withBacklog();
+		recv(":me!u@h JOIN #c");
+		reply(await replyTargets(), "chathistory #c", ...page(100));
+		await flush();
+		expect(buf(app, "#c")!.messages).toHaveLength(100);
+		expect(buf(app, "#c")!.gap).toBeNull();
+		expect(buf(app, "#c")!.unread).toBe(Unread.MESSAGE);
 	});
 
 	it("drops the backlog of a server closed meanwhile", async () => {

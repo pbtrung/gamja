@@ -2328,6 +2328,12 @@ a.nick:hover {
 	font-size: 0.8125rem;
 }
 
+.history-gap {
+	margin: 0.5rem 1rem;
+	border-top: 1px dashed var(--border);
+	border-bottom: 1px dashed var(--border);
+}
+
 .history-start {
 	margin: 0.5rem 1rem 0.75rem;
 	padding: 1rem;

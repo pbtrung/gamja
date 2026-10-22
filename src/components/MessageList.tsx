@@ -11,6 +11,7 @@ import {
 	isMessageBeforeReceipt,
 	type Buffer,
 	type BouncerNetwork,
+	type HistoryGap,
 	type Server,
 	type Settings,
 } from "../state";
@@ -49,6 +50,8 @@ interface MessageListHandlers {
 	onRegisterClick: () => void;
 	onVerifyClick: (account: string, message: string) => void;
 	onRetryHistory?: () => void;
+	/** Fetch the missed messages of the buffer's gap */
+	onLoadGap?: () => void;
 }
 
 interface Context extends MessageListHandlers {
@@ -1041,6 +1044,27 @@ function UnreadSeparator() {
 	);
 }
 
+/** Where missed messages weren't fetched, with a button to fetch them. */
+function GapMarker({ gap, onLoad }: { gap: HistoryGap; onLoad?: () => void }) {
+	if (gap.status === "loading") {
+		return (
+			<div className="history-status history-gap" role="status">
+				<span className="spinner" aria-hidden="true" /> Loading missed messages…
+			</div>
+		);
+	}
+	return (
+		<div className="history-status history-gap" role={gap.status === "error" ? "alert" : undefined}>
+			{gap.status === "error"
+				? "Failed to load missed messages."
+				: "Some missed messages aren't shown."}
+			<button type="button" className="btn btn-sm" onClick={onLoad}>
+				{gap.status === "error" ? "Retry" : "Load missed messages"}
+			</button>
+		</div>
+	);
+}
+
 function sameDate(d1: Date, d2: Date): boolean {
 	return (
 		d1.getFullYear() === d2.getFullYear() &&
@@ -1195,8 +1219,22 @@ function MessageList(props: MessageListProps) {
 	let prevDate = new Date();
 	let foldMessages: Message[] = [];
 	let lastMonitor: string | null = null;
+	let gapShown = !buf.gap;
+	const pushGap = () => {
+		children.push(createFoldGroup(foldMessages));
+		foldMessages = [];
+		lastChat = null;
+		children.push(<GapMarker key="gap" gap={buf.gap!} onLoad={props.onLoadGap} />);
+		gapShown = true;
+	};
 	for (const msg of buf.messages) {
 		const sep: ReactNode[] = [];
+
+		// Before any filtering, so that the gap shows even if the message
+		// right after it is hidden
+		if (!gapShown && msg.tags.time! >= buf.gap!.before.time) {
+			pushGap();
+		}
 
 		// Users blocked through soju's metadata
 		if (msg.prefix && getTargetMetadata(server, msg.prefix.name).blocked) {
@@ -1250,6 +1288,9 @@ function MessageList(props: MessageListProps) {
 		}
 
 		children.push(createLogLine(msg));
+	}
+	if (!gapShown) {
+		pushGap();
 	}
 	children.push(createFoldGroup(foldMessages));
 

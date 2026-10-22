@@ -34,6 +34,12 @@ import {
 } from "./config";
 
 const CHATHISTORY_MAX_SIZE = 4000;
+/**
+ * The number of messages missed while disconnected fetched per buffer on
+ * reconnect. Older missed messages are fetched on demand, see
+ * fetchMissedMessages().
+ */
+const BACKLOG_INITIAL_SIZE = 100;
 
 /** How far ahead of ours the IRC server's clock may be, in milliseconds */
 const MAX_CLOCK_SKEW = 24 * 60 * 60 * 1000;
@@ -708,7 +714,8 @@ export default class AppController {
 		// come back on reload
 		const update: store.BufferUpdate = { name: buf.name, server: client.params, unread: Unread.NONE };
 		const lastMsg = buf.messages.at(-1);
-		if (lastMsg) {
+		// Missed messages not fetched yet haven't been read
+		if (lastMsg && !buf.gap) {
 			update.receipts = { [ReceiptType.READ]: S.receiptFromMessage(lastMsg) };
 		}
 		this.storeReceipts(client, update);
@@ -937,7 +944,8 @@ export default class AppController {
 
 		if (!this.isBufferVisible(buf.id)) {
 			unread = S.unionUnread(unread, msgUnread);
-		} else {
+		} else if (!buf.gap) {
+			// With missed messages not fetched yet, the user hasn't read them
 			receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
 		}
 
@@ -1905,7 +1913,7 @@ export default class AppController {
 		}
 		await Promise.all(
 			targets.map(async (target) => {
-				let from: Receipt = lastReceipt;
+				let from: S.HistoryBound = lastReceipt;
 				const to = { time: bound };
 
 				// Maybe we've just received a READ update from the
@@ -1921,7 +1929,7 @@ export default class AppController {
 				const buf = S.getBuffer(this.state, { server: serverID, name: target.name });
 				if (buf && buf.messages.length > 0) {
 					const lastMsg = buf.messages[buf.messages.length - 1];
-					from = S.receiptFromMessage(lastMsg);
+					from = S.boundFromMessage(lastMsg);
 				}
 
 				// Query read marker if this is a user (ie, we haven't received
@@ -1930,9 +1938,16 @@ export default class AppController {
 					client.fetchReadMarker(target.name);
 				}
 
+				// Only fetch the latest missed messages: the later bound goes
+				// first
 				let result;
 				try {
-					result = await client.fetchHistoryBetween(target.name, from, to, CHATHISTORY_MAX_SIZE);
+					result = await client.fetchHistoryPageBetween(
+						target.name,
+						to,
+						from,
+						BACKLOG_INITIAL_SIZE,
+					);
 				} catch (err) {
 					if (isClosed()) {
 						return;
@@ -1945,6 +1960,9 @@ export default class AppController {
 					return;
 				}
 
+				if (result.more && result.messages.length > 0) {
+					this.markMissedMessages(serverID, target.name, from, result.messages);
+				}
 				this.applyHistory(serverID, result.messages, { live: true });
 			}),
 		);
@@ -2449,6 +2467,92 @@ export default class AppController {
 
 	openHelp(): void {
 		this.openDialog({ kind: "help" });
+	}
+
+	/**
+	 * Record that missed messages weren't all fetched: those between the
+	 * last loaded message and the oldest of the fetched page. Without loaded
+	 * messages, they are fetched as older history instead.
+	 */
+	markMissedMessages(serverID: number, bufName: string, after: S.HistoryBound, page: Message[]): void {
+		const buf = S.getBuffer(this.state, { server: serverID, name: bufName });
+		if (!buf) {
+			return;
+		}
+		if (buf.messages.length === 0) {
+			if (buf.history === "end") {
+				this.setBufferState(buf.id, { history: "more" });
+			}
+			return;
+		}
+		let oldest = page[0];
+		for (const msg of page) {
+			if (msg.tags.time! < oldest.tags.time!) {
+				oldest = msg;
+			}
+		}
+		// Missed messages of an earlier disconnection may not be fetched yet
+		this.setBufferState(buf.id, (b) => ({
+			gap: { after: b.gap?.after ?? after, before: S.boundFromMessage(oldest), status: "idle" },
+		}));
+	}
+
+	/** Fetch the missed messages of a buffer which weren't fetched on reconnect. */
+	async fetchMissedMessages(id: BufferID): Promise<void> {
+		const buf = S.getBuffer(this.state, id);
+		const client = buf ? this.clients.get(buf.server) : undefined;
+		if (
+			!buf?.gap ||
+			buf.gap.status === "loading" ||
+			!client ||
+			client.status !== ClientStatus.REGISTERED
+		) {
+			return;
+		}
+		const { before } = buf.gap;
+		let { after } = buf.gap;
+		const setGap = (gap: S.HistoryGap | null) => this.setBufferState(buf.id, { gap });
+		const isClosed = () => this.clients.get(buf.server) !== client || !S.getBuffer(this.state, buf.id);
+
+		setGap({ after, before, status: "loading" });
+		let total = 0;
+		for (;;) {
+			let result;
+			try {
+				result = await client.fetchHistoryPageBetween(
+					buf.name,
+					after,
+					before,
+					CHATHISTORY_MAX_SIZE - total,
+				);
+			} catch (err) {
+				if (!isClosed()) {
+					setGap({ after, before, status: "error" });
+				}
+				throw err;
+			}
+			if (isClosed()) {
+				return;
+			}
+			// Already marked delivered: no notifications
+			this.applyHistory(buf.server, result.messages);
+			total += result.messages.length;
+			if (!result.more) {
+				break;
+			}
+			after = S.boundFromMessage(result.messages[result.messages.length - 1]);
+			if (total >= CHATHISTORY_MAX_SIZE) {
+				// Let the user ask for more
+				setGap({ after, before, status: "idle" });
+				return;
+			}
+			setGap({ after, before, status: "loading" });
+		}
+
+		setGap(null);
+		if (this.state.activeBuffer === buf.id) {
+			this.markBufferAsRead(buf.id);
+		}
 	}
 
 	/** Load a page of older messages in the active buffer. */

@@ -46,6 +46,22 @@ export interface Receipt {
 	time: string;
 }
 
+/** A position in a buffer's history, e.g. a CHATHISTORY bound. */
+export interface HistoryBound {
+	time: string;
+	msgid?: string;
+}
+
+/**
+ * Messages missed while disconnected which weren't fetched, between two
+ * loaded messages. Bounds are exclusive.
+ */
+export interface HistoryGap {
+	after: HistoryBound;
+	before: HistoryBound;
+	status: "idle" | "loading" | "error";
+}
+
 export const BufferEventsDisplayMode = {
 	FOLD: "fold",
 	EXPAND: "expand",
@@ -339,6 +355,8 @@ export interface Buffer {
 	typing: Map<string, TypingState>;
 	/** Chat history status: unknown before the first fetch, end once all fetched */
 	history: "unknown" | "loading" | "more" | "end" | "error";
+	/** Missed messages not fetched yet, if any */
+	gap: HistoryGap | null;
 	unread: Unread;
 	prevReadReceipt: Receipt | null;
 }
@@ -421,6 +439,10 @@ export function getServerName(
 	} else {
 		return "server";
 	}
+}
+
+export function boundFromMessage(msg: Message): HistoryBound {
+	return { time: receiptFromMessage(msg).time, msgid: msg.tags.msgid ?? undefined };
 }
 
 export function receiptFromMessage(msg: Message): Receipt {
@@ -808,6 +830,7 @@ export function createBuffer(
 		reactions: new Map(),
 		typing: new Map(),
 		history: "unknown",
+		gap: null,
 		unread: Unread.NONE,
 		prevReadReceipt: null,
 	});

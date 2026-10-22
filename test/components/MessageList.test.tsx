@@ -86,6 +86,7 @@ function buffer(messages: irc.Message[], patch: Partial<Buffer> = {}): Buffer {
 		reactions: new Map(),
 		typing: new Map(),
 		history: "unknown",
+		gap: null,
 		unread: "",
 		prevReadReceipt: { time: "2099-01-01T00:00:00.000Z" },
 		...patch,
@@ -522,6 +523,58 @@ it("offers to retry failed history fetches", async () => {
 	expect(screen.getByRole("alert")).toHaveTextContent("Failed to load older messages.");
 	await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 	expect(onRetryHistory).toHaveBeenCalled();
+});
+
+describe("missed messages gap", () => {
+	const gap = (status: "idle" | "loading" | "error") => ({
+		after: { time: "2030-01-01T10:00:00.000Z" },
+		before: { time: "2030-01-01T12:00:00.000Z" },
+		status,
+	});
+	const messages = () => [
+		msg(":bob!u@h PRIVMSG #c :before", "2030-01-01T10:00:00.000Z"),
+		msg(":bob!u@h PRIVMSG #c :after", "2030-01-01T12:00:00.000Z"),
+	];
+
+	it("shows a button to load missed messages where they're missing", async () => {
+		const onLoadGap = vi.fn();
+		const { container } = render(
+			<MessageList
+				buffer={buffer(messages(), { gap: gap("idle") })}
+				server={server()}
+				bouncerNetwork={null}
+				settings={{ ...defaultSettings, layout: "compact" }}
+				onChannelClick={() => {}}
+				onNickClick={() => {}}
+				onAuthClick={() => {}}
+				onRegisterClick={() => {}}
+				onVerifyClick={() => {}}
+				onLoadGap={onLoadGap}
+			/>,
+			{ wrapper },
+		);
+		const marker = container.querySelector(".history-gap")!;
+		expect(marker.previousElementSibling).toHaveTextContent("before");
+		expect(marker.nextElementSibling).toHaveTextContent("after");
+		await userEvent.click(
+			within(marker as HTMLElement).getByRole("button", { name: "Load missed messages" }),
+		);
+		expect(onLoadGap).toHaveBeenCalled();
+	});
+
+	it("shows the loading and error states", () => {
+		const { unmount } = renderList(messages(), { buffer: { gap: gap("loading") } });
+		expect(screen.getByRole("status")).toHaveTextContent("Loading missed messages…");
+		unmount();
+		renderList(messages(), { buffer: { gap: gap("error") } });
+		expect(screen.getByRole("alert")).toHaveTextContent("Failed to load missed messages.");
+		expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+	});
+
+	it("isn't shown without a gap", () => {
+		const { container } = renderList(messages());
+		expect(container.querySelector(".history-gap")).toBeNull();
+	});
 });
 
 describe("blocked users", () => {

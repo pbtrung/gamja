@@ -1510,28 +1510,20 @@ export default class Client extends EventTarget {
 		return { messages, more: max > 0 && messages.length >= max };
 	}
 
-	/* Fetch history in ascending order. */
-	async fetchHistoryBetween(
+	/**
+	 * Fetch one page of history between two bounds, in ascending order. With
+	 * the later bound first, the page holds the latest messages.
+	 */
+	async fetchHistoryPageBetween(
 		target: string,
-		after: { time: string; msgid?: string },
-		before: { time: string },
+		from: { time: string; msgid?: string },
+		to: { time: string; msgid?: string },
 		limit: number,
-	): Promise<{ messages: Message[] }> {
+	): Promise<{ messages: Message[]; more: boolean }> {
 		const max = Math.min(limit, this.isupport.chatHistory());
-		const params = ["BETWEEN", target, this.msgRef(after), this.msgRef(before), max];
+		const params = ["BETWEEN", target, this.msgRef(from), this.msgRef(to), max];
 		const messages = await this.roundtripChatHistory(params);
-		if (max > 0 && messages.length >= max) {
-			// There are still more messages to fetch
-			limit -= messages.length;
-			if (limit <= 0) {
-				throw new Error("Cannot fetch all chat history: too many messages");
-			}
-			const last = messages[messages.length - 1];
-			const next = { msgid: last.tags.msgid ?? undefined, time: last.tags.time! };
-			const rest = await this.fetchHistoryBetween(target, next, before, limit);
-			return { messages: [...messages, ...rest.messages] };
-		}
-		return { messages };
+		return { messages, more: max > 0 && messages.length >= max };
 	}
 
 	async fetchHistoryTargets(t1: string, t2: string): Promise<ChatHistoryTarget[]> {
