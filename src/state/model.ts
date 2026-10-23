@@ -166,6 +166,11 @@ export interface Buffer {
 	hasNames: boolean;
 	/** Nick → membership prefixes, if channel */
 	members: irc.CaseMapMap<string>;
+	/**
+	 * Members of a NAMES reply being received, updated by membership changes
+	 * until RPL_ENDOFNAMES replaces members with them
+	 */
+	pendingMembers: irc.CaseMapMap<string> | null;
 	messages: Message[];
 	/** msgids of deleted messages */
 	redacted: Set<string>;

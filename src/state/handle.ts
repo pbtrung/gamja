@@ -25,22 +25,44 @@ import {
 } from "./buffers";
 
 /** Rename a nick in the channels of a server, or remove it with null. */
+/**
+ * Change the members of a channel, and those of the NAMES reply being
+ * received if any: the reply predates the change.
+ */
+function editMembers(
+	buf: Buffer,
+	edit: (members: irc.CaseMapMap<string>) => void,
+): Pick<Buffer, "members" | "pendingMembers"> {
+	const members = new irc.CaseMapMap(buf.members);
+	edit(members);
+	let pendingMembers = buf.pendingMembers;
+	if (pendingMembers) {
+		pendingMembers = new irc.CaseMapMap(pendingMembers);
+		edit(pendingMembers);
+	}
+	return { members, pendingMembers };
+}
+
 function renameMember(state: State, serverID: number, nick: string, newNick: string | null): State {
 	let buffers: Map<number, Buffer> | null = null;
 	for (const buf of state.buffers.values()) {
-		const membership = buf.server === serverID ? buf.members.get(nick) : undefined;
-		if (membership === undefined) {
+		if (buf.server !== serverID || !(buf.members.has(nick) || buf.pendingMembers?.has(nick))) {
 			continue;
 		}
 		// Only copy the buffers if a channel changes: a new map re-renders
 		// everything showing buffers
 		buffers ??= new Map(state.buffers);
-		const members = new irc.CaseMapMap(buf.members);
-		members.delete(nick);
-		if (newNick !== null) {
-			members.set(newNick, membership);
-		}
-		buffers.set(buf.id, { ...buf, members });
+		const update = editMembers(buf, (members) => {
+			const membership = members.get(nick);
+			if (membership === undefined) {
+				return;
+			}
+			members.delete(nick);
+			if (newNick !== null) {
+				members.set(newNick, membership);
+			}
+		});
+		buffers.set(buf.id, { ...buf, ...update });
 	}
 	return buffers ? { ...state, buffers } : state;
 }
@@ -136,7 +158,9 @@ export function handleMessage(
 					return;
 				}
 				const members = new irc.CaseMapMap(buf.members, client.cm);
-				buffers.set(buf.id, { ...buf, members });
+				const pendingMembers =
+					buf.pendingMembers && new irc.CaseMapMap(buf.pendingMembers, client.cm);
+				buffers.set(buf.id, { ...buf, members, pendingMembers });
 			});
 			return {
 				buffers,
@@ -198,28 +222,33 @@ export function handleMessage(
 			channel = msg.params[1];
 			topic = msg.params[2];
 			return updateBufferWith(channel, { topic });
-		case irc.RPL_ENDOFNAMES: {
-			channel = msg.params[1];
+		case irc.RPL_NAMREPLY: {
+			channel = msg.params[2];
 			const membershipPrefixes = client.isupport
 				.membershipModes()
 				.map(({ prefix }) => prefix)
 				.join("");
 			return updateBufferWith(channel, (buf) => {
-				const members = new irc.CaseMapMap<string>(null, buf.members.caseMap);
-				for (const namreply of msg.list || []) {
-					for (const s of (namreply.params[3] ?? "").split(" ")) {
-						if (!s) {
-							continue;
-						}
-						const member = irc.parseTargetPrefix(s, membershipPrefixes);
-						// userhost-in-names
-						const name = irc.parsePrefix(member.name).name;
-						members.set(name, member.prefix);
+				const pendingMembers = new irc.CaseMapMap<string>(buf.pendingMembers, buf.members.caseMap);
+				for (const s of (msg.params[3] ?? "").split(" ")) {
+					if (!s) {
+						continue;
 					}
+					const member = irc.parseTargetPrefix(s, membershipPrefixes);
+					// userhost-in-names
+					const name = irc.parsePrefix(member.name).name;
+					pendingMembers.set(name, member.prefix);
 				}
-				return { members, hasNames: true };
+				return { pendingMembers };
 			});
 		}
+		case irc.RPL_ENDOFNAMES:
+			channel = msg.params[1];
+			return updateBufferWith(channel, (buf) => ({
+				members: buf.pendingMembers ?? new irc.CaseMapMap<string>(null, buf.members.caseMap),
+				pendingMembers: null,
+				hasNames: true,
+			}));
 		case irc.RPL_ENDOFWHO: {
 			target = msg.params[1] ?? "";
 			const list = msg.list || [];
@@ -266,12 +295,8 @@ export function handleMessage(
 
 			apply(
 				updateBufferWith(channel, (buf) => {
-					const members = new irc.CaseMapMap(buf.members);
-					members.set(prefix.name, "");
-
 					const joined = buf.joined || client.isMyNick(prefix.name);
-
-					return { members, joined };
+					return { ...editMembers(buf, (members) => members.set(prefix.name, "")), joined };
 				}),
 			);
 
@@ -299,9 +324,7 @@ export function handleMessage(
 				if (client.isMyNick(nick)) {
 					return leftChannel(buf);
 				}
-				const members = new irc.CaseMapMap(buf.members);
-				members.delete(nick);
-				return { members };
+				return editMembers(buf, (members) => members.delete(nick));
 			});
 		}
 		case "QUIT": {
@@ -375,28 +398,26 @@ export function handleMessage(
 				membershipModes.map((membership) => [membership.mode, membership.prefix]),
 			);
 
-			return updateBufferWith(target, (buf) => {
-				const members = new irc.CaseMapMap(buf.members);
-
-				irc.forEachChannelModeUpdate(msg, client.isupport, (mode, add, arg) => {
-					const letter = prefixByMode.get(mode);
-					if (letter === undefined) {
-						return;
-					}
-					const nick = arg;
-					if (!nick) {
-						// Malformed, e.g. "MODE #chan +o": there's no member to update
-						return;
-					}
-					const membership = members.get(nick);
-					if (membership === undefined) {
-						return;
-					}
-					members.set(nick, updateMembership(membership, letter, add, client));
-				});
-
-				return { members };
-			});
+			return updateBufferWith(target, (buf) =>
+				editMembers(buf, (members) => {
+					irc.forEachChannelModeUpdate(msg, client.isupport, (mode, add, arg) => {
+						const letter = prefixByMode.get(mode);
+						if (letter === undefined) {
+							return;
+						}
+						const nick = arg;
+						if (!nick) {
+							// Malformed, e.g. "MODE #chan +o": there's no member to update
+							return;
+						}
+						const membership = members.get(nick);
+						if (membership === undefined) {
+							return;
+						}
+						members.set(nick, updateMembership(membership, letter, add, client));
+					});
+				}),
+			);
 		}
 		case "RENAME": {
 			// draft/channel-rename

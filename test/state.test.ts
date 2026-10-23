@@ -324,17 +324,33 @@ describe("handleMessage", () => {
 	it("parses NAMES with multi-prefix and userhost-in-names", () => {
 		const t = setup();
 		t.handle(":me!u@h JOIN #c");
-		const msg = irc.parseMessage(":srv 366 me #c :End");
-		msg.list = [irc.parseMessage(":srv 353 me = #c :~@alice +bob!b@host carol")];
-		msg.prefix = { name: "srv" };
-		Object.assign(t, {});
-		const state = { ...t.state, ...S.handleMessage(t.state, msg, t.serverID, t.client) };
-		const members = S.getBuffer(state, { server: t.serverID, name: "#c" })!.members;
-		expect([...members]).toEqual([
+		t.handle(":srv 353 me = #c :~@alice +bob!b@host carol");
+		t.handle(":srv 366 me #c :End");
+		expect([...t.buf("#c").members]).toEqual([
 			["alice", "~@"],
 			["bob", "+"],
 			["carol", ""],
 		]);
+	});
+
+	it("applies membership changes received during a NAMES reply", () => {
+		const t = setup();
+		t.handle(":me!u@h JOIN #c");
+		t.handle(":srv 353 me = #c :me bob carol dave");
+		t.handle(":bob!u@h PART #c");
+		t.handle(":erin!u@h JOIN #c");
+		t.handle(":carol!u@h NICK caroline");
+		t.handle(":me!u@h MODE #c +o dave");
+		t.handle(":srv 353 me = #c :frank");
+		t.handle(":srv 366 me #c :End");
+		expect([...t.buf("#c").members].sort()).toEqual([
+			["caroline", ""],
+			["dave", "@"],
+			["erin", ""],
+			["frank", ""],
+			["me", ""],
+		]);
+		expect(t.buf("#c").pendingMembers).toBeNull();
 	});
 
 	it("applies membership mode changes", () => {

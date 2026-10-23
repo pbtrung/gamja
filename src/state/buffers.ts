@@ -106,6 +106,7 @@ export function leftChannel(buf: Buffer): Partial<Buffer> {
 		hasInitialWho: false,
 		hasNames: false,
 		members: new irc.CaseMapMap(null, buf.members.caseMap),
+		pendingMembers: null,
 		typing: new Map(),
 	};
 }
@@ -382,6 +383,7 @@ export function createBuffer(
 		hasInitialWho: false,
 		hasNames: false,
 		members: new irc.CaseMapMap<string>(null, client.cm),
+		pendingMembers: null,
 		messages: [],
 		redacted: new Set(),
 		reactions: new Map(),

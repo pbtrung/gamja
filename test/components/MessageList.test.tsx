@@ -82,6 +82,7 @@ function buffer(messages: irc.Message[], patch: Partial<Buffer> = {}): Buffer {
 		hasInitialWho: true,
 		hasNames: true,
 		members: new irc.CaseMapMap(null, irc.CaseMapping.RFC1459),
+		pendingMembers: null,
 		messages,
 		redacted: new Set(),
 		reactions: new Map(),
