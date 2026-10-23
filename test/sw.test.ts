@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseMessage } from "../src/lib/irc";
-import { notificationForMessage, readTarget } from "../src/sw";
+import { appWindows, notificationForMessage, readTarget } from "../src/sw";
 
 describe("service worker notifications", () => {
 	it("formats channel messages, private messages and actions", () => {
@@ -46,5 +46,17 @@ describe("service worker notifications", () => {
 		expect(
 			notificationForMessage(parseMessage("NOTE WEBPUSH REGISTERED :Push subscription registered")),
 		).toBeNull();
+	});
+
+	it("only picks windows of this installation, focused ones first", () => {
+		const admin = { url: "https://example.org/admin/", focused: true };
+		const chat = { url: "https://example.org/chat/#/#c", focused: false };
+		const focusedChat = { url: "https://example.org/chat/", focused: true };
+		expect(appWindows([admin, chat], "https://example.org/chat/")).toEqual([chat]);
+		expect(appWindows([admin, chat, focusedChat], "https://example.org/chat/")).toEqual([
+			focusedChat,
+			chat,
+		]);
+		expect(appWindows([admin], "https://example.org/chat/")).toEqual([]);
 	});
 });

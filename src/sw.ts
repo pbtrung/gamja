@@ -78,8 +78,26 @@ async function closeNotifications(target: string): Promise<void> {
 	}
 }
 
-async function hasFocusedClient(): Promise<boolean> {
+/**
+ * The windows of this gamja installation, focused ones first: other pages of
+ * the origin, outside the service worker's scope, are someone else's.
+ */
+export function appWindows<T extends Pick<WindowClient, "url" | "focused">>(
+	clients: readonly T[],
+	scope: string,
+): T[] {
+	return clients
+		.filter((c) => c.url.startsWith(scope))
+		.sort((a, b) => Number(b.focused) - Number(a.focused));
+}
+
+async function getAppWindows(): Promise<WindowClient[]> {
 	const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+	return appWindows(clients, self.registration.scope);
+}
+
+async function hasFocusedClient(): Promise<boolean> {
+	const clients = await getAppWindows();
 	return clients.some((c) => c.focused && c.visibilityState === "visible");
 }
 
@@ -140,8 +158,7 @@ if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWo
 		const target: string | undefined = event.notification.data?.target;
 		event.waitUntil(
 			(async () => {
-				const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-				const client = clients[0];
+				const [client] = await getAppWindows();
 				if (client) {
 					await client.focus();
 					client.postMessage({ type: "open-buffer", target });
