@@ -38,7 +38,15 @@ export type Dialog =
 	| { kind: "confirm-open-buffer"; server: number; name: string }
 	| { kind: "auth"; server: number; username: string; loading?: boolean }
 	| { kind: "register"; server: number; emailRequired: boolean; loading?: boolean }
-	| { kind: "verify"; server: number; account: string; message: string; loading?: boolean }
+	| {
+			kind: "verify";
+			server: number;
+			account: string;
+			message: string;
+			/** Of the account just registered, to log in with once verified */
+			password?: string;
+			loading?: boolean;
+	  }
 	| { kind: "settings"; showProtocolHandler: boolean }
 	| { kind: "switch" }
 	| { kind: "away" }

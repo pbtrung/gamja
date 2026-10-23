@@ -606,6 +606,39 @@ describe("dialogs", () => {
 		expect(store.autoconnect.load()?.saslPlain).toEqual({ username: "me", password: "pw" });
 	});
 
+	it("logs in again with the auth dialog's credentials after reconnecting", async () => {
+		const { app, recv, sent, serverID } = await connectedApp({ caps: "sasl=PLAIN batch" });
+		app.handleAuthSubmit(serverID, "me", "pw");
+		recv(":srv 903 me :SASL authentication successful");
+		await flush();
+		// Not remembered, but kept for this session
+		expect(store.autoconnect.load()).toBeNull();
+		expect(app.clients.get(serverID)!.params.saslPlain).toEqual({ username: "me", password: "pw" });
+		expect(app.state.connectParams.saslPlain).toEqual({ username: "me", password: "pw" });
+		sent();
+		app.disconnect(serverID);
+		app.reconnect(serverID);
+		const ws = FakeWebSocket.last();
+		ws.open();
+		ws.receive(":srv CAP * LS :sasl=PLAIN batch", ":srv CAP me ACK :sasl batch");
+		expect(ws.sent).toContain("AUTHENTICATE PLAIN");
+		expect(ws.sent).toContain("AUTHENTICATE AG1lAHB3");
+	});
+
+	it("logs in with a registered account once verified", async () => {
+		const { app, recv, serverID } = await connectedApp({ caps: "draft/account-registration batch" });
+		app.handleRegisterSubmit(serverID, "me@example.org", "pw");
+		recv(":srv REGISTER VERIFICATION_REQUIRED me :Check your email");
+		await flush();
+		expect(app.state.dialog).toMatchObject({ kind: "verify", account: "me" });
+		expect(app.clients.get(serverID)!.params.saslPlain).toBeFalsy();
+		app.handleVerifySubmit(serverID, "me", "123");
+		recv(":srv VERIFY SUCCESS me :Account verified");
+		await flush();
+		expect(app.state.dialog).toBeNull();
+		expect(app.clients.get(serverID)!.params.saslPlain).toEqual({ username: "me", password: "pw" });
+	});
+
 	it("shows failures and stops loading", async () => {
 		const { app, recv, serverID } = await connectedApp({ caps: "sasl=PLAIN batch" });
 		vi.spyOn(console, "error").mockImplementation(() => {});

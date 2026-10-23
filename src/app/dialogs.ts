@@ -53,8 +53,26 @@ export const dialogsMethods = {
 		this.setDialogLoading(promise);
 	},
 
-	/** Save SASL PLAIN credentials if the connection is remembered ("Remember me"). */
+	/**
+	 * Log in with these SASL PLAIN credentials when reconnecting, and save
+	 * them if the connection is remembered ("Remember me").
+	 */
 	saveCredentials(this: AppController, client: Client, username: string, password: string): void {
+		const saslPlain = { username, password };
+		client.params.saslPlain = saslPlain;
+		if (client.params.bouncerNetwork) {
+			return;
+		}
+
+		// The connections to the networks of a bouncer share its account,
+		// and are made from these params
+		for (const other of this.clients.values()) {
+			if (other.params.bouncerNetwork) {
+				other.params.saslPlain = saslPlain;
+			}
+		}
+		this.update((state) => ({ connectParams: { ...state.connectParams, saslPlain } }));
+
 		const firstClient = this.clients.values().next().value;
 		if (client !== firstClient) {
 			return;
@@ -81,7 +99,15 @@ export const dialogsMethods = {
 			this.dismissDialog();
 
 			if (data.verificationRequired) {
-				this.handleVerifyClick(serverID, data.account, data.message);
+				// Not logged in before the account is verified
+				this.openDialog({
+					kind: "verify",
+					server: serverID,
+					account: data.account,
+					message: data.message,
+					password,
+				});
+				return;
 			}
 			this.saveCredentials(client, data.account, password);
 		});
@@ -94,8 +120,14 @@ export const dialogsMethods = {
 
 	handleVerifySubmit(this: AppController, serverID: number, account: string, code: string): void {
 		const client = this.clients.get(serverID)!;
+		const dialog = this.state.dialog;
+		const password =
+			dialog?.kind === "verify" && dialog.account === account ? dialog.password : undefined;
 		const promise = client.verifyAccount(account, code).then(() => {
 			this.dismissDialog();
+			if (password !== undefined) {
+				this.saveCredentials(client, account, password);
+			}
 		});
 		this.setDialogLoading(promise);
 	},
