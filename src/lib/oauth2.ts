@@ -217,7 +217,7 @@ export async function exchangeCode({
 	codeVerifier?: string;
 	clientId: string;
 	clientSecret?: string;
-}): Promise<{ access_token: string }> {
+}): Promise<{ access_token: string; expires_in?: number }> {
 	const params: Record<string, string> = {
 		grant_type: "authorization_code",
 		code,

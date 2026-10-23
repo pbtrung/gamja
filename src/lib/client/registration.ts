@@ -93,7 +93,9 @@ export abstract class RegistrationClient extends ClientConnection {
 					if (oauthError) {
 						// Reported once, with the details of the challenge
 						msg.internal = true;
-						throw oauthError;
+						const err = new IRCError(msg);
+						err.message = oauthError.message;
+						throw err;
 					}
 					throw new IRCError(msg);
 				case irc.ERR_NICKLOCKED:

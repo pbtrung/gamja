@@ -2,6 +2,7 @@
 
 import * as irc from "../lib/irc";
 import * as oauth2 from "../lib/oauth2";
+import type Client from "../lib/client";
 import * as store from "../store";
 import type { ConnectParams } from "./store";
 import { parseQueryString, parseWindowHash, randomNick, type Config } from "./config";
@@ -116,6 +117,11 @@ export const startupMethods = {
 			connectParams.nick = randomNick(connectParams.nick);
 		}
 
+		const expiresAt = connectParams.saslOauthBearer?.expiresAt;
+		if (expiresAt && expiresAt <= Date.now()) {
+			console.log("Remembered OAuth 2.0 token expired");
+			connectParams.saslOauthBearer = null;
+		}
 		if (config.server.auth === "oauth2" && !connectParams.saslOauthBearer) {
 			if (!(await this.handleOauth2Redirect(queryParams, connectParams))) {
 				return;
@@ -215,7 +221,7 @@ export const startupMethods = {
 		this: AppController,
 		code: string,
 		pending: oauth2.PendingAuthorization,
-	): Promise<{ token: string; username: string | null }> {
+	): Promise<{ token: string; username: string | null; expiresAt: number | null }> {
 		const oauth2Config = this.config.oauth2!;
 		const serverMetadata = await oauth2.fetchServerMetadata(oauth2Config.url);
 
@@ -228,8 +234,12 @@ export const startupMethods = {
 			clientSecret: oauth2Config.client_secret,
 		});
 
-		// TODO: handle expires_in/refresh_token
+		// TODO: handle refresh_token
 		const token = data.access_token;
+		const expiresAt =
+			typeof data.expires_in === "number" && data.expires_in > 0
+				? Date.now() + data.expires_in * 1000
+				: null;
 
 		let username: string | null = null;
 		if (serverMetadata.introspection_endpoint) {
@@ -249,7 +259,26 @@ export const startupMethods = {
 			}
 		}
 
-		return { token, username };
+		return { token, username, expiresAt };
+	},
+
+	/**
+	 * The server rejected the OAuth 2.0 token, e.g. revoked or expired: forget
+	 * it, and show the connect form to authorize again.
+	 */
+	handleOauth2TokenRejected(this: AppController, client: Client): void {
+		client.params.saslOauthBearer = null;
+		if (client.params.bouncerNetwork) {
+			return;
+		}
+		this.update((state) => ({
+			connectParams: { ...state.connectParams, saslOauthBearer: null },
+			connectForm: true,
+		}));
+		const autoconnect = store.autoconnect.load();
+		if (autoconnect?.saslOauthBearer) {
+			store.autoconnect.put({ ...autoconnect, saslOauthBearer: null });
+		}
 	},
 };
 

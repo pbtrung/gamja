@@ -10,6 +10,8 @@ export interface SASLPlain {
 export interface SASLOAuthBearer {
 	token: string;
 	username?: string | null;
+	/** When the token expires, in milliseconds since the epoch */
+	expiresAt?: number | null;
 }
 
 /**

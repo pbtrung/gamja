@@ -146,6 +146,79 @@ describe("AppController OAuth 2.0", () => {
 		window.history.replaceState(null, "", "/");
 		app.destroy();
 	});
+	it("authorizes again instead of using an expired remembered token", async () => {
+		installFakeWebSocket();
+		const assign = vi.fn();
+		const href = window.location.href;
+		vi.stubGlobal("location", { ...window.location, href, toString: () => href, assign });
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => json(metadata)),
+		);
+		store.autoconnect.put({
+			nick: "alice",
+			saslOauthBearer: { token: "old", expiresAt: Date.now() - 1000 },
+			autoconnect: true,
+		});
+		const app = new AppController();
+		await app.handleConfig(oauth2Config);
+		expect(assign).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/auth\.example\/authorize\?/));
+		expect(app.clients.size).toBe(0);
+	});
+
+	it("keeps the expiry of a new token", async () => {
+		installFakeWebSocket();
+		const pending = { state: "s", codeVerifier: "v", redirectUri: "http://localhost:3000/" };
+		sessionStorage.setItem("gamja_oauth2_pending", JSON.stringify(pending));
+		window.history.replaceState(null, "", "/?code=c&state=s");
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (url: string) =>
+				url === metadata.token_endpoint
+					? json({ access_token: "tok", expires_in: 3600 })
+					: json(metadata),
+			),
+		);
+		const app = new AppController();
+		await app.handleConfig(oauth2Config);
+		const expiresAt = app.state.connectParams.saslOauthBearer!.expiresAt!;
+		expect(expiresAt - Date.now()).toBeGreaterThan(3500 * 1000);
+		window.history.replaceState(null, "", "/");
+	});
+
+	it("forgets a rejected token and authorizes again from the connect form", async () => {
+		installFakeWebSocket();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const saslOauthBearer = { token: "revoked" };
+		store.autoconnect.put({ nick: "alice", saslOauthBearer, autoconnect: true });
+		const app = new AppController();
+		await app.handleConfig(oauth2Config);
+		expect(app.state.connectForm).toBe(false);
+		const ws = FakeWebSocket.last();
+		ws.open();
+		ws.receive(":srv CAP * LS :sasl=OAUTHBEARER", ":srv CAP alice ACK :sasl");
+		const challenge = btoa(JSON.stringify({ status: "invalid_token" }));
+		ws.receive(`AUTHENTICATE ${challenge}`, ":srv 904 alice :SASL authentication failed");
+		await flush();
+		expect(app.state.error).toMatch(/invalid or expired/);
+		expect(store.autoconnect.load()?.saslOauthBearer).toBeFalsy();
+		expect(app.state.connectParams.saslOauthBearer).toBeNull();
+		expect(app.state.connectForm).toBe(true);
+
+		const assign = vi.fn();
+		const href = window.location.href;
+		vi.stubGlobal("location", { ...window.location, href, toString: () => href, assign });
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => json(metadata)),
+		);
+		app.handleConnectSubmit({ ...app.state.connectParams, autoconnect: true });
+		// Metadata, then the PKCE challenge
+		await vi.waitFor(() => expect(assign).toHaveBeenCalled());
+		// Remembered without the token, to connect once authorized again
+		expect(store.autoconnect.load()).toMatchObject({ nick: "alice", autoconnect: true });
+		app.destroy();
+	});
 });
 
 describe("AppController messaging", () => {

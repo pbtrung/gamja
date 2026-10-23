@@ -1,6 +1,6 @@
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
-import Client, { ClientStatus, type MessageEventDetail } from "../lib/client";
+import Client, { ClientStatus, IRCError, type MessageEventDetail } from "../lib/client";
 import * as S from "../state";
 import {
 	SERVER_BUFFER,
@@ -403,7 +403,18 @@ export default class AppController {
 		});
 
 		client.addEventListener("error", (event) => {
-			errorID = this.showError((event as CustomEvent).detail);
+			const err = (event as CustomEvent).detail;
+			errorID = this.showError(err);
+			const { saslPlain, saslExternal, saslOauthBearer } = client.params;
+			if (
+				saslOauthBearer &&
+				!saslPlain &&
+				!saslExternal &&
+				err instanceof IRCError &&
+				err.msg.command === irc.ERR_SASLFAIL
+			) {
+				this.handleOauth2TokenRejected(client);
+			}
 		});
 
 		this.createBuffer(serverID, SERVER_BUFFER);
@@ -590,6 +601,13 @@ export default class AppController {
 			store.autoconnect.put(connectParams);
 		} else {
 			store.autoconnect.put(null);
+		}
+
+		if (this.config.server?.auth === "oauth2" && !connectParams.saslOauthBearer) {
+			// No token yet, or it was rejected: authorize, the page is then
+			// loaded again with a new one
+			void this.redirectOauth2Authorize();
+			return;
 		}
 
 		this.connect(connectParams);

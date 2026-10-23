@@ -50,7 +50,7 @@ interface StoredConnectParams {
 	nick?: string | null;
 	saslPlain?: { username: string; password: string } | null;
 	saslExternal?: boolean;
-	saslOauthBearer?: { token: string; username?: string | null } | null;
+	saslOauthBearer?: { token: string; username?: string | null; expiresAt?: number | null } | null;
 	autoconnect?: boolean;
 	autojoin?: string[];
 	ping?: number;
