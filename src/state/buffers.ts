@@ -421,7 +421,15 @@ export function deleteBouncerNetwork(state: State, id: string): Partial<State> {
 	return { bouncerNetworks };
 }
 
-/** Add or remove a reaction to a message. */
+// Reactions come from other users, who could reference any number of
+// messages or emoji: keep a bounded amount
+const MAX_REACTED_MESSAGES = 1000;
+const MAX_EMOJI_PER_MESSAGE = 50;
+
+/**
+ * Add or remove a reaction to a message, which may not be loaded (yet).
+ * The reactions of the messages reacted to first go first past the limit.
+ */
 export function applyReaction(
 	buf: Buffer,
 	msgid: string,
@@ -433,7 +441,7 @@ export function applyReaction(
 	const byEmoji = new Map(buf.reactions.get(msgid));
 	const nicks = byEmoji.get(emoji) ?? [];
 	const has = nicks.some((n) => cm(n) === cm(nick));
-	if (has === add) {
+	if (has === add || (add && nicks.length === 0 && byEmoji.size >= MAX_EMOJI_PER_MESSAGE)) {
 		return;
 	}
 	const updated = add ? [...nicks, nick] : nicks.filter((n) => cm(n) !== cm(nick));
@@ -447,6 +455,12 @@ export function applyReaction(
 		reactions.set(msgid, byEmoji);
 	} else {
 		reactions.delete(msgid);
+	}
+	for (const oldest of reactions.keys()) {
+		if (reactions.size <= MAX_REACTED_MESSAGES) {
+			break;
+		}
+		reactions.delete(oldest);
 	}
 	return { reactions };
 }

@@ -557,6 +557,25 @@ describe("reactions and typing", () => {
 	const cm = irc.CaseMapping.RFC1459;
 	const base = () => ({ reactions: new Map(), typing: new Map() }) as unknown as S.Buffer;
 
+	it("keeps a bounded amount of reactions", () => {
+		const t = setup(["#c"]);
+		const cm = t.client.cm;
+		let buf = t.buf("#c");
+		for (let i = 0; i < 1010; i++) {
+			buf = { ...buf, ...S.applyReaction(buf, "m" + i, "👍", "bob", true, cm) };
+		}
+		expect(buf.reactions.size).toBe(1000);
+		expect(buf.reactions.has("m9")).toBe(false);
+		expect(buf.reactions.has("m10")).toBe(true);
+		for (let i = 0; i < 60; i++) {
+			buf = { ...buf, ...S.applyReaction(buf, "m1009", "e" + i, "bob", true, cm) };
+		}
+		expect(buf.reactions.get("m1009")!.size).toBe(50);
+		// Others can still join an existing reaction
+		buf = { ...buf, ...S.applyReaction(buf, "m1009", "e0", "carol", true, cm) };
+		expect(buf.reactions.get("m1009")!.get("e0")).toEqual(["bob", "carol"]);
+	});
+
 	it("adds and removes reactions", () => {
 		let buf = base();
 		buf = { ...buf, ...S.applyReaction(buf, "m1", "👍", "bob", true, cm) };
