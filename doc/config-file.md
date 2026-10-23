@@ -41,9 +41,12 @@ The `server` object configures the IRC server.
 - `autoconnect` (boolean): don't display the login UI, immediately connect to
   the server. If no nick is set, `user-*` is used. Can't be combined with
   `auth: "mandatory"`.
-- `ping` (number): interval in seconds to send PING commands. Set to 0 to
-  disable, this is the default. Enabling PINGs can have an impact on client
-  power usage and should only be enabled if necessary.
+- `ping` (number): interval in seconds to send extra PING commands, e.g. to
+  keep an idle connection open through a proxy with a short timeout. Set to 0
+  to disable, this is the default. Enabling PINGs can have an impact on client
+  power usage and should only be enabled if necessary. This doesn't affect
+  the PING gamja always sends every 30 seconds once connected, which measures
+  the lag and drops the connection when no PONG comes back within a minute.
 
 ## OAuth 2.0
 
@@ -53,7 +56,10 @@ The `oauth2` object configures OAuth 2.0 authentication.
   Authorization Server Metadata (RFC 8414) or OpenID Connect Discovery. Must
   not end with a slash; a path is kept as a prefix of `/.well-known/…`.
 - `client_id` (string): OAuth 2.0 client ID.
-- `client_secret` (string): OAuth 2.0 client secret.
+- `client_secret` (string): OAuth 2.0 client secret. `config.json` is served
+  to every visitor, so this is not a secret: prefer registering gamja as a
+  public client using PKCE, without a secret. Never put the secret of a
+  confidential client here.
 - `scope` (string): OAuth 2.0 scope.
 
 Set `server.auth` to `oauth2` to use it. gamja uses the authorization code flow

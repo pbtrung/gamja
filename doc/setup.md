@@ -45,9 +45,10 @@ location /socket {
 }
 ```
 
-If you are unable to configure the proxy timeout accordingly, or if your IRC
-server doesn't send PINGs, you can set the `server.ping` option in
-`config.json` (see the [configuration file] documentation).
+gamja sends a PING every 30 seconds once connected, which keeps most
+connections busy enough. If your proxy times out sooner, raise its timeout or
+set the `server.ping` option in `config.json` (see the [configuration file]
+documentation).
 
 ## [kimchi]
 
