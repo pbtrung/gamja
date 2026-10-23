@@ -66,7 +66,15 @@ function requireArg(args: string[], i: number, what: string): string {
 	return v;
 }
 
-async function setUserHostMode(app: AppController, args: string[], mode: string): Promise<void> {
+/**
+ * Set a mode on the host of a user in the active channel. Returns the client
+ * and the channel it was set in: the user may switch buffers during WHOIS.
+ */
+async function setUserHostMode(
+	app: AppController,
+	args: string[],
+	mode: string,
+): Promise<{ client: Client; channel: string }> {
 	const nick = requireArg(args, 0, "nick");
 	const activeChannel = getActiveChannel(app);
 	const client = getActiveClient(app);
@@ -88,6 +96,7 @@ async function setUserHostMode(app: AppController, args: string[], mode: string)
 		command: "MODE",
 		params: [activeChannel, mode[0] + mode.slice(1).repeat(masks.length), ...masks],
 	});
+	return { client, channel: activeChannel };
 }
 
 function markServerBufferUnread(app: AppController): void {
@@ -186,15 +195,17 @@ const kick: Command = {
 	usage: "<nick> [comment]",
 	description: "Remove a user from the channel",
 	execute: (app, args, text) => {
-		const nick = requireArg(args, 0, "nick");
-		const activeChannel = getActiveChannel(app);
-		const params = [activeChannel, nick];
-		if (args.length > 1) {
-			params.push(textAfter(text, 1));
-		}
-		getActiveClient(app).send({ command: "KICK", params });
+		sendKick(getActiveClient(app), getActiveChannel(app), args, text);
 	},
 };
+
+function sendKick(client: Client, channel: string, args: string[], text: string): void {
+	const params = [channel, requireArg(args, 0, "nick")];
+	if (args.length > 1) {
+		params.push(textAfter(text, 1));
+	}
+	client.send({ command: "KICK", params });
+}
 
 const ban: Command = {
 	name: "ban",
@@ -208,7 +219,7 @@ const ban: Command = {
 				params: [activeChannel, "+b"],
 			});
 		} else {
-			return setUserHostMode(app, args, "+b");
+			return setUserHostMode(app, args, "+b").then(() => {});
 		}
 	},
 };
@@ -309,9 +320,13 @@ const commandList: Command[] = [
 		description: "Ban a user and removes them from the channel",
 		execute: async (app, args, text) => {
 			requireArg(args, 0, "nick");
-			// Ban first: if looking up the user's host fails, don't kick either
-			await ban.execute(app, args, text);
-			kick.execute(app, args, text);
+			// Ban first: if looking up the user's host fails, don't kick either.
+			// Kick from where the ban went, not from the buffer active now.
+			const { client, channel } = await setUserHostMode(app, args, "+b");
+			if (client.status !== ClientStatus.REGISTERED) {
+				throw new Error("Disconnected before kicking " + args[0]);
+			}
+			sendKick(client, channel, args, text);
 		},
 	},
 	serverQuery("lusers", "[<mask> [<target>]]", "Request user statistics about the network"),

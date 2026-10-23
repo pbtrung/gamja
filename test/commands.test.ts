@@ -95,6 +95,20 @@ describe("commands", () => {
 		expect(sent()).toEqual(["MODE #c +b *!buser@bhost", "KICK #c bob"]);
 	});
 
+	it("kicks from the channel of the ban after switching buffers during /kickban", async () => {
+		const { app, sent, recv } = await inChannel();
+		recv(":me!u@h JOIN #d");
+		app.handleComposerSubmit("/kickban bob");
+		expect(sent()).toEqual(["WHOIS bob"]);
+		app.switchBuffer(getBuffer(app.state, { name: "#d" })!.id);
+		recv(":srv 311 me bob buser bhost * :Bob", ":srv 318 me bob :End");
+		await flush();
+		expect(sent().filter((l) => !l.startsWith("WHO "))).toEqual([
+			"MODE #c +b *!buser@bhost",
+			"KICK #c bob",
+		]);
+	});
+
 	it("collapses repeated and trailing spaces", async () => {
 		const { app, sent } = await inChannel();
 		app.handleComposerSubmit("/msg bob  hi there ");
