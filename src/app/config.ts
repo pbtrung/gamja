@@ -88,6 +88,11 @@ export function resolveServerURL(
 	if (url.startsWith("/")) {
 		return proto + "//" + host + url;
 	}
+	if (url.startsWith("./") || url.startsWith("../")) {
+		// Relative to the page, like the default; anything else without a
+		// scheme is a host
+		return new URL(url, proto + "//" + host + path).toString();
+	}
 	if (url.indexOf("://") < 0) {
 		return proto + "//" + url;
 	}

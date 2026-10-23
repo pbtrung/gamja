@@ -24,8 +24,12 @@ Errors while parsing the configuration file are logged in the
 
 The `server` object configures the IRC server.
 
-- `url` (string): WebSocket URL or path to connect to. Defaults to `socket`
-  relative to the page URL (e.g. `/socket` when gamja is served at `/`).
+- `url` (string): WebSocket server to connect to: a URL
+  (`wss://irc.example.org/socket`), a host with an optional port and path
+  (`irc.example.org:8080/socket`), an absolute path (`/socket`) or a path
+  relative to the page starting with `./` or `../` (`./socket`). A bare
+  `socket` is a host name. When unset or empty, defaults to `socket` relative
+  to the page URL (e.g. `/socket` when gamja is served at `/`).
 - `autojoin` (string or array of strings): Channel(s) to automatically join
   after connecting.
 - `auth` (string): configure how the password UI is presented to the user. Set

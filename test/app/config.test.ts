@@ -13,6 +13,8 @@ describe("config helpers", () => {
 		const loc = { host: "chat.example", protocol: "https:", pathname: "/irc/index.html" };
 		expect(resolveServerURL(null, loc)).toBe("wss://chat.example/irc/socket");
 		expect(resolveServerURL("/ws", loc)).toBe("wss://chat.example/ws");
+		expect(resolveServerURL("./socket", loc)).toBe("wss://chat.example/irc/socket");
+		expect(resolveServerURL("../ws", loc)).toBe("wss://chat.example/ws");
 		expect(resolveServerURL("irc.example:8080/ws", loc)).toBe("wss://irc.example:8080/ws");
 		expect(resolveServerURL("ws://x", loc)).toBe("ws://x");
 		expect(resolveServerURL(null, { host: "", protocol: "file:", pathname: "/a/b" })).toBe(

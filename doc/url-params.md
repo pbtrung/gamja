@@ -2,7 +2,8 @@
 
 gamja settings can be overridden using URL query parameters:
 
-- `server`: path or URL to the WebSocket server. Ignored if `server.url` is set
+- `server`: WebSocket server, in the same forms as `server.url` in the
+  [configuration file]. Ignored if `server.url` is set
   in the [configuration file] or a login was remembered ("Remember me"), unless
   empty (which reveals the server field in the connect form). Using it disables
   the `server.auth` setting.
