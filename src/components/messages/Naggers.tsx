@@ -27,7 +27,7 @@ export function NotificationNagger({ showSeconds }: { showSeconds: boolean }) {
 
 	function handleClick(event: MouseEvent) {
 		event.preventDefault();
-		Notification.requestPermission().then(() => setNag(shouldNag()));
+		void Notification.requestPermission().then(() => setNag(shouldNag()));
 	}
 
 	return (

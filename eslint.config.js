@@ -40,6 +40,16 @@ export default defineConfig([
 	{
 		files: ["src/**/*.tsx", "src/**/*.ts"],
 		extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
+		// Type-aware rules catching forgotten promises, whose errors go unseen
+		languageOptions: {
+			parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+		},
+		rules: {
+			"@typescript-eslint/await-thenable": "error",
+			"@typescript-eslint/no-floating-promises": "error",
+			// Event handlers may be async: they handle their own errors
+			"@typescript-eslint/no-misused-promises": ["error", { checksVoidReturn: { attributes: false } }],
+		},
 	},
 	{
 		files: [

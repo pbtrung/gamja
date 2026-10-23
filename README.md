@@ -85,7 +85,8 @@ Settings, opened from the header of a server buffer, are stored per browser:
     npm run check       # typecheck, lint, format:check and test
     npm run e2e         # Playwright end-to-end tests against a fake IRC server
 
-`typecheck` uses TypeScript 7, while ESLint's type-aware rules still run on
+`typecheck` uses TypeScript 7, while ESLint's type-aware rules (on `src/`:
+floating and misused promises, awaiting non-promises) still run on
 TypeScript 6 until typescript-eslint supports 7.
 
 The end-to-end tests use the system Chromium (`/usr/bin/chromium`,
