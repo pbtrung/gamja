@@ -24,6 +24,8 @@ interface ChatScrollerProps {
 	onJumped?: () => void;
 	/** Selector for the unread marker: offers to jump to it when scrolled past */
 	unreadMarker?: string;
+	/** Called when scrolling to the bottom, or away from it */
+	onBottomChange?: (atBottom: boolean) => void;
 }
 
 function isAtBottom(el: HTMLElement): boolean {
@@ -88,6 +90,7 @@ export default function ChatScroller({
 	jumpTo,
 	onJumped,
 	unreadMarker,
+	onBottomChange,
 }: ChatScrollerProps) {
 	const ref = useRef<HTMLElement>(null);
 	const [unreadAbove, setUnreadAbove] = useState(false);
@@ -96,9 +99,16 @@ export default function ChatScroller({
 	const stickToBottom = useRef(true);
 	const onScrollTopRef = useRef(onScrollTop);
 
+	const onBottomChangeRef = useRef(onBottomChange);
+
 	useEffect(() => {
 		onScrollTopRef.current = onScrollTop;
+		onBottomChangeRef.current = onBottomChange;
 	});
+
+	useEffect(() => {
+		onBottomChangeRef.current?.(!awayFromBottom);
+	}, [awayFromBottom]);
 
 	function save(el: HTMLElement) {
 		stickToBottom.current = savePosition(el, scrollKey, stickTo);

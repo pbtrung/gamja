@@ -53,6 +53,10 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 		app.fetchOlderMessages().catch((err) => app.showError(err));
 	}, [app]);
 	const handleJumped = useCallback(() => app.update({ jumpTo: null }), [app]);
+	const handleBottomChange = useCallback(
+		(atBottom: boolean) => app.handleScrolledToLatest(atBottom),
+		[app],
+	);
 	const handleRetryHistory = useCallback(() => {
 		app.fetchOlderMessages(true).catch((err) => app.showError(err));
 	}, [app]);
@@ -94,6 +98,7 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 			stickTo=".logline"
 			unreadMarker=".unread-separator"
 			onScrollTop={handleScrollTop}
+			onBottomChange={handleBottomChange}
 			label={buffer ? `Messages in ${buffer.name}` : "Messages"}
 		>
 			<ErrorBoundary

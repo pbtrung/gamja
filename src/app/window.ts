@@ -47,6 +47,15 @@ export const windowMethods = {
 		return formatWindowHash(host, buf.type === BufferType.SERVER ? null : buf.name);
 	},
 
+	/** The chat log scrolled to its latest messages, or away from them. */
+	handleScrolledToLatest(this: AppController, atLatest: boolean): void {
+		this.scrolledToLatest = atLatest;
+		const id = this.state.activeBuffer;
+		if (atLatest && id !== null && this.isBufferVisible(id)) {
+			this.markBufferAsRead(id);
+		}
+	},
+
 	updateWindowHash(this: AppController): void {
 		const hash = this.computeWindowHash();
 		if (window.location.hash !== hash) {
@@ -55,8 +64,7 @@ export const windowMethods = {
 	},
 
 	handleWindowFocus(this: AppController): void {
-		if (this.state.activeBuffer) {
-			// TODO: only do this if scrolled at the bottom
+		if (this.state.activeBuffer && this.scrolledToLatest) {
 			this.markBufferAsRead(this.state.activeBuffer);
 		}
 

@@ -1304,6 +1304,25 @@ describe("AppController notifications", () => {
 		recv(at(":bob!u@h PRIVMSG #c :me again"));
 		expect(shown).toHaveLength(2);
 	});
+
+	it("doesn't mark messages read while scrolled up", async () => {
+		vi.spyOn(document, "hasFocus").mockReturnValue(true);
+		const { app, recv, sent } = await connectedApp();
+		recv(":me!u@h JOIN #c");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		app.handleScrolledToLatest(false);
+		recv("@time=2030-01-01T00:00:00.000Z :bob!u@h PRIVMSG #c :new");
+		expect(buf(app, "#c")!.unread).toBe(Unread.MESSAGE);
+		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
+		app.handleWindowFocus();
+		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
+
+		app.handleScrolledToLatest(true);
+		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
+		expect(sent()).toContain("MARKREAD #c timestamp=2030-01-01T00:00:00.000Z");
+	});
 });
 
 describe("AppController with several servers", () => {

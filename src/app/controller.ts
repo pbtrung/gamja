@@ -55,6 +55,8 @@ export default class AppController {
 	messageNotifications = new Set<MessageNotification>();
 	baseTitle = "gamja";
 	lastFocusPingDate: Date | null = null;
+	/** Whether the latest messages of the active buffer are in view */
+	scrolledToLatest = true;
 	/** Browser APIs for Web Push, null if unsupported */
 	pushEnv: webpush.PushEnvironment | null = webpush.getPushEnvironment();
 	/** Hooks provided by the UI */
@@ -288,12 +290,12 @@ export default class AppController {
 			return;
 		}
 
-		// TODO: set unread if scrolled up
 		let unread = buf.unread;
 		let prevReadReceipt = buf.prevReadReceipt;
 		const receipts: store.Receipts = { [ReceiptType.DELIVERED]: S.receiptFromMessage(msg) };
 
-		if (!this.isBufferVisible(buf.id)) {
+		// Scrolled up, the user is reading older messages, not this one
+		if (!this.isBufferVisible(buf.id) || !this.scrolledToLatest) {
 			unread = S.unionUnread(unread, msgUnread);
 		} else if (!buf.gap) {
 			// With missed messages not fetched yet, the user hasn't read them

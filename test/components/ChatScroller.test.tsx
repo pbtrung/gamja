@@ -51,6 +51,31 @@ describe("ChatScroller", () => {
 		expect(latestButton()).toBeNull();
 	});
 
+	it("reports scrolling away from the bottom and back", () => {
+		const onBottomChange = vi.fn();
+		key++;
+		render(
+			<ChatScroller
+				scrollKey={`buffer-${key}`}
+				stickTo=".msg"
+				onScrollTop={vi.fn()}
+				onBottomChange={onBottomChange}
+			>
+				<div className="msg" data-key="1">
+					hello
+				</div>
+			</ChatScroller>,
+		);
+		const log = screen.getByRole("log");
+		expect(onBottomChange).toHaveBeenLastCalledWith(true);
+		log.scrollTop = 200;
+		fireEvent.scroll(log);
+		expect(onBottomChange).toHaveBeenLastCalledWith(false);
+		log.scrollTop = SCROLL_HEIGHT;
+		fireEvent.scroll(log);
+		expect(onBottomChange).toHaveBeenLastCalledWith(true);
+	});
+
 	it("hides the button when scrolled back to the bottom", () => {
 		const log = setup();
 		log.scrollTop = 200;
