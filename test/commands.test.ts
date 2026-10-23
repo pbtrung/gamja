@@ -109,6 +109,24 @@ describe("commands", () => {
 		]);
 	});
 
+	it.each(["/msg bob ", "/me ", "/notice bob ", "/query bob "])(
+		"rejects %s with a message too long for the server, keeping the text",
+		async (cmd) => {
+			const { app, sent } = await inChannel();
+			expect(app.handleComposerSubmit(cmd + "x".repeat(2000))).toBe(false);
+			expect(sent().filter((l) => /^(PRIVMSG|NOTICE)/.test(l))).toEqual([]);
+			expect(app.state.error).toMatch(/Message too long/);
+		},
+	);
+
+	it("keeps the text of a command failing right away", async () => {
+		const { app } = await inChannel();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		expect(app.handleComposerSubmit("/kick")).toBe(false);
+		expect(app.handleComposerSubmit("/nosuchcommand")).toBe(false);
+		expect(app.handleComposerSubmit("/msg bob hi")).toBe(true);
+	});
+
 	it("collapses repeated and trailing spaces", async () => {
 		const { app, sent } = await inChannel();
 		app.handleComposerSubmit("/msg bob  hi there ");

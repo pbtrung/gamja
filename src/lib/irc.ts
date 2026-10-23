@@ -7,3 +7,4 @@ export * from "./irc/isupport";
 export * from "./irc/text";
 export * from "./irc/url";
 export * from "./irc/caps";
+export { byteLength } from "./irc/util";

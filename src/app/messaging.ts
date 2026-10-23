@@ -157,7 +157,8 @@ export const messagingMethods = {
 		client.send({ command: "TAGMSG", params: [buf.name], tags: { "+typing": status } });
 	},
 
-	executeCommand(this: AppController, s: string): void {
+	/** Returns false if the command failed right away, e.g. a missing argument. */
+	executeCommand(this: AppController, s: string): boolean {
 		// Extra spaces after the command name don't make empty arguments
 		const [, name, rest] = /^\/(\S*)\s*(.*)$/s.exec(s) ?? ["", "", ""];
 		// Repeated and trailing spaces don't make empty arguments, but are
@@ -168,7 +169,7 @@ export const messagingMethods = {
 		const cmd = commands.get(name.toLowerCase());
 		if (!cmd) {
 			this.showError(`Unknown command "${name}" (run "/help" to get a command list)`);
-			return;
+			return false;
 		}
 
 		const fail = (error: unknown) => {
@@ -180,8 +181,10 @@ export const messagingMethods = {
 			if (result instanceof Promise) {
 				result.catch(fail);
 			}
+			return result !== false;
 		} catch (error) {
 			fail(error);
+			return false;
 		}
 	},
 
@@ -205,6 +208,16 @@ export const messagingMethods = {
 		const client = this.getConnectedClient(serverID);
 		if (!client || !serverID) {
 			return false;
+		}
+
+		if (!text.includes("\n")) {
+			// Lines of multiline text are split to fit instead
+			const maxLen = irc.getMaxPrivmsgLen(client.isupport, client.nick ?? "", target);
+			const len = irc.byteLength(text);
+			if (len > maxLen) {
+				this.showError(`Message too long: ${len} bytes, the server accepts up to ${maxLen}`);
+				return false;
+			}
 		}
 
 		const msg: Message = { tags: {}, prefix: null, command, params: [target, text] };
@@ -241,9 +254,8 @@ export const messagingMethods = {
 		if (text.startsWith("//")) {
 			text = text.slice(1);
 		} else if (text.startsWith("/")) {
-			// Commands take a single line
-			this.executeCommand(text.replace(/\n/g, " "));
-			return true;
+			// Commands take a single line. Keep the text to fix it on failure.
+			return this.executeCommand(text.replace(/\n/g, " "));
 		}
 		// Trailing blank lines aren't worth sending
 		text = text.replace(/\n+$/, "");

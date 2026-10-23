@@ -10,9 +10,10 @@ interface Command {
 	description: string;
 	/**
 	 * Arguments are split on spaces, text is the raw string they come from,
-	 * for commands taking text which may contain repeated spaces.
+	 * for commands taking text which may contain repeated spaces. Returns
+	 * false when the command failed and the error was already shown.
 	 */
-	execute: (app: AppController, args: string[], text: string) => void | Promise<void>;
+	execute: (app: AppController, args: string[], text: string) => void | boolean | Promise<void>;
 }
 
 /** The raw text after the first n arguments, keeping its spaces. */
@@ -338,7 +339,7 @@ const commandList: Command[] = [
 			requireArg(args, 0, "action");
 			const target = getActiveTarget(app);
 			const text = `\x01ACTION ${action}\x01`;
-			app.privmsg(target, text);
+			return app.privmsg(target, text);
 		},
 	},
 	{
@@ -363,7 +364,7 @@ const commandList: Command[] = [
 			const target = requireArg(args, 0, "target");
 			requireArg(args, 1, "message");
 			getActiveClient(app);
-			app.sendChatMessage("PRIVMSG", target, textAfter(text, 1));
+			return app.sendChatMessage("PRIVMSG", target, textAfter(text, 1));
 		},
 	},
 	metadataCommand("mute", "muted", true, "[target]", "Silence a buffer's notifications (soju)"),
@@ -384,7 +385,7 @@ const commandList: Command[] = [
 			const target = requireArg(args, 0, "target");
 			requireArg(args, 1, "message");
 			getActiveClient(app);
-			app.sendChatMessage("NOTICE", target, textAfter(text, 1));
+			return app.sendChatMessage("NOTICE", target, textAfter(text, 1));
 		},
 	},
 	{
@@ -416,7 +417,7 @@ const commandList: Command[] = [
 			app.open(nick);
 
 			if (args.length > 1) {
-				app.privmsg(nick, textAfter(text, 1));
+				return app.privmsg(nick, textAfter(text, 1));
 			}
 		},
 	},
