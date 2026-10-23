@@ -3,10 +3,10 @@
 gamja settings can be overridden using URL query parameters:
 
 - `server`: WebSocket server, in the same forms as `server.url` in the
-  [configuration file]. Ignored if `server.url` is set
-  in the [configuration file] or a login was remembered ("Remember me"), unless
-  empty (which reveals the server field in the connect form). Using it disables
-  the `server.auth` setting.
+  [configuration file]. Ignored if `server.url` is set in the configuration
+  file or a login was remembered ("Remember me"), unless empty: this shows the
+  connect form with its server field, without the remembered login. Using it
+  disables the `server.auth` setting.
 - `nick`: nickname to use by default when connecting to the server. If the
   character `*` appears in the string, it will be replaced with a randomly
   generated value.

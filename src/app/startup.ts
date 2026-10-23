@@ -64,15 +64,25 @@ export const startupMethods = {
 
 		const queryParams = parseQueryString(window.location.search);
 		// Don't allow to silently override the server URL if there's one in
-		// config.json, because this has security implications. But still allow
+		// config.json or a remembered login: a link would send the user, and
+		// the remembered credentials, to another server. But still allow
 		// setting server to an empty string to reveal the server field in the
-		// connect form.
-		if (typeof queryParams.server === "string" && (!connectParams.url || !queryParams.server)) {
-			connectParams.url = queryParams.server;
+		// connect form, without the remembered login.
+		if (typeof queryParams.server === "string") {
+			if (!queryParams.server) {
+				if (autoconnect) {
+					connectParams = { ...this.state.connectParams };
+					applyConfigFile(config, connectParams);
+				}
+				connectParams.autoconnect = false;
+			}
+			if (!queryParams.server || (!connectParams.url && !autoconnect)) {
+				connectParams.url = queryParams.server;
 
-			// When using a custom server, some configuration options don't
-			// make sense anymore.
-			config.server.auth = null;
+				// When using a custom server, some configuration options don't
+				// make sense anymore.
+				config.server.auth = null;
+			}
 		}
 		if (typeof queryParams.nick === "string") {
 			connectParams.nick = queryParams.nick;

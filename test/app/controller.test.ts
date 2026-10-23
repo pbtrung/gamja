@@ -44,6 +44,41 @@ describe("AppController configuration", () => {
 		app.destroy();
 	});
 
+	it("doesn't send remembered credentials to a server from the URL", async () => {
+		installFakeWebSocket();
+		window.history.replaceState(null, "", "/?server=wss://evil");
+		store.autoconnect.put({
+			url: "",
+			nick: "alice",
+			saslPlain: { username: "alice", password: "secret" },
+			autoconnect: true,
+		});
+		const app = new AppController();
+		await app.handleConfig({ server: {} });
+		expect(FakeWebSocket.last().url).not.toContain("evil");
+		expect(app.state.connectParams.url).toBe("");
+		window.history.replaceState(null, "", "/");
+		app.destroy();
+	});
+
+	it("shows the connect form without the remembered login for an empty server", async () => {
+		installFakeWebSocket();
+		window.history.replaceState(null, "", "/?server=");
+		store.autoconnect.put({
+			url: "wss://stored",
+			nick: "alice",
+			saslPlain: { username: "alice", password: "secret" },
+			autoconnect: true,
+		});
+		const app = new AppController();
+		await app.handleConfig({ server: { url: "wss://cfg" } });
+		expect(app.state.connectForm).toBe(true);
+		expect(app.clients.size).toBe(0);
+		expect(app.state.connectParams).toMatchObject({ url: "", autoconnect: false });
+		expect(app.state.connectParams.saslPlain).toBeFalsy();
+		window.history.replaceState(null, "", "/");
+	});
+
 	it("rejects autoconnect with mandatory auth", async () => {
 		const err = vi.spyOn(console, "error").mockImplementation(() => {});
 		const app = new AppController();
