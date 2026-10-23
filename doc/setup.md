@@ -3,6 +3,14 @@
 An HTTP server must be configured to serve the gamja static files. Usually,
 the same HTTP server is used as a reverse proxy for the IRC WebSocket.
 
+## Caching
+
+Serve `index.html`, `sw.js`, `version.json` and `config.json` with
+`Cache-Control: no-cache`, so that browsers check for a new version on each
+load. Files in `assets/` have a hash in their name and can be cached for good.
+Otherwise a cached `index.html` keeps loading the previous release: gamja then
+notices `version.json` changed and reloads once, which costs a page load.
+
 ## [soju]
 
 Add a WebSocket listener to soju, e.g. `listen ws+insecure://127.0.0.1:8080`.
@@ -31,6 +39,12 @@ timeout to a value higher than the IRC server PING interval. Example:
 ```
 location / {
 	root /path/to/gamja/dist;
+	add_header Cache-Control "no-cache";
+}
+
+location /assets/ {
+	root /path/to/gamja/dist;
+	add_header Cache-Control "public, max-age=31536000, immutable";
 }
 
 location /socket {

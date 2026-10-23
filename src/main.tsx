@@ -5,6 +5,7 @@ import "@fontsource-variable/inter/wght-italic.css";
 import "./styles/index.css";
 import AppController from "./app/controller";
 import App from "./components/App";
+import { reloadIfOutdated } from "./app/update";
 
 const controller = new AppController();
 
@@ -14,4 +15,9 @@ createRoot(document.getElementById("root")!).render(
 	</StrictMode>,
 );
 
-controller.start().catch((err) => controller.showError(err));
+// Before connecting, not to connect twice if the page is reloaded
+void reloadIfOutdated().then((reloading) => {
+	if (!reloading) {
+		controller.start().catch((err) => controller.showError(err));
+	}
+});

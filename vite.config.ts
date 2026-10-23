@@ -31,15 +31,31 @@ function version(): string {
 		return "dev";
 	}
 }
+/** Write version.json, for stale pages to notice a new release, see app/update. */
+function versionFile(version: string): Plugin {
+	return {
+		name: "gamja-version-file",
+		apply: "build",
+		generateBundle() {
+			this.emitFile({
+				type: "asset",
+				fileName: "version.json",
+				source: JSON.stringify({ version }) + "\n",
+			});
+		},
+	};
+}
+
+const VERSION = version();
 
 export default defineConfig({
 	root: r("./src"),
 	define: {
-		"import.meta.env.GAMJA_VERSION": JSON.stringify(version()),
+		"import.meta.env.GAMJA_VERSION": JSON.stringify(VERSION),
 	},
 	base: "./",
 	publicDir: r("./public"),
-	plugins: [react(), devCSP(), ircProxy(process.env.GAMJA_IRC_SERVER)],
+	plugins: [react(), devCSP(), versionFile(VERSION), ircProxy(process.env.GAMJA_IRC_SERVER)],
 	server: {
 		port: 8080,
 	},
