@@ -14,6 +14,9 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
-	localStorage.clear();
-	sessionStorage.clear();
+	// Pure tests run in Node, without a DOM, see their @vitest-environment
+	if (typeof window !== "undefined") {
+		localStorage.clear();
+		sessionStorage.clear();
+	}
 });
