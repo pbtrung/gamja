@@ -66,6 +66,25 @@ describe("oauth2", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("keeps the authorization endpoint's own query parameters", async () => {
+		const assign = vi.fn();
+		vi.stubGlobal("location", { ...window.location, assign });
+		await oauth2.redirectAuthorize({
+			serverMetadata: {
+				...metadata,
+				authorization_endpoint: "https://auth.example/authorize?tenant=one",
+			},
+			clientId: "id",
+			redirectUri: "https://gamja.example/",
+		});
+		const url = new URL(assign.mock.calls[0][0]);
+		expect(url.pathname).toBe("/authorize");
+		expect(url.searchParams.get("tenant")).toBe("one");
+		expect(url.searchParams.get("response_type")).toBe("code");
+		expect(url.searchParams.get("client_id")).toBe("id");
+		vi.unstubAllGlobals();
+	});
+
 	it("builds redirect URIs without fragments or authorization parameters", () => {
 		expect(
 			oauth2.canonicalRedirectURI("https://gamja.example/app/?server=x&code=c&state=s&iss=i#/#chan"),

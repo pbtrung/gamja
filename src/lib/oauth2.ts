@@ -158,7 +158,12 @@ export async function redirectAuthorize({
 	} catch (err) {
 		throw new Error("OAuth 2.0 login requires session storage, which is disabled", { cause: err });
 	}
-	window.location.assign(serverMetadata.authorization_endpoint + "?" + formatQueryString(params));
+	// The endpoint may already have a query, which must be kept (RFC 6749 section 3.1)
+	const url = new URL(serverMetadata.authorization_endpoint);
+	for (const [k, v] of Object.entries(params)) {
+		url.searchParams.set(k, v);
+	}
+	window.location.assign(url.toString());
 }
 
 /**
