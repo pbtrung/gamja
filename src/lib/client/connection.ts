@@ -20,6 +20,27 @@ const RECONNECT_MAX_DELAY_MSEC = 10 * 60 * 1000; // 10min
 
 const FALLBACK_SERVER_PREFIX: Prefix = { name: "*" };
 
+const REDACTED = "<redacted>";
+// AUTHENTICATE parameters worth logging: mechanism names, empty responses,
+// aborts. Anything else is a base64-encoded credential.
+const SASL_LOGGABLE = /^(\+|\*|PLAIN|EXTERNAL|OAUTHBEARER|SCRAM-[A-Z0-9-]+)$/;
+
+/** Hide passwords, SASL payloads and verification codes from debug logs. */
+function redactForLog(msg: OutgoingMessage): OutgoingMessage {
+	const params = msg.params ?? [];
+	switch (msg.command.toUpperCase()) {
+		case "PASS":
+			return { ...msg, params: params.map(() => REDACTED) };
+		case "AUTHENTICATE":
+			return { ...msg, params: params.map((p) => (SASL_LOGGABLE.test(String(p)) ? p : REDACTED)) };
+		case "REGISTER":
+		case "VERIFY":
+			// REGISTER <account> <email> <password>, VERIFY <account> <code>
+			return { ...msg, params: params.map((p, i) => (i === params.length - 1 ? REDACTED : p)) };
+	}
+	return msg;
+}
+
 /**
  * The connection part of Client. State lives here: subclasses don't declare
  * fields, which would be reset after this constructor starts connecting.
@@ -590,11 +611,12 @@ export abstract class ClientConnection extends EventTarget {
 			throw new Error("Failed to send IRC message " + msg.command + ": socket is closed");
 		}
 		// Format all the messages first, not to send a partial batch
-		const raws = this.expandMultiline(msg).map((m) => irc.formatMessage(m));
-		for (const raw of raws) {
+		const msgs = this.expandMultiline(msg);
+		const raws = msgs.map((m) => irc.formatMessage(m));
+		for (const [i, raw] of raws.entries()) {
 			this.ws.send(raw);
 			if (this.debug) {
-				console.debug("Sent:", raw);
+				console.debug("Sent:", irc.formatMessage(redactForLog(msgs[i])));
 			}
 		}
 	}

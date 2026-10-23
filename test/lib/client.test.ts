@@ -324,6 +324,41 @@ describe("SASL", () => {
 		expect(ws.sent).toEqual(["CAP END"]);
 	});
 
+	it("keeps credentials out of debug logs", async () => {
+		const log = vi.spyOn(console, "debug").mockImplementation(() => {});
+		const client = new Client({
+			url: "wss://irc.example/socket",
+			nick: "me",
+			username: "me",
+			realname: "Me",
+			pass: "serverpass",
+			saslPlain: { username: "user", password: "pass" },
+		});
+		client.debug = true;
+		const ws = FakeWebSocket.last();
+		ws.open();
+		ws.receive(":srv CAP * LS :sasl=PLAIN draft/account-registration");
+		ws.receive(":srv CAP me ACK :sasl draft/account-registration", "AUTHENTICATE +");
+		ws.receive(":srv 903 me :SASL authentication successful");
+		await flush();
+		ws.receive(":srv 001 me :Welcome", ":srv 376 me :End of MOTD");
+		void client.registerAccount("me@example.org", "hunter2").catch(() => {});
+		void client.verifyAccount("me", "123456").catch(() => {});
+		const sent = log.mock.calls.filter((c) => c[0] === "Sent:").map((c) => c[1] as string);
+		expect(sent).toContain("PASS <redacted>");
+		expect(sent).toContain("AUTHENTICATE PLAIN");
+		expect(sent).toContain("AUTHENTICATE <redacted>");
+		expect(sent).toContain("REGISTER * me@example.org <redacted>");
+		expect(sent).toContain("VERIFY me <redacted>");
+		const all = sent.join("\n");
+		for (const secret of ["serverpass", "AHVzZXIAcGFzcw==", "hunter2", "123456"]) {
+			expect(all).not.toContain(secret);
+		}
+		// The wire still carries them
+		expect(ws.sent).toContain("PASS serverpass");
+		log.mockRestore();
+	});
+
 	it("tries SASL when the server doesn't list mechanisms", () => {
 		const { ws } = connect({ saslPlain: { username: "user", password: "pass" } });
 		ws.takeSent();
