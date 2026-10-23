@@ -51,8 +51,12 @@ export const windowMethods = {
 	handleScrolledToLatest(this: AppController, atLatest: boolean): void {
 		this.scrolledToLatest = atLatest;
 		const id = this.state.activeBuffer;
-		if (atLatest && id !== null && this.isBufferVisible(id)) {
-			this.markBufferAsRead(id);
+		if (atLatest && id !== null) {
+			// Older messages loaded while scrolled up can go now
+			this.trimBuffer(id);
+			if (this.isBufferVisible(id)) {
+				this.markBufferAsRead(id);
+			}
 		}
 	},
 

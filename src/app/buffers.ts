@@ -90,6 +90,7 @@ export const buffersMethods = {
 			: undefined;
 		const prevReadReceipt = getReceipt(stored, ReceiptType.READ);
 		const isInitialSwitch = !this.state.activeBuffer;
+		const prevActive = this.state.activeBuffer;
 
 		this.update((state) => ({
 			activeBuffer: buf.id,
@@ -97,6 +98,10 @@ export const buffersMethods = {
 			...S.updateBuffer(state, buf.id, { prevReadReceipt }),
 			openPanels: { ...state.openPanels, bufferList: false },
 		}));
+		if (prevActive !== null && prevActive !== buf.id) {
+			// It may have been left scrolled up with older messages loaded
+			this.trimBuffer(prevActive);
+		}
 
 		// On small screens, focusing would pop up the on-screen keyboard over
 		// the messages the user just switched to read

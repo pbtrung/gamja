@@ -99,6 +99,26 @@ export const historyMethods = {
 		}
 	},
 
+	/**
+	 * Drop the oldest messages of a long buffer, unless the user is reading
+	 * them: in the active buffer, scrolled up.
+	 */
+	trimBuffer(this: AppController, id: BufferID): void {
+		const buf = S.getBuffer(this.state, id);
+		if (!buf || buf.messages.length <= S.MAX_MESSAGES) {
+			return;
+		}
+		if (buf.id === this.state.activeBuffer && !this.scrolledToLatest) {
+			return;
+		}
+		const client = this.clients.get(buf.server);
+		const refetchable =
+			client?.caps.enabled.has("draft/chathistory") &&
+			client.caps.enabled.has("server-time") &&
+			client.isupport.chatHistory() > 0;
+		this.setBufferState(buf.id, (b) => S.trimMessages(b, Boolean(refetchable)));
+	},
+
 	applyHistory(this: AppController, serverID: number, msgs: Message[], { live = false } = {}): void {
 		const client = this.clients.get(serverID);
 		if (!client) {
@@ -132,6 +152,7 @@ export const historyMethods = {
 
 		for (const [id, messages] of batch.messages) {
 			this.update((state) => S.addMessages(state, messages, id));
+			this.trimBuffer(id);
 		}
 		for (const update of batch.readMarkers.values()) {
 			this.sendReadReceipt(client, update);

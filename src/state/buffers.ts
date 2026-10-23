@@ -517,6 +517,25 @@ export function addMessage(state: State, msg: Message, bufID: BufferID): Partial
 	});
 }
 
+/** Messages kept per buffer, older ones are dropped, see trimMessages() */
+export const MAX_MESSAGES = 2000;
+
+/**
+ * Drop the oldest messages past MAX_MESSAGES. With chat history, they can be
+ * fetched again when scrolling up. Buffers loading history or with missed
+ * messages to fetch are kept as is, their bounds depend on the messages.
+ */
+export function trimMessages(buf: Buffer, refetchable: boolean): Partial<Buffer> | undefined {
+	if (buf.messages.length <= MAX_MESSAGES || buf.gap || buf.history === "loading") {
+		return;
+	}
+	const messages = buf.messages.slice(-MAX_MESSAGES);
+	if (!refetchable) {
+		return { messages };
+	}
+	return { messages, history: buf.history === "error" ? "error" : "more" };
+}
+
 /** Add several messages to a buffer at once, e.g. a page of history. */
 export function addMessages(state: State, msgs: Message[], bufID: BufferID): Partial<State> | undefined {
 	for (const msg of msgs) {

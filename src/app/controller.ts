@@ -278,6 +278,7 @@ export default class AppController {
 			this.queueHistoryMessage(batch, bufID, msg);
 		} else {
 			this.update((state) => S.addMessage(state, msg, bufID));
+			this.trimBuffer(bufID);
 		}
 		if (msg.command === "PRIVMSG" || msg.command === "NOTICE") {
 			this.setBufferState(bufID, (b) =>

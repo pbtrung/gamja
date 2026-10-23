@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { connectedApp, flush } from "../helpers/app";
 import { getBuffer, createBuffer, createServer, SERVER_BUFFER, Unread, BufferType } from "../../src/state";
+import * as S from "../../src/state";
+import type { Buffer } from "../../src/state";
 import * as store from "../../src/store";
 import AppController from "../../src/app/controller";
 import { FakeWebSocket, installFakeWebSocket } from "../helpers/fake-ws";
@@ -1322,6 +1324,48 @@ describe("AppController notifications", () => {
 		app.handleScrolledToLatest(true);
 		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
 		expect(sent()).toContain("MARKREAD #c timestamp=2030-01-01T00:00:00.000Z");
+	});
+
+	it("keeps the latest messages of long buffers, unless reading older ones", async () => {
+		const { app, recv } = await connectedApp();
+		recv(":me!u@h JOIN #c", ":me!u@h JOIN #d");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		const lines = (chan: string, n: number, from = 0) =>
+			Array.from(
+				{ length: n },
+				(_, i) =>
+					`@time=${new Date(Date.UTC(2030, 0, 1) + from + i).toISOString()} :bob!u@h PRIVMSG ${chan} :${i}`,
+			);
+		recv(...lines("#d", S.MAX_MESSAGES + 5));
+		expect(buf(app, "#d")!.messages).toHaveLength(S.MAX_MESSAGES);
+		expect(buf(app, "#d")!.messages[0].params[1]).toBe("5");
+		// Scrolling up fetches them again
+		expect(buf(app, "#d")!.history).toBe("more");
+
+		app.handleScrolledToLatest(false);
+		recv(...lines("#c", S.MAX_MESSAGES + 5));
+		expect(buf(app, "#c")!.messages).toHaveLength(S.MAX_MESSAGES + 5);
+		app.handleScrolledToLatest(true);
+		expect(buf(app, "#c")!.messages).toHaveLength(S.MAX_MESSAGES);
+
+		// Left scrolled up: trimmed once another buffer is active
+		app.handleScrolledToLatest(false);
+		recv(...lines("#c", 10, 1e6));
+		expect(buf(app, "#c")!.messages).toHaveLength(S.MAX_MESSAGES + 10);
+		app.switchBuffer(buf(app, "#d")!.id);
+		expect(buf(app, "#c")!.messages).toHaveLength(S.MAX_MESSAGES);
+	});
+
+	it("keeps messages without history to fetch them again from", () => {
+		const t = { history: "end", gap: null } as const;
+		const messages = Array.from({ length: S.MAX_MESSAGES + 1 }, () => ({}) as irc.Message);
+		expect(S.trimMessages({ ...t, messages } as unknown as Buffer, false)).toEqual({
+			messages: messages.slice(1),
+		});
+		expect(
+			S.trimMessages({ ...t, messages, history: "loading" } as unknown as Buffer, true),
+		).toBeUndefined();
 	});
 });
 
