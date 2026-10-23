@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { BufferStore, Item } from "../src/store";
+import { CaseMapping } from "../src/lib/irc";
 import { Unread } from "../src/state";
 
 describe("Item", () => {
@@ -123,9 +124,117 @@ describe("BufferStore keys", () => {
 			unread: Unread.MESSAGE,
 			receipts: { read: { time: "2020-01-02" } },
 			closed: false,
-			server: { bouncerNetwork: null },
+			server: { url: null, bouncerNetwork: null },
 		});
 		store.clear();
+	});
+
+	it("keeps the buffers of different servers apart", () => {
+		const store = new BufferStore();
+		const a = { url: "wss://a.example/", bouncerNetwork: "1" };
+		const b = { url: "wss://b.example/", bouncerNetwork: "1" };
+		store.put({ name: "#private", server: a, unread: Unread.MESSAGE });
+		expect(store.get({ name: "#private", server: b })).toBeUndefined();
+		expect(store.list(b)).toEqual([]);
+		expect(store.list(a).map((buf) => buf.name)).toEqual(["#private"]);
+		store.clear(b);
+		expect(store.list(a)).toHaveLength(1);
+		store.clear();
+	});
+
+	it("gives buffers stored without a server URL to the first server listing them", () => {
+		localStorage.setItem(
+			"gamja_buffers",
+			JSON.stringify({ k: { name: "#c", server: {}, unread: "message", receipts: {}, closed: false } }),
+		);
+		const store = new BufferStore();
+		const a = { url: "wss://a.example/" };
+		expect(store.list(a).map((buf) => [buf.name, buf.server.url])).toEqual([["#c", "wss://a.example/"]]);
+		expect(store.list({ url: "wss://b.example/" })).toEqual([]);
+		expect(store.get({ name: "#c", server: a })?.unread).toBe(Unread.MESSAGE);
+		store.clear();
+	});
+
+	it("looks names up with the server's case-mapping", () => {
+		const store = new BufferStore();
+		const rfc1459 = { url: "wss://a.example/", cm: CaseMapping.RFC1459 };
+		store.put({ name: "#[private]", server: rfc1459, receipts: { read: { time: "2020-01-01" } } });
+		expect(store.get({ name: "#{PRIVATE}", server: rfc1459 })?.receipts.read).toEqual({
+			time: "2020-01-01",
+		});
+
+		const ascii = { url: "wss://b.example/", cm: CaseMapping.ASCII };
+		store.put({ name: "#[a]", server: ascii, unread: Unread.MESSAGE });
+		expect(store.get({ name: "#{a}", server: ascii })).toBeUndefined();
+		// Not folded by ASCII case-mappings
+		store.put({ name: "#Ä", server: ascii, unread: Unread.MESSAGE });
+		expect(store.get({ name: "#ä", server: ascii })).toBeUndefined();
+		store.clear();
+	});
+
+	it("merges copies of a buffer equal per the case-mapping", () => {
+		const store = new BufferStore();
+		const ascii = { url: "wss://a.example/", cm: CaseMapping.ASCII };
+		store.put({ name: "#[a]", server: ascii, receipts: { read: { time: "2020-01-01" } } });
+		store.put({ name: "#{a}", server: ascii, receipts: { read: { time: "2020-01-02" } } });
+		const rfc1459 = { ...ascii, cm: CaseMapping.RFC1459 };
+		expect(store.list(rfc1459)).toHaveLength(1);
+		expect(store.get({ name: "#[a]", server: rfc1459 })?.receipts.read).toEqual({ time: "2020-01-02" });
+		store.clear();
+	});
+});
+
+describe("BufferStore in several tabs", () => {
+	const server = { url: "wss://a.example/" };
+
+	it("keeps the buffers saved by another tab", () => {
+		const tab1 = new BufferStore();
+		const tab2 = new BufferStore();
+		tab1.put({ name: "#a", server });
+		tab2.put({ name: "#b", server });
+		tab1.saveImmediately();
+		tab2.saveImmediately();
+		const reloaded = new BufferStore();
+		expect(
+			reloaded
+				.list(server)
+				.map((buf) => buf.name)
+				.sort(),
+		).toEqual(["#a", "#b"]);
+		[tab1, tab2, reloaded].forEach((s) => s.dispose());
+	});
+
+	it("keeps the newest receipts and deletions across tabs", () => {
+		const tab1 = new BufferStore();
+		tab1.put({ name: "#a", server, receipts: { read: { time: "2020-01-02" } } });
+		tab1.put({ name: "#b", server });
+		tab1.saveImmediately();
+		const tab2 = new BufferStore();
+		tab2.put({
+			name: "#a",
+			server,
+			receipts: { read: { time: "2020-01-01" }, delivered: { time: "2020-01-03" } },
+		});
+		tab1.delete({ name: "#b", server });
+		tab1.saveImmediately();
+		tab2.saveImmediately();
+		const reloaded = new BufferStore();
+		expect(reloaded.list(server).map((buf) => buf.name)).toEqual(["#a"]);
+		expect(reloaded.get({ name: "#a", server })?.receipts).toEqual({
+			read: { time: "2020-01-02" },
+			delivered: { time: "2020-01-03" },
+		});
+		[tab1, tab2, reloaded].forEach((s) => s.dispose());
+	});
+
+	it("follows the changes saved by other tabs", () => {
+		const tab1 = new BufferStore();
+		const tab2 = new BufferStore();
+		tab2.put({ name: "#b", server });
+		tab2.saveImmediately();
+		window.dispatchEvent(new StorageEvent("storage", { key: "gamja_buffers" }));
+		expect(tab1.get({ name: "#b", server })).toBeDefined();
+		[tab1, tab2].forEach((s) => s.dispose());
 	});
 });
 

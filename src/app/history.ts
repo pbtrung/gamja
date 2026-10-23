@@ -49,13 +49,18 @@ async function fetchLatestBetween(
 	}
 }
 
+/** The server of a client, to store its buffers. */
+export function storeServer(client: Client): store.ServerRef {
+	return { url: client.params.url, bouncerNetwork: client.params.bouncerNetwork, cm: client.cm };
+}
+
 export function getReceipt(stored: store.StoredBuffer | undefined, type: ReceiptType): Receipt | null {
 	return stored?.receipts?.[type] ?? null;
 }
 
 function getLatestReceipt(
 	bufferStore: store.BufferStore,
-	server: store.StoredServer,
+	server: store.ServerRef,
 	type: ReceiptType,
 ): Receipt | null {
 	let last: Receipt | null = null;
@@ -237,7 +242,7 @@ export const historyMethods = {
 			return;
 		}
 
-		const lastReceipt = getLatestReceipt(this.bufferStore, client.params, ReceiptType.DELIVERED);
+		const lastReceipt = getLatestReceipt(this.bufferStore, storeServer(client), ReceiptType.DELIVERED);
 		if (!lastReceipt) {
 			return;
 		}
@@ -260,7 +265,7 @@ export const historyMethods = {
 
 				// Maybe we've just received a READ update from the
 				// server, avoid over-fetching history
-				const stored = this.bufferStore.get({ name: target.name, server: client.params });
+				const stored = this.bufferStore.get({ name: target.name, server: storeServer(client) });
 				const readReceipt = getReceipt(stored, ReceiptType.READ);
 				if (S.isReceiptBefore(from, readReceipt)) {
 					from = readReceipt!;
@@ -481,7 +486,7 @@ export const historyMethods = {
 			if (this.state.activeBuffer === buf.id) {
 				receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
 			}
-			this.storeReceipts(client, { name: buf.name, server: client.params, receipts });
+			this.storeReceipts(client, { name: buf.name, server: storeServer(client), receipts });
 			this.setBufferState(buf.id, ({ prevReadReceipt }) => {
 				if (!S.isMessageBeforeReceipt(msg, prevReadReceipt)) {
 					prevReadReceipt = S.receiptFromMessage(msg);

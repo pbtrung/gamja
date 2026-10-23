@@ -8,7 +8,7 @@ import { SERVER_BUFFER, BufferType, ReceiptType, Unread, type Buffer, type Buffe
 import * as store from "../store";
 import { splitHostPort } from "./config";
 import type AppController from "./controller";
-import { getReceipt, type HistoryBatch } from "./history";
+import { getReceipt, storeServer, type HistoryBatch } from "./history";
 
 /** User details requested with WHO, see User in state.ts */
 const WHO_FIELDS: WhoxField[] = ["flags", "hostname", "nick", "realname", "username", "account"];
@@ -22,7 +22,7 @@ export const buffersMethods = {
 	syncBufferUnread(this: AppController, serverID: number, name: string): void {
 		const client = this.clients.get(serverID)!;
 
-		const stored = this.bufferStore.get({ name, server: client.params });
+		const stored = this.bufferStore.get({ name, server: storeServer(client) });
 		if (client.caps.enabled.has("draft/chathistory") && stored) {
 			this.setBufferState({ server: serverID, name }, { unread: stored.unread });
 			this.updateDocumentTitle();
@@ -30,7 +30,7 @@ export const buffersMethods = {
 
 		this.bufferStore.put({
 			name,
-			server: client.params,
+			server: storeServer(client),
 			closed: false,
 		});
 	},
@@ -85,7 +85,9 @@ export const buffersMethods = {
 		}
 
 		const client = this.clients.get(buf.server);
-		const stored = client ? this.bufferStore.get({ name: buf.name, server: client.params }) : undefined;
+		const stored = client
+			? this.bufferStore.get({ name: buf.name, server: storeServer(client) })
+			: undefined;
 		const prevReadReceipt = getReceipt(stored, ReceiptType.READ);
 		const isInitialSwitch = !this.state.activeBuffer;
 
@@ -166,7 +168,11 @@ export const buffersMethods = {
 
 		// Stored even without messages loaded, or the unread state would
 		// come back on reload
-		const update: store.BufferUpdate = { name: buf.name, server: client.params, unread: Unread.NONE };
+		const update: store.BufferUpdate = {
+			name: buf.name,
+			server: storeServer(client),
+			unread: Unread.NONE,
+		};
 		const lastMsg = buf.messages.at(-1);
 		// Missed messages not fetched yet haven't been read
 		if (lastMsg && !buf.gap) {
@@ -360,7 +366,7 @@ export const buffersMethods = {
 			}
 			this.bufferStore.clear();
 		} else if (client) {
-			this.bufferStore.clear(client.params);
+			this.bufferStore.clear(storeServer(client));
 		}
 
 		// TODO: only clear autoconnect if this server is stored there
@@ -395,7 +401,7 @@ export const buffersMethods = {
 
 			this.bufferStore.put({
 				name: buf.name,
-				server: client.params,
+				server: storeServer(client),
 				closed: true,
 			});
 		}

@@ -17,7 +17,7 @@ import * as webpush from "./webpush";
 import { applyTextSize, applyTheme } from "../themes";
 import { createAppStore, type AppState, type AppStore, type ConnectParams } from "./store";
 import { fetchConfig, resolveServerURL, splitHostPort, type Config } from "./config";
-import { getReceipt, type HistoryBatch } from "./history";
+import { getReceipt, storeServer, type HistoryBatch } from "./history";
 import type { MessageNotification } from "./notifications";
 import { startupMethods, type StartupMethods } from "./startup";
 import { buffersMethods, type BuffersMethods } from "./buffers";
@@ -246,7 +246,7 @@ export default class AppController {
 			return; // Don't open a conversation for a blocked user
 		}
 
-		const stored = this.bufferStore.get({ name: bufName, server: client.params });
+		const stored = this.bufferStore.get({ name: bufName, server: storeServer(client) });
 		let msgUnread: Unread = Unread.NONE;
 		if (
 			(msg.command === "PRIVMSG" || msg.command === "NOTICE") &&
@@ -305,7 +305,7 @@ export default class AppController {
 			prevReadReceipt = S.receiptFromMessage(msg);
 		}
 
-		this.storeReceipts(client, { name: buf.name, server: client.params, unread, receipts }, batch);
+		this.storeReceipts(client, { name: buf.name, server: storeServer(client), unread, receipts }, batch);
 		if (unread !== buf.unread || prevReadReceipt !== buf.prevReadReceipt) {
 			this.setBufferState(buf.id, { unread, prevReadReceipt });
 		}
@@ -526,10 +526,10 @@ export default class AppController {
 				break;
 			case "RENAME": {
 				const [from, to] = msg.params;
-				const stored = this.bufferStore.get({ name: from, server: client.params });
+				const stored = this.bufferStore.get({ name: from, server: storeServer(client) });
 				if (stored) {
-					this.bufferStore.delete({ name: from, server: client.params });
-					this.bufferStore.put({ ...stored, name: to, server: client.params });
+					this.bufferStore.delete({ name: from, server: storeServer(client) });
+					this.bufferStore.put({ ...stored, name: to, server: storeServer(client) });
 				}
 				const buf = S.getBuffer(this.state, { server: serverID, name: to });
 				if (buf && buf.id === this.state.activeBuffer) {

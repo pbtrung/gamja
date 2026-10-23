@@ -9,7 +9,7 @@ import { SERVER_BUFFER, BufferType, ReceiptType, Unread, type BufferID } from ".
 import * as webpush from "./webpush";
 import { splitHostPort } from "./config";
 import type AppController from "./controller";
-import { getReceipt } from "./history";
+import { getReceipt, storeServer } from "./history";
 
 /** Maximum length of the channel list of a JOIN, IRC lines are 512 bytes */
 const MAX_JOIN_LENGTH = 400;
@@ -141,7 +141,7 @@ export const networkMethods = {
 
 		// Restore opened channel and user buffers
 		let join: string[] = [];
-		for (const buf of this.bufferStore.list(client.params)) {
+		for (const buf of this.bufferStore.list(storeServer(client))) {
 			if (buf.name === SERVER_BUFFER || buf.closed) {
 				continue;
 			}
@@ -269,7 +269,7 @@ export const networkMethods = {
 			return;
 		}
 		const readReceipt = { time: bound.replace("timestamp=", "") };
-		const stored = this.bufferStore.get({ name: target, server: client.params });
+		const stored = this.bufferStore.get({ name: target, server: storeServer(client) });
 		if (S.isReceiptBefore(readReceipt, getReceipt(stored, ReceiptType.READ))) {
 			return;
 		}
@@ -295,7 +295,7 @@ export const networkMethods = {
 
 		this.bufferStore.put({
 			name: target,
-			server: client.params,
+			server: storeServer(client),
 			unread,
 			closed: !buf,
 			receipts: { [ReceiptType.READ]: readReceipt },

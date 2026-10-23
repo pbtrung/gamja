@@ -346,16 +346,24 @@ describe("AppController messaging", () => {
 		expect(app.state.activeBuffer).toBe(buf(app, SERVER_BUFFER)!.id);
 		app.close(buf(app, "bob")!.id);
 		expect(buf(app, "bob")).toBeUndefined();
-		expect(app.bufferStore.get({ name: "bob", server: {} })?.closed).toBe(true);
+		expect(app.bufferStore.get({ name: "bob", server: { url: "wss://irc.test/socket" } })?.closed).toBe(
+			true,
+		);
 	});
 
 	it("stores buffers marked as read without messages loaded", async () => {
 		const { app, recv } = await connectedApp();
 		recv(":me!u@h JOIN #c");
 		app.setBufferState({ name: "#c" }, { messages: [], unread: Unread.HIGHLIGHT });
-		app.bufferStore.put({ name: "#c", server: {}, unread: Unread.HIGHLIGHT });
+		app.bufferStore.put({
+			name: "#c",
+			server: { url: "wss://irc.test/socket" },
+			unread: Unread.HIGHLIGHT,
+		});
 		app.markBufferAsRead(buf(app, "#c")!.id);
-		expect(app.bufferStore.get({ name: "#c", server: {} })?.unread).toBe(Unread.NONE);
+		expect(app.bufferStore.get({ name: "#c", server: { url: "wss://irc.test/socket" } })?.unread).toBe(
+			Unread.NONE,
+		);
 	});
 
 	it("returns to the connect form when the server is closed", async () => {
@@ -517,8 +525,10 @@ describe("AppController messaging", () => {
 		expect(buf(app, "#old")).toBeUndefined();
 		expect(buf(app, "#new")!.messages.at(-1)!.command).toBe("RENAME");
 		expect(window.location.hash).toBe("#/#new");
-		expect(app.bufferStore.get({ name: "#new", server: {} })).toBeDefined();
-		expect(app.bufferStore.get({ name: "#old", server: {} })).toBeUndefined();
+		expect(app.bufferStore.get({ name: "#new", server: { url: "wss://irc.test/socket" } })).toBeDefined();
+		expect(
+			app.bufferStore.get({ name: "#old", server: { url: "wss://irc.test/socket" } }),
+		).toBeUndefined();
 	});
 
 	it("fetches NAMES lazily with no-implicit-names", async () => {
