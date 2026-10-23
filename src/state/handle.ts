@@ -109,6 +109,26 @@ function updateMembership(membership: string, letter: string, add: boolean, clie
 }
 
 /** Update the state according to an incoming IRC message. */
+/**
+ * Hide a message deleted by REDACT. Also used for those in chat history,
+ * whose other messages don't change the state.
+ */
+export function handleRedact(
+	state: State,
+	msg: Message,
+	serverID: number,
+	client: Client,
+): Partial<State> | undefined {
+	const [rawTarget, msgid] = msg.params;
+	const target = client.isMyNick(rawTarget) ? (msg.prefix?.name ?? "*") : rawTarget;
+	if (!target || !msgid) {
+		return;
+	}
+	return updateBuffer(state, { server: serverID, name: target }, (buf) => {
+		return { redacted: new Set(buf.redacted).add(msgid) };
+	});
+}
+
 export function handleMessage(
 	state: State,
 	msg: Message,
@@ -454,13 +474,7 @@ export function handleMessage(
 			return updateUser(prefix.name, update);
 		}
 		case "REDACT":
-			target = msg.params[0];
-			if (client.isMyNick(target)) {
-				target = prefix.name;
-			}
-			return updateBufferWith(target, (buf) => {
-				return { redacted: new Set(buf.redacted).add(msg.params[1]) };
-			});
+			return handleRedact(state, msg, serverID, client);
 		case irc.RPL_MONONLINE:
 		case irc.RPL_MONOFFLINE: {
 			const targets = (msg.params[1] ?? "").split(",").filter(Boolean);

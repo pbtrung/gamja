@@ -452,6 +452,25 @@ describe("AppController messaging", () => {
 		expect(sent()).toEqual([]);
 	});
 
+	it("applies redactions found in older messages", async () => {
+		const { app, recv, sent, sentRaw } = await connectedApp();
+		recv(":me!u@h JOIN #c", "@time=2030-01-02T00:00:00.000Z :bob!u@h PRIVMSG #c :new");
+		app.setBufferState({ name: "#c" }, { hasInitialWho: true });
+		app.switchBuffer(buf(app, "#c")!.id);
+		sent();
+		const p = app.fetchOlderMessages();
+		await flush();
+		const label = sentRaw()[0].match(/label=(\d+)/)![1];
+		recv(
+			`@label=${label} :srv BATCH +h chathistory #c`,
+			"@batch=h;time=2030-01-01T00:00:00.000Z;msgid=old :bob!u@h PRIVMSG #c :oops",
+			"@batch=h;time=2030-01-01T00:00:01.000Z;msgid=r :bob!u@h REDACT #c old",
+			":srv BATCH -h",
+		);
+		await p;
+		expect(buf(app, "#c")!.redacted.has("old")).toBe(true);
+	});
+
 	it("fetches older messages before a message ID when supported", async () => {
 		const { app, recv, sent, sentRaw } = await connectedApp({
 			isupport: "CASEMAPPING=rfc1459 CHANTYPES=# CHATHISTORY=100 MSGREFTYPES=timestamp,msgid",

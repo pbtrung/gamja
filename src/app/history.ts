@@ -106,6 +106,12 @@ export const historyMethods = {
 				this.handleTagMessage(serverID, msg);
 				continue;
 			}
+			if (msg.command === "REDACT") {
+				// Not displayed, but hides the message, even one loaded later.
+				// Other state, e.g. members, isn't replayed from history.
+				this.update((state) => S.handleRedact(state, msg, serverID, client));
+				continue;
+			}
 			const destBuffers = this.routeMessage(serverID, msg);
 			if (live) {
 				for (const bufName of destBuffers) {
