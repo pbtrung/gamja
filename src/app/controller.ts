@@ -1,6 +1,6 @@
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
-import Client, { ClientStatus, IRCError, type MessageEventDetail } from "../lib/client";
+import Client, { ClientStatus, IRCError, type MessageEventDetail, type Multiplexer } from "../lib/client";
 import * as S from "../state";
 import {
 	SERVER_BUFFER,
@@ -324,7 +324,12 @@ export default class AppController {
 	 * marks buffers unread and notifies.
 	 */
 
-	connect(params: Partial<ConnectParams>): number {
+	/**
+	 * Connect to a server, or to a bouncer network. A bouncer network is
+	 * attached to the bouncer connection of the multiplexer if given, rather
+	 * than getting its own connection (soju.im/multiplex).
+	 */
+	connect(params: Partial<ConnectParams>, multiplexer: Multiplexer | null = null): number {
 		// Merge our previous connection params so that config options such as
 		// the ping interval are applied
 		const merged: ConnectParams = {
@@ -354,6 +359,7 @@ export default class AppController {
 			saslExternal: merged.saslExternal,
 			saslOauthBearer: merged.saslOauthBearer,
 			bouncerNetwork: merged.bouncerNetwork,
+			multiplexer,
 			ping: merged.ping,
 			autojoin: [...merged.autojoin],
 			eventPlayback: this.state.settings.bufferEvents !== BufferEventsDisplayMode.HIDE,

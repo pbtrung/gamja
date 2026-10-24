@@ -1,6 +1,7 @@
 /** Types and constants shared by the client modules. */
 
 import type { Batch, Message } from "../irc";
+import type { Multiplexer } from "./multiplex";
 import type { SASLOAuthBearer, SASLPlain } from "./sasl";
 
 export const ClientStatus = {
@@ -22,6 +23,8 @@ export interface ClientParams {
 	saslExternal?: boolean;
 	saslOauthBearer?: SASLOAuthBearer | null;
 	bouncerNetwork?: string | null;
+	/** For a bouncer network: attach it to the bouncer connection of this multiplexer */
+	multiplexer?: Multiplexer | null;
 	ping?: number;
 	eventPlayback?: boolean;
 	autojoin?: string[];

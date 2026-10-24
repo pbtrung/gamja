@@ -4,6 +4,7 @@ import * as irc from "../irc";
 import type { Message } from "../irc";
 import { ClientConnection } from "./connection";
 import { IRCError, TimeoutError, WEBSOCKET_CLOSE_CODES } from "./errors";
+import { MULTIPLEX_CAP } from "./multiplex";
 import { initialResponse, parseOAuthBearerError, type SASLOAuthBearer, type SASLPlain } from "./sasl";
 import { ClientStatus } from "./types";
 
@@ -138,7 +139,7 @@ export abstract class RegistrationClient extends ClientConnection {
 	requestCaps(only?: string[]): void {
 		let wantCaps = [...permanentCaps];
 		if (!this.params.bouncerNetwork) {
-			wantCaps.push("soju.im/bouncer-networks-notify");
+			wantCaps.push("soju.im/bouncer-networks-notify", MULTIPLEX_CAP);
 		}
 		if (this.params.eventPlayback) {
 			wantCaps.push("draft/event-playback");

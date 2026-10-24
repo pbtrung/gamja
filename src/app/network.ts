@@ -3,7 +3,7 @@
 import * as irc from "../lib/irc";
 import type { Message } from "../lib/irc";
 import type Client from "../lib/client";
-import { ClientStatus } from "../lib/client";
+import { ClientStatus, MULTIPLEX_CAP } from "../lib/client";
 import * as S from "../state";
 import { SERVER_BUFFER, BufferType, ReceiptType, Unread, type BufferID } from "../state";
 import * as webpush from "./webpush";
@@ -232,19 +232,24 @@ export const networkMethods = {
 				this.close({ server: netServerID, name: SERVER_BUFFER });
 			}
 		} else if (isNew) {
-			this.connect({
-				...this.state.connectParams,
-				nick: client.params.nick,
-				username: client.params.username,
-				realname: client.params.realname,
-				pass: client.params.pass,
-				saslPlain: client.params.saslPlain,
-				saslExternal: client.params.saslExternal,
-				saslOauthBearer: client.params.saslOauthBearer,
-				url: client.params.url,
-				autojoin: [],
-				bouncerNetwork: id,
-			});
+			// soju.im/multiplex: the network shares this client's connection
+			const multiplexer = client.caps.enabled.has(MULTIPLEX_CAP) ? client.getMultiplexer() : null;
+			this.connect(
+				{
+					...this.state.connectParams,
+					nick: client.params.nick,
+					username: client.params.username,
+					realname: client.params.realname,
+					pass: client.params.pass,
+					saslPlain: client.params.saslPlain,
+					saslExternal: client.params.saslExternal,
+					saslOauthBearer: client.params.saslOauthBearer,
+					url: client.params.url,
+					autojoin: [],
+					bouncerNetwork: id,
+				},
+				multiplexer,
+			);
 		}
 
 		if (attrs && attrs.state === "connected") {

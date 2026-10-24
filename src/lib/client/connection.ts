@@ -5,6 +5,7 @@ import type { Message, OutgoingMessage, Prefix, Batch } from "../irc";
 import { Backoff } from "./backoff";
 import { WEBSOCKET_CLOSE_CODES, WebSocketError, IRCError } from "./errors";
 import { assembleMultiline, expandMultiline, type MultilineBatches } from "./multiline";
+import { Multiplexer } from "./multiplex";
 import { roundtrip } from "./roundtrip";
 import { ClientStatus, type ClientParams, type MessageEventDetail } from "./types";
 
@@ -41,6 +42,13 @@ function redactForLog(msg: OutgoingMessage): OutgoingMessage {
 	return msg;
 }
 
+/** The parts of a WebSocket a connection uses, which a VirtualSocket has too. */
+export interface Socket {
+	send(data: string): void;
+	close(code?: number): void;
+	addEventListener(type: "open" | "message" | "close", listener: (event: Event) => void): void;
+}
+
 /**
  * The connection part of Client. State lives here: subclasses don't declare
  * fields, which would be reset after this constructor starts connecting.
@@ -52,7 +60,9 @@ export abstract class ClientConnection extends EventTarget {
 	supportsCap = false;
 	caps = new irc.CapRegistry();
 	isupport = new irc.Isupport();
-	ws: WebSocket | null = null;
+	ws: Socket | null = null;
+	/** The networks attached to this bouncer connection, see multiplex.ts */
+	multiplexer: Multiplexer | null = null;
 	params: ClientParams = {
 		url: "",
 		username: "",
@@ -63,6 +73,7 @@ export abstract class ClientConnection extends EventTarget {
 		saslExternal: false,
 		saslOauthBearer: null,
 		bouncerNetwork: null,
+		multiplexer: null,
 		ping: 0,
 		eventPlayback: true,
 	};
@@ -117,13 +128,18 @@ export abstract class ClientConnection extends EventTarget {
 		this.autoReconnect = autoReconnect;
 
 		this.setReconnectAt(null);
-		console.log("Connecting to " + this.params.url);
+		const mux = this.params.multiplexer;
+		if (mux) {
+			console.log("Attaching bouncer network " + this.params.bouncerNetwork);
+		} else {
+			console.log("Connecting to " + this.params.url);
+		}
 		this.setStatus(ClientStatus.CONNECTING);
 		this.lastReconnectDate = new Date();
 
-		let ws: WebSocket;
+		let ws: Socket;
 		try {
-			ws = new WebSocket(this.params.url);
+			ws = mux ? mux.open(this.params.bouncerNetwork!, this) : new WebSocket(this.params.url);
 		} catch (err) {
 			console.error("Failed to create connection:", err);
 			setTimeout(() => {
@@ -141,10 +157,11 @@ export abstract class ClientConnection extends EventTarget {
 			}
 		});
 
-		ws.addEventListener("message", (event) => {
+		ws.addEventListener("message", (e) => {
 			if (this.ws !== ws) {
 				return;
 			}
+			const event = e as MessageEvent;
 			try {
 				this.handleMessage(event);
 			} catch (err) {
@@ -155,7 +172,7 @@ export abstract class ClientConnection extends EventTarget {
 		});
 
 		ws.addEventListener("close", (event) => {
-			this.handleClose(ws, event.code);
+			this.handleClose(ws, (event as CloseEvent).code);
 		});
 	}
 
@@ -164,7 +181,7 @@ export abstract class ClientConnection extends EventTarget {
 	 * when the socket is deemed dead: the close event may then come much
 	 * later, if ever.
 	 */
-	handleClose(ws: WebSocket, code: number): void {
+	handleClose(ws: Socket, code: number): void {
 		if (this.ws !== ws) {
 			return;
 		}
@@ -256,7 +273,7 @@ export abstract class ClientConnection extends EventTarget {
 		}, delay);
 	}
 
-	handlePongTimeout(ws: WebSocket): void {
+	handlePongTimeout(ws: Socket): void {
 		if (this.ws !== ws) {
 			return;
 		}
@@ -268,7 +285,7 @@ export abstract class ClientConnection extends EventTarget {
 	 * Close the socket and reconnect, unlike disconnect(). The close event may
 	 * never come on a dead connection: handle it now, with the code to report.
 	 */
-	dropConnection(ws: WebSocket, code: number): void {
+	dropConnection(ws: Socket, code: number): void {
 		ws.close();
 		this.handleClose(ws, code);
 	}
@@ -318,7 +335,10 @@ export abstract class ClientConnection extends EventTarget {
 		console.log("Connection opened");
 		this.setStatus(ClientStatus.REGISTERING);
 
-		this.setPingInterval(this.params.ping || 0);
+		const mux = this.params.multiplexer;
+		// An attached network shares the bouncer connection's socket, which
+		// is kept alive by the bouncer connection
+		this.setPingInterval(mux ? 0 : this.params.ping || 0);
 		// The PONG checks only start once registered: a server or proxy which
 		// never replies would leave us registering forever. Cleared on
 		// RPL_WELCOME by scheduleLagCheck().
@@ -334,6 +354,14 @@ export abstract class ClientConnection extends EventTarget {
 		}, REGISTRATION_TIMEOUT_MSEC);
 
 		this.nick = this.params.nick;
+
+		if (mux) {
+			// Registered by the bouncer once attached, with the caps of the
+			// bouncer connection
+			this.supportsCap = true;
+			this.caps = mux.inheritedCaps();
+			return;
+		}
 
 		this.send({ command: "CAP", params: ["LS", "302"] });
 		if (this.params.pass) {
@@ -371,6 +399,11 @@ export abstract class ClientConnection extends EventTarget {
 		const raw = event.data;
 		if (this.debug) {
 			console.debug("Received:", raw);
+		}
+
+		// A line of a network attached to this bouncer connection
+		if (this.multiplexer?.route(raw)) {
+			return;
 		}
 
 		const msg = this.assembleMultiline(irc.parseMessage(raw));
@@ -660,6 +693,12 @@ export abstract class ClientConnection extends EventTarget {
 				this.send({ command: "PING", params: ["gamja"] });
 			}
 		}, sec * 1000);
+	}
+
+	/** The multiplexer of this bouncer connection, created on first use. */
+	getMultiplexer(): Multiplexer {
+		this.multiplexer ??= new Multiplexer(this);
+		return this.multiplexer;
 	}
 
 	/** Execute a command that expects a response, see roundtrip(). */

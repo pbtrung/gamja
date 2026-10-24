@@ -15,6 +15,7 @@ import { parseWhoReply, WHOX_FIELDS, type WhoReply, type WhoxField } from "./cli
 export { Backoff } from "./client/backoff";
 export { IRCError } from "./client/errors";
 export type { SASLOAuthBearer, SASLPlain } from "./client/sasl";
+export { MULTIPLEX_CAP, type Multiplexer } from "./client/multiplex";
 export { ClientStatus, type MessageEventDetail } from "./client/types";
 export type { WhoxField } from "./client/whox";
 
