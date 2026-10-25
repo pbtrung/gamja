@@ -17,6 +17,7 @@ import IconButton from "./IconButton";
 import MemberList from "./MemberList";
 import SelfStatus from "./SelfStatus";
 import TypingIndicator from "./TypingIndicator";
+import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import ConnectForm from "./forms/ConnectForm";
 
 function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void }) {
@@ -30,6 +31,7 @@ function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void
 function Chat({ state }: { state: AppState }) {
 	const app = useController();
 	const composer = useRef<ComposerHandle>(null);
+	const smallScreen = useMediaQuery(SMALL_SCREEN);
 
 	useEffect(() => app.registerComposer(() => composer.current?.focus()), [app]);
 
@@ -112,7 +114,7 @@ function Chat({ state }: { state: AppState }) {
 		<>
 			<nav
 				id="buffer-list"
-				className={state.openPanels.bufferList ? "expand" : ""}
+				className={state.openPanels.bufferList ? "expand" : state.bufferListHidden ? "hidden" : ""}
 				aria-label="Buffers"
 			>
 				<div className="buffer-list-panel">
@@ -128,7 +130,11 @@ function Chat({ state }: { state: AppState }) {
 							icon={X}
 							label="Close buffer list"
 							className="panel-close"
-							onClick={() => app.setOpenPanel("bufferList", false)}
+							onClick={() =>
+								smallScreen
+									? app.setOpenPanel("bufferList", false)
+									: app.setBufferListHidden(true)
+							}
 						/>
 					</header>
 					<BufferList
@@ -165,6 +171,7 @@ function Chat({ state }: { state: AppState }) {
 						bouncerNetwork={activeBouncerNetwork}
 						memberListHidden={!state.settings.showMemberList}
 						bufferListOpen={state.openPanels.bufferList}
+						bufferListHidden={state.bufferListHidden}
 						memberListOpen={state.openPanels.memberList}
 						unreadElsewhere={unreadElsewhere}
 						onChannelClick={handleChannelClick}
@@ -191,7 +198,11 @@ function Chat({ state }: { state: AppState }) {
 						onManageNetwork={() => app.handleManageNetworkClick(activeBuffer.server)}
 						onOpenSettings={() => app.handleOpenSettingsClick()}
 						onSearch={activeServer.features.search ? () => app.openSearch("buffer") : undefined}
-						onOpenBufferList={() => app.setOpenPanel("bufferList", "toggle")}
+						onOpenBufferList={() =>
+							smallScreen
+								? app.setOpenPanel("bufferList", "toggle")
+								: app.setBufferListHidden(false)
+						}
 						onOpenMemberList={() => app.setOpenPanel("memberList", "toggle")}
 					/>
 				</header>

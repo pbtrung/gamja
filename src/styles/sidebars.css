@@ -81,6 +81,18 @@
 	margin-left: 0.25rem;
 }
 
+/* Large screens: the buffer list can be hidden, and shown again from the
+ * buffer header */
+@media (width > 640px) {
+	#buffer-list.hidden {
+		display: none;
+	}
+
+	.sidebar-brand .panel-close {
+		display: inline-flex;
+	}
+}
+
 .buffer-items,
 .member-items {
 	flex: 1 1 auto;

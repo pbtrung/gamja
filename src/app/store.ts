@@ -80,6 +80,8 @@ export interface AppState extends State {
 	awayMessage: string | null;
 	/** Networks collapsed in the buffer list, see getServerKey() */
 	collapsedNetworks: ReadonlySet<string>;
+	/** Buffer list hidden on large screens, small screens use openPanels */
+	bufferListHidden: boolean;
 	openPanels: {
 		bufferList: boolean;
 		memberList: boolean;
@@ -100,6 +102,7 @@ export function createAppStore(): AppStore {
 		error: null,
 		awayMessage: null,
 		collapsedNetworks: new Set(),
+		bufferListHidden: false,
 		openPanels: {
 			bufferList: false,
 			memberList: false,

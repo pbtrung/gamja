@@ -439,6 +439,12 @@ export const buffersMethods = {
 		}));
 	},
 
+	/** Hide or show the buffer list on large screens. */
+	setBufferListHidden(this: AppController, hidden: boolean): void {
+		store.bufferListHidden.put(hidden);
+		this.update({ bufferListHidden: hidden });
+	},
+
 	handleJoinClick(this: AppController, buf: Buffer): void {
 		switch (buf.type) {
 			case BufferType.SERVER:

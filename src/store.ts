@@ -71,6 +71,8 @@ class SettingsItem extends Item<Record<string, unknown>> {
 export const settings = new SettingsItem("settings");
 /** Keys of the networks collapsed in the buffer list, see getServerKey() */
 export const collapsedNetworks = new Item<string[]>("collapsedNetworks");
+/** Whether the buffer list is hidden on large screens */
+export const bufferListHidden = new Item<boolean>("bufferListHidden");
 /** Reactions picked last, most recent first */
 export const recentReactions = new Item<string[]>("recentReactions");
 

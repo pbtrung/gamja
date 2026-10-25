@@ -185,3 +185,25 @@ test("hides a member's actions button once its menu is closed", async ({ page, c
 		await expect(toggle).toHaveCSS("opacity", "0");
 	}
 });
+
+test("hides and shows the buffer list on large screens", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#m");
+	await connect(page, "tester", { channels: ["#m"] });
+	await expect(page.locator("#buffer-header h1")).toHaveText("#m");
+
+	// Switching buffers leaves the focus where it was
+	await page.getByRole("tab", { name: "FakeNet" }).click();
+	await expect(page.locator("#composer textarea")).not.toBeFocused();
+
+	await page.getByRole("button", { name: "Close buffer list" }).click();
+	await expect(page.locator("#buffer-list")).toBeHidden();
+	const toggle = page.locator("#buffer-header .leading").getByRole("button", { name: "Open buffer list" });
+	await toggle.click();
+	await expect(page.locator("#buffer-list")).toBeVisible();
+	await expect(toggle).toBeHidden();
+
+	// Kept across reloads
+	await page.getByRole("button", { name: "Close buffer list" }).click();
+	expect(await page.evaluate(() => localStorage.getItem("gamja_bufferListHidden"))).toBe("true");
+});

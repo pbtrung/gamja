@@ -35,6 +35,7 @@ function setup(
 		bouncerNetwork: null,
 		memberListHidden: false,
 		bufferListOpen: false,
+		bufferListHidden: false,
 		memberListOpen: false,
 		unreadElsewhere: Unread.NONE,
 		onChannelClick: vi.fn(),
@@ -55,6 +56,14 @@ function setup(
 const buttons = () => screen.getAllByRole("button").map((b) => b.getAttribute("title"));
 
 describe("BufferHeader", () => {
+	it("shows a drawer toggle when the buffer list is hidden on large screens", async () => {
+		const props = setup({ bufferListHidden: true });
+		expect(document.querySelector(".leading .buffer-list-toggle svg.lucide-menu")).toBeInTheDocument();
+		expect(document.querySelector(".actions .buffer-list-toggle")).toBeNull();
+		await userEvent.click(screen.getByRole("button", { name: "Open buffer list" }));
+		expect(props.onOpenBufferList).toHaveBeenCalled();
+	});
+
 	it("describes server connection states", () => {
 		setup({ server: { status: ServerStatus.CONNECTING } });
 		expect(screen.getByText("Connecting…")).toBeInTheDocument();

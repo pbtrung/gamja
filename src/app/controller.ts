@@ -74,7 +74,10 @@ export default class AppController {
 		}
 		applyTheme(this.state.settings.theme);
 		applyTextSize(S.textSize(this.state.settings));
-		this.update({ collapsedNetworks: new Set(store.collapsedNetworks.load() ?? []) });
+		this.update({
+			collapsedNetworks: new Set(store.collapsedNetworks.load() ?? []),
+			bufferListHidden: store.bufferListHidden.load() ?? false,
+		});
 		if (this.state.settings.autoAwayMinutes <= 0) {
 			this.present = true;
 		}

@@ -53,6 +53,8 @@ export interface BufferHeaderProps {
 	memberListHidden: boolean;
 	/** Whether the side panels are open, on small screens */
 	bufferListOpen: boolean;
+	/** Buffer list hidden on large screens */
+	bufferListHidden: boolean;
 	memberListOpen: boolean;
 	unreadElsewhere: Unread;
 	onChannelClick: LinkClickHandler;
@@ -289,7 +291,7 @@ export default function BufferHeader(props: BufferHeaderProps) {
 		<ActionButton
 			key="buffer-list"
 			// A drawer toggle on small screens, where the buffer list slides in
-			icon={smallScreen ? MenuIcon : PanelLeft}
+			icon={smallScreen || props.bufferListHidden ? MenuIcon : PanelLeft}
 			label="Open buffer list"
 			iconOnly
 			className="buffer-list-toggle"
@@ -320,7 +322,7 @@ export default function BufferHeader(props: BufferHeaderProps) {
 	// Small screens: [buffer list] [title and description] [menu] [member list]
 	return (
 		<>
-			{smallScreen ? <div className="leading">{bufferListToggle}</div> : null}
+			{smallScreen || props.bufferListHidden ? <div className="leading">{bufferListToggle}</div> : null}
 			<div className="title">
 				<BufferTypeIcon type={buffer.type} className="title-icon" aria-hidden="true" />
 				<h1 className="title-text" title={name}>
@@ -348,7 +350,7 @@ export default function BufferHeader(props: BufferHeaderProps) {
 						</>
 					) : (
 						<>
-							{bufferListToggle}
+							{props.bufferListHidden ? null : bufferListToggle}
 							{memberListToggle}
 							{actions.map(({ key, ...action }) => (
 								<ActionButton key={key} {...action} />
