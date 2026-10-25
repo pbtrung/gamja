@@ -162,48 +162,75 @@
 	box-shadow: 0 0 0 2px var(--bg);
 }
 
-/* Round the first visible button when the leading toggles are hidden */
+/* Leading drawer toggle, on small screens and on large ones while the
+ * buffer list is hidden: [buffer list] [title and description] [actions] */
+#buffer-header:has(> .leading) {
+	grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+#buffer-header .leading {
+	grid-row: 1 / 3;
+	grid-column: 1;
+}
+
+#buffer-header:has(> .leading) .title,
+#buffer-header:has(> .leading) .description {
+	grid-column: 2;
+}
+
+#buffer-header:has(> .leading) .actions {
+	grid-column: 3;
+}
+
+/* A plain icon: no border or background at rest. It spans both header
+ * lines, so it can be big enough to tap, while leaving most of the row to
+ * the title. */
+#buffer-header .leading > .btn {
+	display: inline-flex;
+	min-width: 2.5rem;
+	min-height: 2.5rem;
+	margin: 0;
+	padding: 0;
+	border-color: transparent;
+	border-radius: var(--radius);
+	background-color: transparent;
+	color: var(--fg-muted);
+	font-size: 1.25rem;
+}
+
+/* The unread dot sits on the corner of the icon, not of the larger button
+ * around it */
+#buffer-header .leading .unread-indicator {
+	top: calc(50% - 0.875rem);
+	right: calc(50% - 0.875rem);
+}
+
+/* Touch screens keep :hover after a tap: only highlight with a pointer that
+ * can hover, so tapping doesn't flash a background */
+@media (hover: hover) {
+	#buffer-header .leading > .btn:hover {
+		background-color: var(--bg-hover);
+		color: var(--fg-emphasis);
+	}
+}
+
+#buffer-header .leading > .btn[aria-expanded="true"] {
+	background-color: var(--bg-hover);
+	color: var(--fg-emphasis);
+}
+
 @media (width > 640px) {
-	/* The buffer list is hidden: [buffer list] [title and description] [actions] */
 	#buffer-header:has(> .leading) {
-		grid-template-columns: auto minmax(0, 1fr) auto;
-		padding-left: 0.5rem;
+		column-gap: 0.25rem;
+		padding-left: 0.25rem;
 	}
 
-	#buffer-header .leading {
-		grid-row: 1 / 3;
-		grid-column: 1;
-	}
-
-	#buffer-header:has(> .leading) .title,
-	#buffer-header:has(> .leading) .description {
-		grid-column: 2;
-	}
-
-	#buffer-header:has(> .leading) .actions {
-		grid-column: 3;
-	}
-
-	/* Centered next to the toggle, which spans both lines */
+	/* Centered next to the toggle */
 	#buffer-header:has(> .leading) .title:not(:has(+ .description)) {
 		grid-row: 1 / 3;
 	}
 
-	#buffer-header .leading > .buffer-list-toggle {
-		display: inline-flex;
-		min-width: 2.25rem;
-		min-height: 2.25rem;
-		border-color: transparent;
-		background-color: transparent;
-		color: var(--fg-muted);
-		font-size: 1.25rem;
-	}
-
-	#buffer-header .leading > .buffer-list-toggle:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-emphasis);
-	}
-
+	/* Round the first visible button when the panel toggles are hidden */
 	#buffer-header .btn-group > .buffer-list-toggle + .btn,
 	#buffer-header .btn-group > .member-list-toggle:not(.always) + .btn {
 		margin-left: 0;
