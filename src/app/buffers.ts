@@ -13,11 +13,6 @@ import { getReceipt, storeServer, type HistoryBatch } from "./history";
 /** User details requested with WHO, see User in state.ts */
 const WHO_FIELDS: WhoxField[] = ["flags", "hostname", "nick", "realname", "username", "account"];
 
-/** Whether the side panes cover the whole screen, see styles/index.css */
-function isSmallScreen(): boolean {
-	return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches;
-}
-
 export const buffersMethods = {
 	syncBufferUnread(this: AppController, serverID: number, name: string): void {
 		const client = this.clients.get(serverID)!;
@@ -101,12 +96,6 @@ export const buffersMethods = {
 		if (prevActive !== null && prevActive !== buf.id) {
 			// It may have been left scrolled up with older messages loaded
 			this.trimBuffer(prevActive);
-		}
-
-		// On small screens, focusing would pop up the on-screen keyboard over
-		// the messages the user just switched to read
-		if (!isSmallScreen()) {
-			this.ui.focusComposer?.();
 		}
 
 		const server = this.state.servers.get(buf.server);
