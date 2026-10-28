@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, type MouseEvent } from "react";
-import { MessageSquareText, Users, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { X } from "lucide-react";
 import * as irc from "../lib/irc";
 import { BufferType, ServerStatus, Unread, unionUnread, type Buffer, type MemberAction } from "../state";
 import { setup as setupKeybindings } from "../keybindings";
@@ -14,6 +14,7 @@ import Composer, { type ComposerHandle } from "./Composer";
 import Dialogs from "./Dialogs";
 import ErrorBoundary from "./ErrorBoundary";
 import IconButton from "./IconButton";
+import FilterInput from "./FilterInput";
 import MemberList from "./MemberList";
 import SelfStatus from "./SelfStatus";
 import TypingIndicator from "./TypingIndicator";
@@ -32,6 +33,25 @@ function Chat({ state }: { state: AppState }) {
 	const app = useController();
 	const composer = useRef<ComposerHandle>(null);
 	const smallScreen = useMediaQuery(SMALL_SCREEN);
+	const [bufferFilter, setBufferFilter] = useState("");
+	const closePanels = useCallback(() => {
+		const toggle = app.state.openPanels.memberList ? ".member-list-toggle" : ".buffer-list-toggle";
+		app.setOpenPanel("bufferList", false);
+		app.setOpenPanel("memberList", false);
+		document.querySelector<HTMLButtonElement>(toggle)?.focus();
+	}, [app]);
+	useEffect(() => {
+		if (!smallScreen || (!state.openPanels.bufferList && !state.openPanels.memberList)) {
+			return;
+		}
+		const onEscape = (event: globalThis.KeyboardEvent) => {
+			if (event.key === "Escape" && !document.querySelector('[role="menu"], [aria-modal="true"]')) {
+				closePanels();
+			}
+		};
+		window.addEventListener("keydown", onEscape);
+		return () => window.removeEventListener("keydown", onEscape);
+	}, [smallScreen, state.openPanels.bufferList, state.openPanels.memberList, closePanels]);
 
 	useEffect(() => app.registerComposer(() => composer.current?.focus()), [app]);
 
@@ -118,26 +138,22 @@ function Chat({ state }: { state: AppState }) {
 				aria-label="Buffers"
 			>
 				<div className="buffer-list-panel">
-					<header className="sidebar-brand">
-						<MessageSquareText aria-hidden="true" />
-						<span>gamja</span>
-						{import.meta.env.GAMJA_VERSION && (
-							<span className="sidebar-version" title="gamja version">
-								{import.meta.env.GAMJA_VERSION}
-							</span>
-						)}
+					<header className="sidebar-filter">
+						<FilterInput
+							value={bufferFilter}
+							onChange={setBufferFilter}
+							label="Filter buffers"
+							placeholder="Filter buffers"
+						/>
 						<IconButton
 							icon={X}
 							label="Close buffer list"
 							className="panel-close"
-							onClick={() =>
-								smallScreen
-									? app.setOpenPanel("bufferList", false)
-									: app.setBufferListHidden(true)
-							}
+							onClick={() => (smallScreen ? closePanels() : app.setBufferListHidden(true))}
 						/>
 					</header>
 					<BufferList
+						filter={bufferFilter}
 						buffers={state.buffers}
 						servers={state.servers}
 						bouncerNetworks={state.bouncerNetworks}
@@ -147,14 +163,21 @@ function Chat({ state }: { state: AppState }) {
 						onBufferClose={handleBufferClose}
 						onToggleCollapse={handleToggleCollapse}
 					/>
-					{selfNick && (
-						<SelfStatus
-							nick={selfNick}
-							awayMessage={state.awayMessage}
-							onSetAway={() => app.openDialog({ kind: "away" })}
-							onBack={() => app.setAway(null)}
-						/>
-					)}
+					<div className="sidebar-footer">
+						{selfNick && (
+							<SelfStatus
+								nick={selfNick}
+								awayMessage={state.awayMessage}
+								onSetAway={() => app.openDialog({ kind: "away" })}
+								onBack={() => app.setAway(null)}
+							/>
+						)}
+						{import.meta.env.GAMJA_VERSION && (
+							<span className="sidebar-version" title="gamja version">
+								{import.meta.env.GAMJA_VERSION}
+							</span>
+						)}
+					</div>
 				</div>
 			</nav>
 
@@ -170,9 +193,13 @@ function Chat({ state }: { state: AppState }) {
 						}
 						bouncerNetwork={activeBouncerNetwork}
 						memberListHidden={!state.settings.showMemberList}
-						bufferListOpen={state.openPanels.bufferList}
+						bufferListOpen={smallScreen ? state.openPanels.bufferList : !state.bufferListHidden}
 						bufferListHidden={state.bufferListHidden}
-						memberListOpen={state.openPanels.memberList}
+						memberListOpen={
+							smallScreen
+								? state.openPanels.memberList
+								: state.settings.showMemberList || state.openPanels.memberList
+						}
 						unreadElsewhere={unreadElsewhere}
 						onChannelClick={handleChannelClick}
 						onClose={() => app.close(activeBuffer.id)}
@@ -198,12 +225,27 @@ function Chat({ state }: { state: AppState }) {
 						onManageNetwork={() => app.handleManageNetworkClick(activeBuffer.server)}
 						onOpenSettings={() => app.handleOpenSettingsClick()}
 						onSearch={activeServer.features.search ? () => app.openSearch("buffer") : undefined}
-						onOpenBufferList={() =>
-							smallScreen
-								? app.setOpenPanel("bufferList", "toggle")
-								: app.setBufferListHidden(false)
-						}
-						onOpenMemberList={() => app.setOpenPanel("memberList", "toggle")}
+						onOpenBufferList={() => {
+							if (smallScreen) {
+								app.setOpenPanel("memberList", false);
+								app.setOpenPanel("bufferList", "toggle");
+							} else {
+								app.setBufferListHidden(!state.bufferListHidden);
+							}
+						}}
+						onOpenMemberList={() => {
+							if (smallScreen) {
+								app.setOpenPanel("bufferList", false);
+								app.setOpenPanel("memberList", "toggle");
+							} else {
+								app.setOpenPanel("memberList", false);
+								app.handleSettingsChange({
+									showMemberList: !(
+										state.settings.showMemberList || state.openPanels.memberList
+									),
+								});
+							}
+						}}
 					/>
 				</header>
 			)}
@@ -213,20 +255,8 @@ function Chat({ state }: { state: AppState }) {
 			{activeBuffer?.type === BufferType.CHANNEL && activeServer && (
 				<aside id="member-list" className={memberListClass} aria-label="Members list">
 					<div className="member-list-panel">
-						<header id="member-list-header">
-							<Users aria-hidden="true" />
-							<span>Members</span>
-							<span className="badge" aria-label={`${activeBuffer.members.size} members`}>
-								{activeBuffer.members.size}
-							</span>
-							<IconButton
-								icon={X}
-								label="Close member list"
-								className="panel-close"
-								onClick={() => app.setOpenPanel("memberList", false)}
-							/>
-						</header>
 						<MemberList
+							onClose={closePanels}
 							members={activeBuffer.members}
 							users={activeServer.users}
 							prefixes={activeServer.membershipModes?.map((m) => m.prefix).join("")}
@@ -237,6 +267,15 @@ function Chat({ state }: { state: AppState }) {
 						/>
 					</div>
 				</aside>
+			)}
+
+			{smallScreen && (state.openPanels.bufferList || state.openPanels.memberList) && (
+				<button
+					type="button"
+					className="panel-backdrop"
+					aria-label="Close side panels"
+					onClick={closePanels}
+				/>
 			)}
 
 			<Composer

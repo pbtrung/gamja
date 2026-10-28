@@ -219,6 +219,7 @@ const BufferItem = memo(function BufferItem({
 });
 
 interface BufferListProps {
+	filter?: string;
 	buffers: Map<number, Buffer>;
 	servers: Map<number, Server>;
 	bouncerNetworks: Map<string, BouncerNetwork>;
@@ -255,7 +256,31 @@ function handleListKeyDown(event: KeyboardEvent<HTMLUListElement>) {
 
 function BufferList(props: BufferListProps) {
 	const collapsed = props.collapsed ?? noneCollapsed;
-	const groups = displayGroups(props.buffers, props.servers, collapsed, props.activeBuffer);
+	const query = props.filter?.trim().toLowerCase() ?? "";
+	// Searching includes collapsed networks, without changing their saved state.
+	const groups = displayGroups(
+		props.buffers,
+		props.servers,
+		query ? noneCollapsed : collapsed,
+		props.activeBuffer,
+	)
+		.map((group) => {
+			const server = props.servers.get(group.server[0]?.server ?? group.shown[0]?.server);
+			const network = server?.bouncerNetID ? props.bouncerNetworks.get(server.bouncerNetID) : null;
+			const serverMatches =
+				server &&
+				getServerName(server, network ?? null)
+					.toLowerCase()
+					.includes(query);
+			return {
+				...group,
+				shown: serverMatches
+					? group.shown
+					: group.shown.filter((buf) => buf.name.toLowerCase().includes(query)),
+				serverMatches,
+			};
+		})
+		.filter((group) => !query || group.serverMatches || group.shown.length > 0);
 	const shown = groups.flatMap((group) => [...group.server, ...group.shown]);
 	// The active buffer is the one Tab reaches, or the first one if none
 	const tabStop = shown.some((buf) => buf.id === props.activeBuffer) ? props.activeBuffer : shown[0]?.id;
@@ -271,7 +296,7 @@ function BufferList(props: BufferListProps) {
 				: null;
 
 			const isServer = buf.type === BufferType.SERVER;
-			const isCollapsed = isServer && collapsed.has(getServerKey(server));
+			const isCollapsed = !query && isServer && collapsed.has(getServerKey(server));
 
 			return (
 				<BufferItem
@@ -300,6 +325,11 @@ function BufferList(props: BufferListProps) {
 			onKeyDown={handleListKeyDown}
 		>
 			{items}
+			{shown.length === 0 && (
+				<li className="filter-empty" role="presentation">
+					No buffer matches the filter.
+				</li>
+			)}
 		</ul>
 	);
 }

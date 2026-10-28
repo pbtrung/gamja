@@ -7,16 +7,16 @@
 :root {
 	--font-sans:
 		"Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-	--font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
 	--radius-sm: 0.25rem;
 	--radius: 0.5rem;
 	--radius-lg: 0.75rem;
 
 	--sidebar-width: 15rem;
-	--member-list-width: 13.5rem;
-	--header-height: 3.75rem;
-	--chat-font-size: 0.9375rem;
+	--member-list-width: 12.5rem;
+	--header-height: 3rem;
+	--chat-font-size: 1rem;
 
 	--transition: 0.12s ease-in-out;
 }

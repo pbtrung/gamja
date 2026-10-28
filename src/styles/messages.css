@@ -1,6 +1,6 @@
 /* Chat log */
 
-/* A column keeps messages anchored to the bottom when the log is short */
+/* The log starts at the top, with the same compact rhythm as Glowing Bear. */
 #buffer {
 	display: flex;
 	flex-direction: column;
@@ -11,7 +11,7 @@
 	overflow-x: hidden;
 	overflow-y: auto;
 	background-color: var(--bg);
-	color: var(--fg-muted);
+	color: var(--fg);
 	font-size: var(--chat-font-size);
 	overflow-wrap: break-word;
 }
@@ -21,23 +21,23 @@
 }
 
 #buffer .logline-list {
-	margin-top: auto;
+	margin-top: 0;
 	/* No bottom padding: the composer's own padding spaces it from the input */
-	padding: 0.75rem 0 0;
+	padding: 0.5rem 0 0.25rem;
 }
 
 #buffer .logline {
-	--logline-line-height: 1.55;
+	--logline-line-height: 1.4;
 	position: relative;
-	padding: 0.125rem 1rem;
-	border-left: 3px solid transparent;
+	padding: 0.1rem 1rem;
+	border-left: 0 solid transparent;
 	line-height: var(--logline-line-height);
 	white-space: pre-wrap;
 }
 
 #buffer .logline:hover,
 #buffer .logline:focus-within {
-	background-color: var(--bg-hover);
+	background-color: var(--line-hover);
 }
 
 #buffer .logline.flash {
@@ -163,7 +163,7 @@
 #buffer .logline.columns {
 	/* Rows pad their cells so that the rule runs unbroken between rows.
 	   Spaced like the compact layout: evenly, without gaps between groups. */
-	--row-pad: 0.125rem;
+	--row-pad: 0.1rem;
 	display: grid;
 	/* The sender column fits --nick-column-width characters, plus its
 	   padding before the rule */
@@ -181,9 +181,9 @@
 
 #buffer .logline.columns .timestamp {
 	min-width: 0;
-	margin-right: 0.75rem;
+	margin-right: 0.625rem;
 	color: var(--fg-subtle);
-	font-size: 0.75rem;
+	font-size: 0.85em;
 	font-style: normal;
 }
 
@@ -198,7 +198,7 @@
 	padding-right: 0.625rem;
 	border-right: 1px solid var(--border);
 	font-style: normal;
-	font-weight: 600;
+	font-weight: 400;
 	text-align: right;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -224,7 +224,7 @@
 
 #buffer .logline.columns .logline-main {
 	min-width: 0;
-	padding-left: 0.75rem;
+	padding-left: 0.625rem;
 }
 
 #buffer .logline.columns .logline-content {

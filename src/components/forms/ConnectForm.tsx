@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ChevronRight, Eye, EyeOff, KeyRound, LogIn, Server, User } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, KeyRound, LogIn, MessageSquareText, Server, User } from "lucide-react";
 import type { ConnectParams } from "../../app/store";
 import { resolveServerURL } from "../../app/config";
 import { Linkified } from "../RichText";
@@ -81,9 +81,16 @@ export default function ConnectForm({ params, auth, connecting, error, onSubmit 
 
 	return (
 		<div className="connect-shell">
+			<header className="login-header">
+				<MessageSquareText className="login-logo" aria-hidden="true" />
+				<div>
+					<h1>gamja</h1>
+					<p className="muted">A web client for IRC</p>
+				</div>
+			</header>
 			<form className="connect-card" onSubmit={handleSubmit} aria-labelledby="connect-title">
 				<div className="connect-header">
-					<h1 id="connect-title">Connect to IRC</h1>
+					<h2 id="connect-title">Connect to IRC</h2>
 					<p className="muted">Pick a nickname to get started</p>
 					{host && (
 						<p className="connect-server">

@@ -196,14 +196,15 @@ test("hides and shows the buffer list on large screens", async ({ page, connect,
 	await page.getByRole("tab", { name: "FakeNet" }).click();
 	await expect(page.locator("#composer textarea")).not.toBeFocused();
 
-	await page.getByRole("button", { name: "Close buffer list" }).click();
+	await page.getByRole("button", { name: "Open buffer list" }).click();
 	await expect(page.locator("#buffer-list")).toBeHidden();
 	const toggle = page.locator("#buffer-header .leading").getByRole("button", { name: "Open buffer list" });
 	await toggle.click();
 	await expect(page.locator("#buffer-list")).toBeVisible();
-	await expect(toggle).toBeHidden();
+	await expect(toggle).toBeVisible();
+	await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
 	// Kept across reloads
-	await page.getByRole("button", { name: "Close buffer list" }).click();
+	await page.getByRole("button", { name: "Open buffer list" }).click();
 	expect(await page.evaluate(() => localStorage.getItem("gamja_bufferListHidden"))).toBe("true");
 });

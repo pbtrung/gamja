@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-/** Small screens, where the side panels cover the whole screen, see styles/index.css */
-export const SMALL_SCREEN = "(max-width: 640px)";
+/** Small screens, where the side panels open as drawers, see styles/index.css */
+export const SMALL_SCREEN = "(max-width: 967.98px)";
 
 function supported(): boolean {
 	return typeof window !== "undefined" && typeof window.matchMedia === "function";

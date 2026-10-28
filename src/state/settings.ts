@@ -71,7 +71,7 @@ export type NotificationLevel = (typeof NOTIFICATION_LEVELS)[number];
 
 export const defaultSettings: Settings = {
 	theme: "dracula",
-	layout: "compact",
+	layout: "columns",
 	nickColors: true,
 	nickModes: false,
 	nickAlign: "right",

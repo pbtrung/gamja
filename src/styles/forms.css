@@ -6,7 +6,7 @@
 
 .field > label {
 	display: block;
-	margin-bottom: 0.35rem;
+	margin-bottom: 0.25rem;
 	font-size: 0.875rem;
 	font-weight: 500;
 	color: var(--fg-emphasis);
@@ -23,9 +23,9 @@ textarea {
 	display: block;
 	width: 100%;
 	padding: 0.5rem 0.75rem;
-	border: 1px solid var(--border-strong);
+	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	background-color: var(--bg);
+	background-color: var(--input-bg);
 	color: var(--fg);
 	font: inherit;
 	font-size: 0.9375rem;
@@ -38,7 +38,7 @@ input:focus,
 select:focus,
 textarea:focus {
 	border-color: var(--accent);
-	box-shadow: 0 0 0 3px var(--focus-ring);
+	box-shadow: none;
 	outline: none;
 }
 
@@ -48,7 +48,7 @@ input:disabled {
 
 input::placeholder,
 textarea::placeholder {
-	color: var(--fg-subtle);
+	color: var(--fg-muted);
 }
 
 fieldset {

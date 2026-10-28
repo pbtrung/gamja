@@ -1,9 +1,17 @@
 /* Last, so that it overrides the animations above */
 @media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition: none !important;
+	}
+
 	.spinner {
 		animation-duration: 2s;
 	}
 
+	#buffer-list.expand,
+	#member-list.expand,
 	.action-menu,
 	.typing-dots span,
 	#buffer .logline.flash,

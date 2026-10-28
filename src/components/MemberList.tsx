@@ -10,12 +10,14 @@ import {
 	Shield,
 	ShieldOff,
 	UserX,
+	X,
 } from "lucide-react";
 import * as irc from "../lib/irc";
 import type { BouncerNetwork, MemberAction, User } from "../state";
 import { getNickColorIndex, meaningfulRealname, nickInitial, sortMembers } from "../format";
 import Membership from "./Membership";
 import IconButton from "./IconButton";
+import FilterInput from "./FilterInput";
 import Menu, { type MenuHandle, type MenuItem } from "./Menu";
 import useMediaQuery from "./useMediaQuery";
 
@@ -146,6 +148,7 @@ const MemberItem = memo(function MemberItem({
 });
 
 interface MemberListProps {
+	onClose?: () => void;
 	members: irc.CaseMapMap<string>;
 	users: irc.CaseMapMap<User>;
 	prefixes?: string;
@@ -180,6 +183,7 @@ function groupMembers(sorted: [string, string][]): { title: string; members: [st
 }
 
 function MemberList({
+	onClose,
 	members,
 	users,
 	prefixes,
@@ -217,46 +221,70 @@ function MemberList({
 		setMenuNick(null);
 	}, []);
 
-	const groups = groupMembers(sortMembers(members, prefixes));
+	const [filter, setFilter] = useState("");
+	const query = filter.trim().toLowerCase();
+	const groups = groupMembers(
+		sortMembers(members, prefixes).filter(([nick]) => nick.toLowerCase().includes(query)),
+	);
 	return (
-		<div className="member-items">
-			{groups.map((group) => (
-				<section
-					key={group.title}
-					className="member-group"
-					aria-label={`${group.title}, ${group.members.length}`}
-				>
-					<h3 className="member-group-title">
-						{group.title} — {group.members.length}
-					</h3>
-					<ul>
-						{group.members.map(([nick, membership]) => (
-							<MemberItem
-								key={nick}
-								nick={nick}
-								membership={membership}
-								user={users.get(nick)}
-								bouncerNetwork={bouncerNetwork}
-								tapForActions={tapForActions}
-								menuOpen={menuNick === nick}
-								onClick={onNickClick}
-								onMenu={handleMenu}
-							/>
-						))}
-					</ul>
-				</section>
-			))}
-			<Menu
-				ref={menu}
-				items={
-					menuNick !== null
-						? memberActions(menuNick, members.get(menuNick) ?? "", canModerate, onAction)
-						: []
-				}
-				label={`Actions for ${menuNick}`}
-				onClose={handleMenuClose}
-			/>
-		</div>
+		<>
+			<header id="member-list-header">
+				<FilterInput
+					value={filter}
+					onChange={setFilter}
+					label="Filter users"
+					placeholder={`Filter ${members.size} ${members.size === 1 ? "user" : "users"}`}
+				/>
+				{onClose && (
+					<IconButton
+						icon={X}
+						label="Close member list"
+						className="panel-close"
+						onClick={onClose}
+					/>
+				)}
+			</header>
+			<div className="member-items">
+				{groups.map((group) => (
+					<section
+						key={group.title}
+						className="member-group"
+						aria-label={`${group.title}, ${group.members.length}`}
+					>
+						<h3 className="member-group-title">
+							{group.title}
+							<span className="member-group-count">{group.members.length}</span>
+						</h3>
+						<ul>
+							{group.members.map(([nick, membership]) => (
+								<MemberItem
+									key={nick}
+									nick={nick}
+									membership={membership}
+									user={users.get(nick)}
+									bouncerNetwork={bouncerNetwork}
+									tapForActions={tapForActions}
+									menuOpen={menuNick === nick}
+									onClick={onNickClick}
+									onMenu={handleMenu}
+								/>
+							))}
+						</ul>
+					</section>
+				))}
+				{groups.length === 0 && <p className="filter-empty">No user matches the filter.</p>}
+				<Menu
+					ref={menu}
+					items={
+						menuNick !== null
+							? memberActions(menuNick, members.get(menuNick) ?? "", canModerate, onAction)
+							: []
+					}
+					label={`Actions for ${menuNick}`}
+					onClose={handleMenuClose}
+				/>
+			</div>
+		</>
 	);
 }
 

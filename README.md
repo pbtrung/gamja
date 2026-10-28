@@ -61,7 +61,7 @@ move past them until then. The server's CHATHISTORY limit (e.g. soju-rs's
 
 ### Settings
 
-Settings, opened from the header of a server buffer, are stored per browser:
+Settings, opened from the header of any buffer, are stored per browser:
 
 - **Appearance**: theme, message layout (comfortable, compact, columns or
   bubbles), timestamps, day separators, wrapped line indent (compact layout),

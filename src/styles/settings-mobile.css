@@ -19,7 +19,7 @@
 }
 
 /* Phones: full screen */
-@media (max-width: 640px) {
+@media (max-width: 575.98px) {
 	.settings-menu,
 	.settings-current {
 		display: inline;
@@ -29,22 +29,17 @@
 		display: none;
 	}
 
-	.dialog-backdrop:has(.settings-form) {
-		padding: 0;
+	.dialog:has(.settings-form) {
+		height: calc(100dvh - 1rem);
+		max-height: calc(100dvh - 1rem);
 	}
 
-	.dialog:has(.settings-form) {
-		max-width: none;
-		height: 100dvh;
-		max-height: 100dvh;
-		border: none;
-		border-radius: 0;
+	.dialog-backdrop:has(.settings-form) {
+		padding: 0.5rem;
 	}
 
 	.settings-form > .dialog-actions {
-		border-radius: 0;
 		padding-inline: 0.75rem;
-		padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
 	}
 
 	.settings-pane {
@@ -52,7 +47,7 @@
 	}
 }
 
-@media (max-width: 640px) {
+@media (max-width: 575.98px) {
 	.settings-row:has(.segmented) {
 		flex-direction: column;
 		align-items: stretch;

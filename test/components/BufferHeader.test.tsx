@@ -112,7 +112,7 @@ describe("BufferHeader", () => {
 			bouncerNetwork: { state: "disconnected", error: "connection refused", host: "irc.x" },
 		});
 		expect(screen.getByText("Bouncer disconnected from network: connection refused")).toBeInTheDocument();
-		expect(buttons()).toEqual(["Open buffer list", "Manage network"]);
+		expect(buttons()).toEqual(["Open buffer list", "Manage network", "Settings"]);
 	});
 
 	it("shows the topic and channel actions", async () => {
@@ -128,7 +128,7 @@ describe("BufferHeader", () => {
 		});
 		expect(screen.getByRole("heading", { name: "#c" })).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "https://x.org" })).toBeInTheDocument();
-		expect(buttons()).toEqual(["Open buffer list", "Open member list", "Search", "Leave"]);
+		expect(buttons()).toEqual(["Open buffer list", "Open member list", "Search", "Leave", "Settings"]);
 		await userEvent.click(screen.getByRole("button", { name: "Leave" }));
 		expect(props.onClose).toHaveBeenCalled();
 	});
@@ -193,7 +193,7 @@ describe("BufferHeader", () => {
 			"matchMedia",
 			(query: string) =>
 				({
-					matches: query === "(max-width: 640px)",
+					matches: query === "(max-width: 967.98px)",
 					addEventListener() {},
 					removeEventListener() {},
 				}) as unknown as MediaQueryList,
@@ -218,7 +218,7 @@ describe("BufferHeader", () => {
 		await userEvent.click(more);
 		expect(more).toHaveAttribute("aria-expanded", "true");
 		const items = screen.getAllByRole("menuitem");
-		expect(items.map((i) => i.textContent)).toEqual(["Search", "Detach", "Leave"]);
+		expect(items.map((i) => i.textContent)).toEqual(["Search", "Detach", "Leave", "Settings"]);
 		expect(items[0]).toHaveFocus();
 		await userEvent.keyboard("{ArrowDown}{Enter}");
 		expect(props.onDetach).toHaveBeenCalled();
@@ -259,10 +259,11 @@ describe("BufferHeader", () => {
 		expect(buttons()).toEqual(["Open buffer list", "More actions"]);
 	});
 
-	it("labels the join channel button of networks", () => {
+	it("labels the icon-only join channel button of networks", () => {
 		setup({ server: { isBouncer: true, bouncerNetID: "1" } });
 		const join = screen.getByRole("button", { name: "Join channel" });
-		expect(join.querySelector(".action-label")).toHaveTextContent("Join channel");
+		expect(join).toHaveAttribute("aria-label", "Join channel");
+		expect(join.querySelector(".action-label")).toBeNull();
 	});
 
 	it("shows Detach and Join as icons only", () => {

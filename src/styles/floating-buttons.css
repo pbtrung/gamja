@@ -44,11 +44,11 @@
 }
 
 .scroll-latest .btn {
-	width: 2.75rem;
-	height: 2.75rem;
-	padding: 0;
+	min-width: 2.25rem;
+	height: 2rem;
+	padding: 0.25rem 0.75rem;
 	border-color: var(--accent);
-	border-radius: 50%;
+	border-radius: 999px;
 	background-color: var(--accent);
 	color: var(--accent-fg);
 	box-shadow: var(--shadow-lg);
@@ -63,7 +63,8 @@
 
 .sidebar-version {
 	/* Roughly on the title's baseline */
-	padding-top: 0.3rem;
+	max-width: 5rem;
+	padding-right: 0.25rem;
 	overflow: hidden;
 	color: var(--fg-muted);
 	font-size: 0.6875rem;

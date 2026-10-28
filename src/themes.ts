@@ -8,21 +8,21 @@ export interface Theme {
 }
 
 export const THEMES: Theme[] = [
-	{ id: "system", name: "System", scheme: "system", swatch: ["#ffffff", "#16181d", "#3b5bdb"] },
-	{ id: "light", name: "Light", scheme: "light", swatch: ["#ffffff", "#1f2328", "#3b5bdb"] },
-	{ id: "dark", name: "Dark", scheme: "dark", swatch: ["#16181d", "#dfe3e8", "#829afc"] },
-	{ id: "dracula", name: "Dracula", scheme: "dark", swatch: ["#282a36", "#f8f8f2", "#ceaefa"] },
+	{ id: "system", name: "System", scheme: "system", swatch: ["#fdfdfd", "#181818", "#2f6fb5"] },
+	{ id: "light", name: "Light", scheme: "light", swatch: ["#fdfdfd", "#181818", "#2f6fb5"] },
+	{ id: "dark", name: "Dark", scheme: "dark", swatch: ["#181818", "#dddddd", "#4f8fd6"] },
+	{ id: "dracula", name: "Dracula", scheme: "dark", swatch: ["#282a36", "#f8f8f2", "#bd93f9"] },
 	{
 		id: "catppuccin-latte",
 		name: "Catppuccin Latte",
 		scheme: "light",
-		swatch: ["#eff1f5", "#4c4f69", "#7a33d7"],
+		swatch: ["#eff1f5", "#4c4f69", "#8839ef"],
 	},
 	{
 		id: "catppuccin-frappe",
 		name: "Catppuccin Frappé",
 		scheme: "dark",
-		swatch: ["#303446", "#c6d0f5", "#d5b1eb"],
+		swatch: ["#303446", "#c6d0f5", "#ca9ee6"],
 	},
 	{
 		id: "catppuccin-macchiato",
@@ -48,7 +48,7 @@ export const THEMES: Theme[] = [
 		scheme: "dark",
 		swatch: ["#002b36", "#92a1a3", "#53a5e2"],
 	},
-	{ id: "zenburn", name: "Zenburn", scheme: "dark", swatch: ["#3f3f3f", "#dcdccc", "#a3d9dc"] },
+	{ id: "zenburn", name: "Zenburn", scheme: "dark", swatch: ["#3f3f3f", "#dcdccc", "#8cd0d3"] },
 ];
 
 export function getTheme(id: string | undefined | null): Theme {

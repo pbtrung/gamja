@@ -88,15 +88,16 @@ describe("SwitcherForm", () => {
 });
 
 describe("ConnectForm", () => {
-	it("shows only the form, without a side pane", () => {
+	it("shows a brand header and connection card", () => {
 		const { container } = render(
 			<ConnectForm params={defaultConnectParams} connecting={false} error={null} onSubmit={vi.fn()} />,
 		);
 		expect(container.querySelector("aside")).toBeNull();
 		expect(screen.queryByRole("complementary")).toBeNull();
 		const shell = container.firstElementChild!;
-		expect(shell.children).toHaveLength(1);
-		expect(shell.firstElementChild!.tagName).toBe("FORM");
+		expect(shell.children).toHaveLength(2);
+		expect(shell.firstElementChild!.tagName).toBe("HEADER");
+		expect(shell.lastElementChild!.tagName).toBe("FORM");
 	});
 
 	it("submits connection parameters with SASL", async () => {
@@ -235,7 +236,7 @@ describe("SettingsForm", () => {
 		const onChange = vi.fn();
 		render(
 			<SettingsForm
-				settings={defaultSettings}
+				settings={{ ...defaultSettings, layout: "compact" }}
 				showProtocolHandler={false}
 				onChange={onChange}
 				onDisconnect={() => {}}
@@ -351,7 +352,7 @@ describe("SettingsForm theme and layout", () => {
 		expect(screen.getByRole("radio", { name: "Dracula" })).toBeChecked();
 		await userEvent.click(screen.getByRole("radio", { name: "Catppuccin Mocha" }));
 		expect(onChange).toHaveBeenCalledWith({ theme: "catppuccin-mocha" });
-		expect(screen.getByRole("radio", { name: /Compact/ })).toBeChecked();
+		expect(screen.getByRole("radio", { name: /Columns/ })).toBeChecked();
 		await userEvent.click(screen.getByRole("radio", { name: /Comfortable/ }));
 		expect(onChange).toHaveBeenCalledWith({ layout: "comfortable" });
 	});
@@ -364,7 +365,9 @@ describe("SettingsForm theme and layout", () => {
 			onDisconnect: () => {},
 			onClose: () => {},
 		};
-		const { rerender } = render(<SettingsForm settings={defaultSettings} {...props} />);
+		const { rerender } = render(
+			<SettingsForm settings={{ ...defaultSettings, layout: "compact" }} {...props} />,
+		);
 		expect(screen.queryByText("Nick alignment")).not.toBeInTheDocument();
 		await userEvent.click(screen.getByRole("checkbox", { name: "Nick colors" }));
 		expect(onChange).toHaveBeenCalledWith({ nickColors: false });

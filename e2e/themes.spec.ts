@@ -15,11 +15,11 @@ test("switches and remembers the theme", async ({ page, connect }) => {
 		.click();
 	await expect(page.getByRole("radio", { name: "Light", exact: true })).toBeChecked();
 	await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-	expect(await bodyBg(page)).toBe("rgb(255, 255, 255)");
+	expect(await bodyBg(page)).toBe("rgb(253, 253, 253)");
 
 	await page.reload();
 	await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-	expect(await bodyBg(page)).toBe("rgb(255, 255, 255)");
+	expect(await bodyBg(page)).toBe("rgb(253, 253, 253)");
 });
 
 test("uses Dracula by default", async ({ page }) => {
@@ -35,5 +35,5 @@ test("follows the system color scheme when picked", async ({ page, connect }) =>
 	await page.getByRole("button", { name: "Settings" }).click();
 	await page.locator("label.theme-option", { hasText: "System" }).click();
 	await expect(page.locator("html")).not.toHaveAttribute("data-theme");
-	expect(await bodyBg(page)).toBe("rgb(22, 24, 29)");
+	expect(await bodyBg(page)).toBe("rgb(24, 24, 24)");
 });

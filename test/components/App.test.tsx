@@ -169,7 +169,7 @@ describe("App", () => {
 		]);
 	});
 
-	it("shows the version next to the title", async () => {
+	it("shows the version in the sidebar footer", async () => {
 		vi.stubEnv("GAMJA_VERSION", "v1.2.3");
 		try {
 			const app = await renderApp();

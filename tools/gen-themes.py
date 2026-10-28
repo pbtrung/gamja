@@ -6,6 +6,7 @@ src/styles/tokens.css). Run: python3 tools/gen-themes.py
 """
 
 import os
+import re
 
 
 def mix(color, pct, other="transparent"):
@@ -250,6 +251,271 @@ THEMES = {
     "solarized-dark": solarized_dark,
     "zenburn": zenburn,
 }
+
+
+# UI palettes from Glowing Bear's public/css/themes. These values are kept
+# here so the app can be built independently of the reference checkout.
+GLOWING_BEAR_PALETTES = {
+    "light": {
+        "--bg": "#fdfdfd",
+        "--fg": "#181818",
+        "--fg-muted": "#6b7280",
+        "--fg-subtle": "#6b7280",
+        "--bg-sidebar": "#f1f2f4",
+        "--bg-elevated": "#f1f2f4",
+        "--chrome-fg": "#222222",
+        "--border": "#d8dbe0",
+        "--border-strong": "#d8dbe0",
+        "--bg-hover": "rgba(0, 0, 0, 0.05)",
+        "--bg-active": "rgba(47, 111, 181, 0.15)",
+        "--fg-active": "#111111",
+        "--fg-emphasis": "#181818",
+        "--accent": "#2f6fb5",
+        "--accent-fg": "#ffffff",
+        "--input-bg": "#ffffff",
+        "--line-hover": "#f3f4f6",
+        "--highlight-bg": "rgba(255, 165, 0, 0.1)",
+        "--highlight-fg": "#d97706",
+        "--highlight-border": "#d97706",
+        "--link": "#0b5ed7",
+        "--scrollbar": "rgba(0, 0, 0, 0.25)",
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.18)",
+        "--backdrop": "rgba(0, 0, 0, 0.3)",
+        "--bg-subtle": "#eceef1"
+    },
+    "dark": {
+        "--bg": "#181818",
+        "--fg": "#dddddd",
+        "--fg-muted": "#8f8f8f",
+        "--fg-subtle": "#8f8f8f",
+        "--bg-sidebar": "#232323",
+        "--bg-elevated": "#232323",
+        "--chrome-fg": "#d0d0d0",
+        "--border": "#333333",
+        "--border-strong": "#333333",
+        "--bg-hover": "rgba(255, 255, 255, 0.06)",
+        "--bg-active": "rgba(255, 255, 255, 0.13)",
+        "--fg-active": "#ffffff",
+        "--fg-emphasis": "#dddddd",
+        "--accent": "#4f8fd6",
+        "--accent-fg": "#ffffff",
+        "--input-bg": "#1e1e1e",
+        "--line-hover": "#202020",
+        "--highlight-bg": "rgba(255, 255, 0, 0.05)",
+        "--highlight-fg": "#ffff55",
+        "--highlight-border": "#ffff55",
+        "--link": "#6ea8fe",
+        "--scrollbar": "rgba(255, 255, 255, 0.25)",
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.6)",
+        "--backdrop": "rgba(0, 0, 0, 0.55)",
+        "--bg-subtle": "#3a3a3a"
+    },
+    "dracula": {
+        "--bg": "#282a36",
+        "--fg": "#f8f8f2",
+        "--fg-muted": "#9ea8c7",
+        "--fg-subtle": "#9ea8c7",
+        "--bg-sidebar": "#21222c",
+        "--bg-elevated": "#21222c",
+        "--chrome-fg": "#f8f8f2",
+        "--border": "#44475a",
+        "--border-strong": "#44475a",
+        "--bg-hover": "color-mix(in srgb, #f8f8f2 8%, transparent)",
+        "--bg-active": "#44475a",
+        "--fg-active": "#f8f8f2",
+        "--fg-emphasis": "#f8f8f2",
+        "--accent": "#bd93f9",
+        "--accent-fg": "#282a36",
+        "--input-bg": "#282a36",
+        "--line-hover": "color-mix(in srgb, #f8f8f2 4%, transparent)",
+        "--highlight-bg": "color-mix(in srgb, #f1fa8c 10%, transparent)",
+        "--highlight-fg": "#f1fa8c",
+        "--highlight-border": "#f1fa8c",
+        "--link": "#8be9fd",
+        "--scrollbar": "#6272a4",
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.35)",
+        "--backdrop": "color-mix(in srgb, #282a36 60%, transparent)",
+        "--bg-subtle": "#44475a"
+    },
+    "catppuccin-latte": {
+        "--bg": "#eff1f5",
+        "--fg": "#4c4f69",
+        "--fg-muted": "#5c5f77",
+        "--fg-subtle": "#5c5f77",
+        "--bg-sidebar": "#e6e9ef",
+        "--bg-elevated": "#e6e9ef",
+        "--chrome-fg": "#4c4f69",
+        "--border": "#ccd0da",
+        "--border-strong": "#ccd0da",
+        "--bg-hover": "color-mix(in srgb, #4c4f69 8%, transparent)",
+        "--bg-active": "#ccd0da",
+        "--fg-active": "#4c4f69",
+        "--fg-emphasis": "#4c4f69",
+        "--accent": "#8839ef",
+        "--accent-fg": "#ffffff",
+        "--input-bg": "#ffffff",
+        "--line-hover": "color-mix(in srgb, #4c4f69 4%, transparent)",
+        "--highlight-bg": "color-mix(in srgb, #df8e1d 10%, transparent)",
+        "--highlight-fg": "#8c5b00",
+        "--highlight-border": "#8c5b00",
+        "--link": "#1e5fd8",
+        "--scrollbar": "rgba(76, 79, 105, 0.3)",
+        "--shadow-lg": "0 0.5rem 2rem rgba(76, 79, 105, 0.18)",
+        "--backdrop": "rgba(76, 79, 105, 0.3)",
+        "--bg-subtle": "#ccd0da"
+    },
+    "catppuccin-frappe": {
+        "--bg": "#303446",
+        "--fg": "#c6d0f5",
+        "--fg-muted": "#a5adce",
+        "--fg-subtle": "#a5adce",
+        "--bg-sidebar": "#292c3c",
+        "--bg-elevated": "#292c3c",
+        "--chrome-fg": "#c6d0f5",
+        "--border": "#414559",
+        "--border-strong": "#414559",
+        "--bg-hover": "color-mix(in srgb, #c6d0f5 8%, transparent)",
+        "--bg-active": "#414559",
+        "--fg-active": "#c6d0f5",
+        "--fg-emphasis": "#c6d0f5",
+        "--accent": "#ca9ee6",
+        "--accent-fg": "#303446",
+        "--input-bg": "#232634",
+        "--line-hover": "color-mix(in srgb, #c6d0f5 4%, transparent)",
+        "--highlight-bg": "color-mix(in srgb, #e5c890 10%, transparent)",
+        "--highlight-fg": "#e5c890",
+        "--highlight-border": "#e5c890",
+        "--link": "#85c1dc",
+        "--scrollbar": "#51576d",
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.35)",
+        "--backdrop": "color-mix(in srgb, #303446 60%, transparent)",
+        "--bg-subtle": "#414559"
+    },
+    "catppuccin-macchiato": {
+        "--bg": "#24273a",
+        "--fg": "#cad3f5",
+        "--fg-muted": "#a5adcb",
+        "--fg-subtle": "#a5adcb",
+        "--bg-sidebar": "#1e2030",
+        "--bg-elevated": "#1e2030",
+        "--chrome-fg": "#cad3f5",
+        "--border": "#363a4f",
+        "--border-strong": "#363a4f",
+        "--bg-hover": "color-mix(in srgb, #cad3f5 8%, transparent)",
+        "--bg-active": "#363a4f",
+        "--fg-active": "#cad3f5",
+        "--fg-emphasis": "#cad3f5",
+        "--accent": "#c6a0f6",
+        "--accent-fg": "#24273a",
+        "--input-bg": "#181926",
+        "--line-hover": "color-mix(in srgb, #cad3f5 4%, transparent)",
+        "--highlight-bg": "color-mix(in srgb, #eed49f 10%, transparent)",
+        "--highlight-fg": "#eed49f",
+        "--highlight-border": "#eed49f",
+        "--link": "#7dc4e4",
+        "--scrollbar": "#494d64",
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.35)",
+        "--backdrop": "color-mix(in srgb, #24273a 60%, transparent)",
+        "--bg-subtle": "#363a4f"
+    },
+    "catppuccin-mocha": {
+        "--bg": "#1e1e2e",
+        "--fg": "#cdd6f4",
+        "--fg-muted": "#a6adc8",
+        "--fg-subtle": "#a6adc8",
+        "--bg-sidebar": "#181825",
+        "--bg-elevated": "#181825",
+        "--chrome-fg": "#cdd6f4",
+        "--border": "#313244",
+        "--border-strong": "#313244",
+        "--bg-hover": "color-mix(in srgb, #cdd6f4 8%, transparent)",
+        "--bg-active": "#313244",
+        "--fg-active": "#cdd6f4",
+        "--fg-emphasis": "#cdd6f4",
+        "--accent": "#cba6f7",
+        "--accent-fg": "#1e1e2e",
+        "--input-bg": "#11111b",
+        "--line-hover": "color-mix(in srgb, #cdd6f4 4%, transparent)",
+        "--highlight-bg": "color-mix(in srgb, #f9e2af 10%, transparent)",
+        "--highlight-fg": "#f9e2af",
+        "--highlight-border": "#f9e2af",
+        "--link": "#74c7ec",
+        "--scrollbar": "#45475a",
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.35)",
+        "--backdrop": "color-mix(in srgb, #1e1e2e 60%, transparent)",
+        "--bg-subtle": "#313244"
+    },
+    "zenburn": {
+        "--bg": "#3f3f3f",
+        "--fg": "#dcdccc",
+        "--fg-muted": "#a0a090",
+        "--fg-subtle": "#a0a090",
+        "--bg-sidebar": "#353535",
+        "--bg-elevated": "#353535",
+        "--chrome-fg": "#dcdccc",
+        "--border": "#4f4f4f",
+        "--border-strong": "#4f4f4f",
+        "--bg-hover": "color-mix(in srgb, #dcdccc 8%, transparent)",
+        "--bg-active": "#4f4f4f",
+        "--fg-active": "#e0e0d0",
+        "--fg-emphasis": "#dcdccc",
+        "--accent": "#8cd0d3",
+        "--accent-fg": "#2b2b2b",
+        "--input-bg": "#3f3f3f",
+        "--line-hover": "color-mix(in srgb, #dcdccc 4%, transparent)",
+        "--highlight-bg": "color-mix(in srgb, #f0dfaf 10%, transparent)",
+        "--highlight-fg": "#f0dfaf",
+        "--highlight-border": "#f0dfaf",
+        "--link": "#93e0e3",
+        "--scrollbar": "#6f6f6f",
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.35)",
+        "--backdrop": "color-mix(in srgb, #3f3f3f 60%, transparent)",
+        "--bg-subtle": "#4f4f4f"
+    }
+}
+
+
+def surface(color, bg):
+    """Resolve the small set of translucent surface colors used by the palettes."""
+    if color.startswith("#"):
+        return color
+    match = re.fullmatch(r"rgba\((\d+), (\d+), (\d+), ([\d.]+)\)", color)
+    if match:
+        return blend(hexc([int(match[i]) for i in (1, 2, 3)]), bg, float(match[4]))
+    match = re.fullmatch(r"color-mix\(in srgb, (#[0-9a-fA-F]+) (\d+)%, transparent\)", color)
+    if match:
+        return blend(match[1], bg, int(match[2]) / 100)
+    raise ValueError(f"Unknown surface color: {color}")
+
+
+for name, t in {"light": gamja_light, "dark": gamja_dark, **THEMES}.items():
+    if name in GLOWING_BEAR_PALETTES:
+        t.update(GLOWING_BEAR_PALETTES[name])
+    else:
+        # Existing extra themes use the same chrome and input treatment.
+        t["--bg-elevated"] = t["--bg-sidebar"]
+        t["--chrome-fg"] = t["--fg"]
+        t["--input-bg"] = t["--bg"]
+        t["--line-hover"] = mix(t["--fg"], 4)
+        t["--highlight-fg"] = t["--warning-fg"]
+        t["--link"] = t["--accent"]
+    bg, scheme = t["--bg"], t["color-scheme"]
+    backgrounds = [bg, t["--bg-sidebar"], t["--input-bg"], t["--bg-subtle"],
+                   surface(t["--line-hover"], bg), surface(t["--highlight-bg"], bg)]
+    # Match the reference surfaces while keeping controls and text readable.
+    for key in ["--fg", "--fg-muted", "--chrome-fg", "--danger-fg", "--warning-fg", "--info-fg"]:
+        t[key] = ensure(t[key], backgrounds, scheme)
+    t["--fg-subtle"] = t["--fg-muted"]
+    for key in ["--link", "--highlight-fg"] + [f"--nick-{i}" for i in range(1, 17)]:
+        t[key] = ensure(t[key], backgrounds, scheme)
+    active = surface(t["--bg-active"], t["--bg-sidebar"])
+    t["--fg-active"] = ensure(t["--fg-active"], [active], scheme)
+    t["--accent"] = ensure(t["--accent"], [bg], scheme)
+    if contrast(t["--accent-fg"], t["--accent"]) < 4.5:
+        t["--accent-fg"] = "#ffffff" if contrast("#ffffff", t["--accent"]) > contrast("#000000", t["--accent"]) else "#000000"
+    t["--accent-hover"] = blend("#000000", t["--accent"], 0.1)
+    t["--accent-soft"] = mix(t["--accent"], 16)
+    t["--focus-ring"] = mix(t["--accent"], 35)
 
 
 def block(selector, tokens, indent="\t"):

@@ -1,8 +1,15 @@
-/* The user's own nick and away status, at the bottom of the buffer list */
-.self-status {
-	flex-shrink: 0;
-	padding: 0.5rem;
+/* A compact status strip at the foot of the buffer list. */
+.sidebar-footer {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.375rem 0.5rem;
 	border-top: 1px solid var(--border);
+}
+
+.self-status {
+	flex: 1;
+	min-width: 0;
 }
 
 .self-status-toggle {

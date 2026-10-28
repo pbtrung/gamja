@@ -235,6 +235,10 @@ export default function BufferHeader(props: BufferHeaderProps) {
 		}
 	}
 
+	if (!actions.some((action) => action.key === "settings")) {
+		actions.push({ key: "settings", icon: Settings, label: "Settings", onClick: props.onOpenSettings });
+	}
+
 	if (props.onSearch && buffer.type !== BufferType.SERVER) {
 		actions.unshift({
 			key: "search",
@@ -322,7 +326,7 @@ export default function BufferHeader(props: BufferHeaderProps) {
 	// Small screens: [buffer list] [title and description] [menu] [member list]
 	return (
 		<>
-			{smallScreen || props.bufferListHidden ? <div className="leading">{bufferListToggle}</div> : null}
+			<div className="leading">{bufferListToggle}</div>
 			<div className="title">
 				<BufferTypeIcon type={buffer.type} className="title-icon" aria-hidden="true" />
 				<h1 className="title-text" title={name}>
@@ -350,10 +354,9 @@ export default function BufferHeader(props: BufferHeaderProps) {
 						</>
 					) : (
 						<>
-							{props.bufferListHidden ? null : bufferListToggle}
 							{memberListToggle}
 							{actions.map(({ key, ...action }) => (
-								<ActionButton key={key} {...action} />
+								<ActionButton key={key} {...action} iconOnly />
 							))}
 						</>
 					)}

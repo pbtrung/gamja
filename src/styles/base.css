@@ -8,6 +8,7 @@
 
 html {
 	scrollbar-color: var(--scrollbar) transparent;
+	scrollbar-width: thin;
 	-webkit-text-size-adjust: 100%;
 	/* No grey flash over tapped buttons and links on mobile browsers: they
 	 * have their own hover, active and focus styles */
@@ -28,11 +29,15 @@ body {
 	font-family: var(--font-sans);
 	font-size: 1rem;
 	line-height: 1.5;
+	font-feature-settings: "cv11", "ss01";
 	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 #root {
 	height: 100%;
+	padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+		env(safe-area-inset-left);
 	display: grid;
 	grid-template-rows: auto minmax(0, 1fr) auto;
 	grid-template-columns: auto minmax(0, 1fr) auto;
@@ -45,7 +50,7 @@ noscript {
 }
 
 a {
-	color: var(--accent);
+	color: var(--link);
 	text-underline-offset: 0.15em;
 }
 
@@ -108,4 +113,25 @@ svg.lucide {
 .theme-switching *::before,
 .theme-switching *::after {
 	transition: none !important;
+}
+
+* {
+	scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+	border-radius: 4px;
+	background: var(--scrollbar);
+}
+
+@media (min-width: 1400px) {
+	:root {
+		--sidebar-width: 17rem;
+		--member-list-width: 14rem;
+	}
 }

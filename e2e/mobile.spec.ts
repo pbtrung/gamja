@@ -17,7 +17,12 @@ test("opens the buffer list from the header on small screens", async ({ page, co
 });
 
 for (const layout of ["comfortable", "compact", "columns", "bubbles"] as const) {
-	test(`hides message times on small screens (${layout})`, async ({ page, connect, bot, settings }) => {
+	test(`shows compact message times on small screens (${layout})`, async ({
+		page,
+		connect,
+		bot,
+		settings,
+	}) => {
 		await settings({ layout });
 		const bob = await bot("bob");
 		await bob.join("#t");
@@ -28,7 +33,7 @@ for (const layout of ["comfortable", "compact", "columns", "bubbles"] as const) 
 		const times = await line.locator(".timestamp").all();
 		expect(times.length).toBeGreaterThan(0);
 		for (const ts of times) {
-			await expect(ts).toBeHidden();
+			await expect(ts).toBeVisible();
 		}
 		// No room for avatars, sender columns or bubbles: the compact style is used
 		await expect(page.locator("#buffer .logline:is(.comfortable, .columns, .bubbles)")).toHaveCount(0);
@@ -64,4 +69,15 @@ test("opens member actions by tapping a nick on touch screens", async ({ page, c
 	expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
 	await page.getByRole("menuitem", { name: "Send message" }).click();
 	await expect(page.locator("#buffer-header h1")).toHaveText("bob");
+});
+
+test("honors the timestamp preference on mobile", async ({ page, connect, bot, settings }) => {
+	await settings({ showTimestamps: false });
+	const bob = await bot("bob");
+	await bob.join("#no-times");
+	await connect(page, "tester", { channels: ["#no-times"] });
+	bob.privmsg("#no-times", "without a clock");
+	const line = page.locator("#buffer .logline", { hasText: "without a clock" });
+	await expect(line).toBeVisible();
+	await expect(line.locator(".timestamp")).toBeHidden();
 });

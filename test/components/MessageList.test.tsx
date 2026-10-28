@@ -779,7 +779,7 @@ describe("comfortable layout", () => {
 				"matchMedia",
 				(query: string) =>
 					({
-						matches: query === "(max-width: 640px)",
+						matches: query === "(max-width: 967.98px)",
 						addEventListener() {},
 						removeEventListener() {},
 					}) as unknown as MediaQueryList,

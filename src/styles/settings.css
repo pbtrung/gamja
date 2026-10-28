@@ -2,7 +2,8 @@
 
 .dialog:has(.settings-form) {
 	max-width: 52rem;
-	height: min(40rem, calc(100dvh - 2rem));
+	height: min(40rem, calc(100dvh - 3.5rem));
+	overflow: hidden;
 }
 
 .dialog:has(.settings-form) .dialog-body {
@@ -40,14 +41,14 @@
 .settings-nav-item {
 	display: flex;
 	align-items: center;
-	gap: 0.625rem;
-	padding: 0.5rem 0.75rem;
+	gap: 0.5rem;
+	padding: 0.45rem 0.75rem;
 	border: none;
 	border-radius: var(--radius);
 	background: transparent;
 	color: var(--fg-muted);
 	font: inherit;
-	font-size: 0.875rem;
+	font-size: 0.9rem;
 	font-weight: 500;
 	text-align: left;
 	white-space: nowrap;
@@ -114,7 +115,7 @@
 	display: flex;
 	align-items: center;
 	gap: 1rem;
-	padding: 0.75rem 0.875rem;
+	padding: 0.75rem 1rem;
 }
 
 .settings-row + .settings-row {
@@ -159,8 +160,8 @@ input.settings-number {
 input.switch {
 	position: relative;
 	flex-shrink: 0;
-	width: 2.25rem;
-	height: 1.25rem;
+	width: 2.5rem;
+	height: 1.35rem;
 	margin: 0;
 	border-radius: 999px;
 	background-color: var(--border-strong);
@@ -174,8 +175,8 @@ input.switch::after {
 	position: absolute;
 	top: 0.1875rem;
 	left: 0.1875rem;
-	width: 0.875rem;
-	height: 0.875rem;
+	width: 0.975rem;
+	height: 0.975rem;
 	border-radius: 50%;
 	/* Dimmed when off, like the other inactive controls */
 	background-color: var(--fg-muted);
@@ -191,7 +192,7 @@ input.switch:checked {
 
 input.switch:checked::after {
 	background-color: var(--accent-fg);
-	transform: translateX(1rem);
+	transform: translateX(1.15rem);
 }
 
 input.switch:disabled {
@@ -227,8 +228,8 @@ input.switch:focus-visible {
 	gap: 0.5rem;
 	padding: 0.375rem;
 	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	background-color: var(--bg-elevated);
+	border-radius: 0.75rem;
+	background-color: var(--bg);
 	cursor: pointer;
 	transition:
 		border-color var(--transition),
@@ -243,7 +244,7 @@ input.switch:focus-visible {
 .theme-option.selected,
 .layout-option.selected {
 	border-color: var(--accent);
-	box-shadow: 0 0 0 1px var(--accent);
+	box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .theme-option:has(input:focus-visible),

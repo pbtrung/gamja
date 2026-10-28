@@ -3,7 +3,7 @@
 #composer {
 	grid-row: 3;
 	grid-column: 2;
-	padding: 0.75rem 1rem 0.5rem;
+	padding: 0.5rem 1rem 0.75rem;
 	background-color: var(--bg);
 }
 
@@ -15,11 +15,10 @@
 	display: flex;
 	align-items: flex-end;
 	gap: 0.25rem;
-	padding: 0.25rem 0.25rem 0.25rem 0.875rem;
-	border: 1px solid var(--border-strong);
-	border-radius: var(--radius-lg);
-	background-color: var(--bg-elevated);
-	box-shadow: var(--shadow-sm);
+	padding: 0.25rem;
+	border: 1px solid var(--border);
+	border-radius: 0.875rem;
+	background-color: var(--input-bg);
 	transition:
 		border-color var(--transition),
 		box-shadow var(--transition);
@@ -27,7 +26,7 @@
 
 .composer-box:focus-within {
 	border-color: var(--accent);
-	box-shadow: 0 0 0 3px var(--focus-ring);
+	box-shadow: none;
 }
 
 .composer-box.too-long {
@@ -38,14 +37,14 @@ textarea.composer-input {
 	flex: 1;
 	min-width: 0;
 	min-height: 2.25rem;
-	max-height: 200px;
-	padding: 0.45rem 0;
+	max-height: 40vh;
+	padding: 0.45rem 0.5rem;
 	border: none;
 	background: none;
 	box-shadow: none;
 	color: var(--fg);
 	font-size: var(--chat-font-size);
-	line-height: 1.35rem;
+	line-height: 1.4;
 	resize: none;
 }
 

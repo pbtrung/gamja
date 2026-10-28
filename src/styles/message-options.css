@@ -1,18 +1,20 @@
-/* Small screens: no room to spare for times, in either layout */
-@media (max-width: 640px) {
+/* Small screens: compact inline times and prefixes, like Glowing Bear. */
+@media (max-width: 967.98px) {
 	#buffer .timestamp,
 	#buffer .timestamp-range {
-		display: none;
+		display: inline;
+		min-width: 0;
+		margin-right: 0.35rem;
+		font-size: 0.75em;
 	}
 
-	/* They were indented past the time, which is gone */
+	/* Inline rows keep attachments aligned with the message. */
 	#buffer .reactions,
 	#buffer .reply-quote {
 		margin-left: 0;
 	}
 
-	/* Collapse the space that separated the time from the line, keeping the
-	   message text's own whitespace */
+	/* Keep message whitespace without gaps from the compact markup. */
 	#buffer .logline {
 		white-space: normal;
 	}
@@ -24,8 +26,20 @@
 
 a.nick {
 	color: var(--nick-color, var(--fg-emphasis));
-	font-weight: 600;
+	font-weight: 400;
 	text-decoration: none;
+}
+
+/* Inline nick links in event text need a cue in addition to color. */
+.logline-content a.nick {
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+@media (max-width: 967.98px) {
+	.logline-content a.nick {
+		font-weight: 600;
+	}
 }
 
 a.nick:hover {
@@ -71,11 +85,11 @@ a.nick:hover {
 	--nick-color: initial;
 }
 
-/* The line's background and border already mark mentions: tinting the
-   sender's nick on top of it would leave too little contrast */
+/* Mentioned senders take the highlight color, like Glowing Bear prefixes. */
 #buffer .highlight a.nick {
 	background: none;
-	color: var(--nick-color, var(--fg-emphasis));
+	color: var(--highlight-fg);
+	font-weight: 700;
 }
 
 #buffer .separator {
