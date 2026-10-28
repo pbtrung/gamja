@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
@@ -47,11 +48,22 @@ function versionFile(version: string): Plugin {
 }
 
 const VERSION = version();
+// Read installed versions, rather than the package.json semver ranges.
+const manifest = JSON.parse(readFileSync(r("./package.json"), "utf8")) as {
+	dependencies: Record<string, string>;
+};
+const DEPENDENCIES = [...Object.keys(manifest.dependencies), "vite"].map((name) => {
+	const { version } = JSON.parse(readFileSync(r(`./node_modules/${name}/package.json`), "utf8")) as {
+		version: string;
+	};
+	return { name, version };
+});
 
 export default defineConfig({
 	root: r("./src"),
 	define: {
 		"import.meta.env.GAMJA_VERSION": JSON.stringify(VERSION),
+		"import.meta.env.GAMJA_DEPENDENCIES": JSON.stringify(DEPENDENCIES),
 	},
 	base: "./",
 	publicDir: r("./public"),

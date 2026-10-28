@@ -1,4 +1,4 @@
-import { Bell, MessagesSquare, Palette, type LucideIcon } from "lucide-react";
+import { Bell, Info, MessagesSquare, Palette, type LucideIcon } from "lucide-react";
 import {
 	BufferEventsDisplayMode,
 	MESSAGE_LAYOUTS,
@@ -9,12 +9,13 @@ import {
 	type NotificationLevel,
 } from "../../../state";
 
-export type SettingsTab = "appearance" | "messages" | "notifications";
+export type SettingsTab = "appearance" | "messages" | "notifications" | "about";
 
 export const settingsTabs: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
 	{ id: "appearance", label: "Appearance", icon: Palette },
 	{ id: "messages", label: "Messages", icon: MessagesSquare },
 	{ id: "notifications", label: "Notifications", icon: Bell },
+	{ id: "about", label: "About", icon: Info },
 ];
 
 // Labels are keyed by value: a value added to the settings without a label

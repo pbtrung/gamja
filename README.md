@@ -13,12 +13,12 @@ Build gamja with [Vite]:
     npm run build
 
 Then [configure an HTTP server] to serve the files in `dist/`. The version
-shown in the UI is the latest git tag; set `GAMJA_VERSION` to override it
+shown in Settings → About is the latest git tag; set `GAMJA_VERSION` to override it
 when building outside a git checkout.
 
 To make a release, run `tools/release.sh vX.Y.Z [notes.md]` from a clean
-tree. It tags HEAD before building, so that the version badge shows the new
-tag, checks the badge and zips `dist/` as `gamja-vX.Y.Z.zip`. With a release
+tree. It tags HEAD before building, so that About shows the new
+tag, checks `version.json` and zips `dist/` as `gamja-vX.Y.Z.zip`. With a release
 notes file, it also pushes the tag to the `github` remote and publishes the
 release on GitHub with `gh`. If it fails before pushing, the tag it created
 is deleted again.
@@ -76,6 +76,9 @@ Settings, opened from the header of any buffer, are stored per browser:
   (showing who is typing, sharing when you are).
 - **Notifications**: desktop notifications, away in the background (never, 1,
   5 or 15 minutes) and, with soju, Web Push notifications.
+- **About**: Gamja version, connected soju / soju-rs bouncer versions when
+  reported, and the installed versions of runtime dependencies and Vite.
+  Bouncers reporting only a software name show “Not reported”.
 
 ### Checks
 

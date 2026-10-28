@@ -17,15 +17,16 @@ function serverSays(ws: FakeWebSocket, ...lines: string[]) {
 	act(() => ws.receive(...lines));
 }
 
-async function login(app: AppController) {
+async function login(app: AppController, bouncer = false) {
 	await userEvent.type(screen.getByLabelText("Nickname"), "me");
 	await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 	const ws = FakeWebSocket.last();
 	act(() => ws.open());
+	const caps = "batch server-time echo-message" + (bouncer ? " soju.im/bouncer-networks" : "");
 	serverSays(
 		ws,
-		":srv CAP * LS :batch server-time echo-message",
-		":srv CAP me ACK :batch server-time echo-message",
+		`:srv CAP * LS :${caps}`,
+		`:srv CAP me ACK :${caps}`,
 		":srv 001 me :Welcome",
 		":srv 005 me CHANTYPES=# NETWORK=TestNet PREFIX=(ov)@+ :ok",
 		":srv 376 me :End",
@@ -101,22 +102,16 @@ describe("App", () => {
 		expect(screen.getByRole("dialog", { name: "Switch to a channel or user" })).toBeInTheDocument();
 	});
 
-	it("sets the away status from the buffer list", async () => {
+	it("sets the away status with commands after removing the sidebar footer", async () => {
 		const app = await renderApp();
 		const ws = await login(app);
-		await userEvent.click(screen.getByRole("button", { name: "me, Online. Change status" }));
-		await userEvent.click(screen.getByRole("menuitem", { name: "Set away…" }));
-		const dialog = screen.getByRole("dialog", { name: "Set away" });
-		const input = within(dialog).getByLabelText("Message");
-		await userEvent.clear(input);
-		await userEvent.type(input, "lunch");
-		await userEvent.click(within(dialog).getByRole("button", { name: "Set away" }));
+		expect(document.querySelector(".sidebar-footer")).toBeNull();
+		const composer = screen.getByRole("textbox", { name: /Type a command/ });
+		await userEvent.type(composer, "/away lunch{Enter}");
 		expect(ws.sent).toEqual(["AWAY lunch"]);
-
-		await userEvent.click(screen.getByRole("button", { name: "me, Away: lunch. Change status" }));
-		await userEvent.click(screen.getByRole("menuitem", { name: "Set as back" }));
+		await userEvent.type(composer, "/away{Enter}");
 		expect(ws.sent).toEqual(["AWAY lunch", "AWAY"]);
-		expect(screen.getByRole("button", { name: "me, Online. Change status" })).toBeInTheDocument();
+		expect(app.state.awayMessage).toBeNull();
 	});
 
 	it("acts on channel members from the member list", async () => {
@@ -169,12 +164,19 @@ describe("App", () => {
 		]);
 	});
 
-	it("shows the version in the sidebar footer", async () => {
+	it("shows the app and reported bouncer versions in Settings About", async () => {
 		vi.stubEnv("GAMJA_VERSION", "v1.2.3");
 		try {
 			const app = await renderApp();
-			await login(app);
+			const ws = await login(app, true);
+			serverSays(ws, ":srv 004 me bouncer.test soju-rs/0.99.31 aiwroO Oov");
+			expect(screen.queryByTitle("gamja version")).toBeNull();
+			await userEvent.click(screen.getByRole("button", { name: "Settings" }));
+			await userEvent.click(screen.getByRole("tab", { name: "About" }));
 			expect(screen.getByTitle("gamja version")).toHaveTextContent("v1.2.3");
+			expect(screen.getByText("soju-rs/0.99.31")).toBeInTheDocument();
+			serverSays(ws, ":srv 004 me bouncer.test soju aiwroO Oov");
+			expect(screen.getByText("Not reported")).toBeInTheDocument();
 		} finally {
 			vi.unstubAllEnvs();
 		}

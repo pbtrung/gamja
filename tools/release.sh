@@ -1,6 +1,6 @@
 #!/bin/sh
-# Builds a gamja release whose version badge matches its tag: tags HEAD,
-# builds, checks the badge and zips dist/ as gamja-<tag>.zip (a top-level
+# Builds a gamja release whose version matches its tag: tags HEAD,
+# builds, checks the version and zips dist/ as gamja-<tag>.zip (a top-level
 # gamja/ folder). With a release notes file, also pushes the tag to the
 # "github" remote and publishes the release on pbtrung/gamja.
 #
@@ -30,7 +30,7 @@ if [ -n "$notes" ] && [ ! -f "$notes" ]; then
 	exit 1
 fi
 if [ -n "${GAMJA_VERSION:-}" ]; then
-	echo "GAMJA_VERSION is set, the badge wouldn't come from the tag" >&2
+	echo "GAMJA_VERSION is set, the version wouldn't come from the tag" >&2
 	exit 1
 fi
 for cmd in zip ${notes:+gh}; do
@@ -53,7 +53,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# The badge comes from the latest tag when building: tag first
+# About and version.json use the same build-time version: tag first
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
 	if [ "$(git rev-parse "$tag^{commit}")" != "$(git rev-parse HEAD)" ]; then
 		echo "tag $tag already exists on another commit" >&2
@@ -71,9 +71,9 @@ fi
 
 npm run build
 
-badge="$(cat dist/assets/*.js | grep -o 'gamja version`,children:`[^`]*' | sed 's/.*`//' | sort -u)"
-if [ "$badge" != "$tag" ]; then
-	echo "the built version badge is \"$badge\", not $tag" >&2
+built_version="$(node -e 'process.stdout.write(JSON.parse(require("node:fs").readFileSync("dist/version.json", "utf8")).version)')"
+if [ "$built_version" != "$tag" ]; then
+	echo "the built version is \"$built_version\", not $tag" >&2
 	exit 1
 fi
 
@@ -82,7 +82,7 @@ tmp="$(mktemp -d)"
 cp -R dist "$tmp/gamja"
 rm -f "$zip"
 (cd "$tmp" && zip -qr "$OLDPWD/$zip" gamja)
-echo "built $zip with version badge $badge"
+echo "built $zip with version $built_version"
 
 if [ -z "$notes" ]; then
 	echo "not published: push the tag to $remote and create the release, or pass a notes file"

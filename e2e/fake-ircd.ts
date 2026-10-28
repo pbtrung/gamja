@@ -111,6 +111,8 @@ export interface ServerOptions {
 	accounts?: Record<string, string>;
 	/** Advertise soju.im/bouncer-networks */
 	bouncer?: boolean;
+	/** Software string sent in RPL_MYINFO */
+	serverVersion?: string;
 	/** How far ahead of the real time the server's clock is, in milliseconds */
 	clockSkew?: number;
 }
@@ -812,7 +814,7 @@ export class FakeServer {
 		conn.numeric("001", `Welcome to ${NETWORK}, ${conn.nick}`);
 		conn.numeric("002", `Your host is ${SERVER_NAME}`);
 		conn.numeric("003", "This server was created today");
-		conn.numeric("004", SERVER_NAME, "fake-ircd-1.0", "i", "bklmnopstv");
+		conn.numeric("004", SERVER_NAME, this.opts.serverVersion ?? "fake-ircd-1.0", "i", "bklmnopstv");
 		conn.numeric("005", ...isupport, "are supported by this server");
 		conn.numeric("375", `- ${SERVER_NAME} Message of the day -`);
 		conn.numeric("372", "- Welcome to the fake IRC server");

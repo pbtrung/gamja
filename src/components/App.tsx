@@ -16,7 +16,6 @@ import ErrorBoundary from "./ErrorBoundary";
 import IconButton from "./IconButton";
 import FilterInput from "./FilterInput";
 import MemberList from "./MemberList";
-import SelfStatus from "./SelfStatus";
 import TypingIndicator from "./TypingIndicator";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import ConnectForm from "./forms/ConnectForm";
@@ -95,10 +94,6 @@ function Chat({ state }: { state: AppState }) {
 
 	const activeID = activeBuffer?.id ?? null;
 	const myNick = activeServer?.nick ?? null;
-	let selfNick = myNick;
-	for (const server of state.servers.values()) {
-		selfNick ??= server.nick;
-	}
 	const canAct = activeServer?.status === ServerStatus.REGISTERED;
 
 	let unreadElsewhere: Unread = Unread.NONE;
@@ -157,21 +152,6 @@ function Chat({ state }: { state: AppState }) {
 						onBufferClose={handleBufferClose}
 						onToggleCollapse={handleToggleCollapse}
 					/>
-					<div className="sidebar-footer">
-						{selfNick && (
-							<SelfStatus
-								nick={selfNick}
-								awayMessage={state.awayMessage}
-								onSetAway={() => app.openDialog({ kind: "away" })}
-								onBack={() => app.setAway(null)}
-							/>
-						)}
-						{import.meta.env.GAMJA_VERSION && (
-							<span className="sidebar-version" title="gamja version">
-								{import.meta.env.GAMJA_VERSION}
-							</span>
-						)}
-					</div>
 				</div>
 			</nav>
 

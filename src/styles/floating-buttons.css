@@ -60,16 +60,3 @@
 	background-color: var(--accent-hover);
 	color: var(--accent-fg);
 }
-
-.sidebar-version {
-	/* Roughly on the title's baseline */
-	max-width: 5rem;
-	padding-right: 0.25rem;
-	overflow: hidden;
-	color: var(--fg-muted);
-	font-size: 0.6875rem;
-	font-weight: 500;
-	letter-spacing: 0;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
