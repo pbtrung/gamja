@@ -65,10 +65,12 @@ Settings, opened from the header of any buffer, are stored per browser:
 
 - **Appearance**: theme, message layout (comfortable, compact, columns or
   bubbles), timestamps, day separators, wrapped line indent (compact layout),
-  text size (90–125%), nick colors, channel modes before nicks, and for the
+  an input that touches the chat pane's edges (on by
+  default), nick colors, channel modes before nicks, and for the
   columns layout the nick alignment, column width, repeated nicks and
   brackets.
-- **Messages**: seconds in the time indicator, 12-hour clock, member list,
+- **Messages**: buffer text size (10–20 px, default 15 px), seconds in the
+  time indicator, 12-hour clock, member list,
   chat events (joins, parts, quits and nick changes), missed messages to load
   per buffer on connect (100–4000, default 200), and typing notifications
   (showing who is typing, sharing when you are).

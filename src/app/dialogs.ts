@@ -4,7 +4,7 @@ import type Client from "../lib/client";
 import * as S from "../state";
 import type { Settings } from "../state";
 import * as store from "../store";
-import { applyTextSize, applyTheme } from "../themes";
+import { applyMessageTextSize, applyTheme } from "../themes";
 import type { Dialog } from "./store";
 import type AppController from "./controller";
 
@@ -151,8 +151,8 @@ export const dialogsMethods = {
 		if (settings.theme !== undefined) {
 			applyTheme(updated.theme);
 		}
-		if (settings.textSize !== undefined) {
-			applyTextSize(S.textSize(updated));
+		if (settings.messageTextSize !== undefined) {
+			applyMessageTextSize(S.messageTextSize(updated));
 		}
 		if (settings.autoAwayMinutes !== undefined && typeof document !== "undefined") {
 			this.handleVisibilityChange();

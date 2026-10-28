@@ -113,7 +113,7 @@
 }
 
 #buffer .logline-header .timestamp {
-	font-size: 0.75rem;
+	font-size: 0.75em;
 }
 
 .avatar {
@@ -126,7 +126,7 @@
 	border-radius: 50%;
 	background-color: var(--nick-color, var(--fg-subtle));
 	color: var(--avatar-fg);
-	font-size: 0.95rem;
+	font-size: 0.95em;
 	font-weight: 600;
 	text-transform: uppercase;
 	user-select: none;
@@ -137,7 +137,7 @@
 	border-radius: var(--radius-sm);
 	background-color: var(--bg-subtle);
 	color: var(--fg-muted);
-	font-size: 0.6875rem;
+	font-size: 0.6875em;
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
@@ -283,7 +283,7 @@
 	width: 2rem;
 	height: 2rem;
 	margin-top: 0.125rem;
-	font-size: 0.875rem;
+	font-size: 0.875em;
 	font-style: normal;
 }
 
@@ -303,7 +303,7 @@
 	align-items: baseline;
 	gap: 0.5rem;
 	margin: 0 0 0.1875rem 0.75rem;
-	font-size: 0.8125rem;
+	font-size: 0.8125em;
 	font-style: normal;
 	font-weight: 600;
 	line-height: 1.4;
@@ -386,7 +386,7 @@
 	margin: 0 0 0 0.625rem;
 	padding-top: 0.35em;
 	color: var(--fg-subtle);
-	font-size: 0.6875rem;
+	font-size: 0.6875em;
 	font-style: normal;
 	float: right;
 }

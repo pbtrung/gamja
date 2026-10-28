@@ -4,7 +4,6 @@ import {
 	MESSAGE_LAYOUTS,
 	NICK_ALIGNS,
 	NOTIFICATION_LEVELS,
-	TEXT_SIZES,
 	type MessageLayout,
 	type NickAlign,
 	type NotificationLevel,
@@ -39,11 +38,6 @@ export const nickAligns = NICK_ALIGNS.map((value) => ({ value, label: nickAlignL
 export const nickColumnWidths: { value: number; label: string }[] = [8, 12, 16, 20].map((n) => ({
 	value: n,
 	label: String(n),
-}));
-
-export const textSizes: { value: number; label: string }[] = TEXT_SIZES.map((n) => ({
-	value: n,
-	label: `${n}%`,
 }));
 
 export const eventModes: { value: BufferEventsDisplayMode; label: string }[] = [

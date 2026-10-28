@@ -14,7 +14,7 @@ import {
 } from "../state";
 import * as store from "../store";
 import * as webpush from "./webpush";
-import { applyTextSize, applyTheme } from "../themes";
+import { applyMessageTextSize, applyTheme } from "../themes";
 import { createAppStore, type AppState, type AppStore, type ConnectParams } from "./store";
 import { fetchConfig, resolveServerURL, splitHostPort, type Config } from "./config";
 import { getReceipt, storeServer, type HistoryBatch } from "./history";
@@ -73,7 +73,7 @@ export default class AppController {
 			this.update((state) => ({ settings: { ...state.settings, ...settings } }));
 		}
 		applyTheme(this.state.settings.theme);
-		applyTextSize(S.textSize(this.state.settings));
+		applyMessageTextSize(S.messageTextSize(this.state.settings));
 		this.update({
 			collapsedNetworks: new Set(store.collapsedNetworks.load() ?? []),
 			bufferListHidden: store.bufferListHidden.load() ?? false,

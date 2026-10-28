@@ -95,13 +95,6 @@
 	font-size: 0.85rem;
 }
 
-.panel-close {
-	display: none;
-	flex-shrink: 0;
-	width: 1.75rem;
-	height: 1.75rem;
-}
-
 @media (min-width: 968px) {
 	#buffer-list.hidden {
 		display: none;
@@ -379,25 +372,6 @@ li.unread-highlight .unread-indicator,
 	.member-items li a {
 		padding-right: 0.625rem;
 	}
-}
-
-.connection-status {
-	flex-shrink: 0;
-	width: 0.5rem;
-	height: 0.5rem;
-	border-radius: 50%;
-}
-
-.connection-status.status-connected {
-	background-color: var(--success);
-}
-
-.connection-status.status-connecting {
-	background-color: var(--warning);
-}
-
-.connection-status.status-disconnected {
-	background-color: var(--danger);
 }
 
 .member-avatar {

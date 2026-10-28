@@ -10,7 +10,8 @@ test("searches messages and jumps to a result", async ({ page, connect, bot }) =
 	bob.privmsg("#search", "jumps over the lazy dog");
 	await expect(page.locator("#buffer")).toContainText("lazy dog");
 
-	await page.getByRole("button", { name: "Search" }).click();
+	await page.getByRole("button", { name: "More actions" }).click();
+	await page.getByRole("menuitem", { name: "Search" }).click();
 	const dialog = page.getByRole("dialog", { name: "Search FakeNet" });
 	await dialog.getByRole("searchbox").fill("brown");
 	await dialog.getByRole("searchbox").press("Enter");

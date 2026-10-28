@@ -17,6 +17,8 @@ export type NickAlign = (typeof NICK_ALIGNS)[number];
 export interface Settings {
 	/** Color theme ID, see themes.ts */
 	theme: string;
+	/** Extend the message input to the sides and bottom of the chat pane */
+	edgeToEdgeInput: boolean;
 	/**
 	 * Comfortable groups messages under the sender's name, compact is classic
 	 * IRC, columns aligns senders like WeeChat, bubbles is messenger-style
@@ -47,8 +49,8 @@ export interface Settings {
 	indentWrapped: boolean;
 	/** Show timestamps as 01:34 PM instead of 13:34 */
 	clock12h: boolean;
-	/** Text size of the whole interface, in percent, see textSize() */
-	textSize: number;
+	/** Text size of the buffer area, in pixels, see messageTextSize() */
+	messageTextSize: number;
 	/** Show who is typing in the current buffer */
 	showTyping: boolean;
 	/** Let others know when we type, with +typing client tags */
@@ -71,6 +73,7 @@ export type NotificationLevel = (typeof NOTIFICATION_LEVELS)[number];
 
 export const defaultSettings: Settings = {
 	theme: "dracula",
+	edgeToEdgeInput: true,
 	layout: "columns",
 	nickColors: true,
 	nickModes: false,
@@ -83,7 +86,7 @@ export const defaultSettings: Settings = {
 	dateSeparators: true,
 	indentWrapped: false,
 	clock12h: false,
-	textSize: 100,
+	messageTextSize: 15,
 	showTyping: true,
 	sendTyping: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
@@ -94,15 +97,15 @@ export const defaultSettings: Settings = {
 	backlogSize: 200,
 };
 
-/** Values of the textSize setting */
-export const TEXT_SIZES = [90, 100, 110, 125] as const;
+export const MESSAGE_TEXT_SIZE_MIN = 10;
+export const MESSAGE_TEXT_SIZE_MAX = 20;
 
-/** The textSize setting, falling back to the default for a stored value
- * that isn't one of TEXT_SIZES. */
-export function textSize(settings: Settings): number {
-	return (TEXT_SIZES as readonly number[]).includes(settings.textSize)
-		? settings.textSize
-		: defaultSettings.textSize;
+/** The buffer's text size, falling back to the default for an invalid stored value. */
+export function messageTextSize(settings: Settings): number {
+	const size = settings.messageTextSize;
+	return Number.isInteger(size) && size >= MESSAGE_TEXT_SIZE_MIN && size <= MESSAGE_TEXT_SIZE_MAX
+		? size
+		: defaultSettings.messageTextSize;
 }
 
 /** Bounds of the backlogSize setting */

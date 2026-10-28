@@ -243,14 +243,16 @@ describe("SettingsForm", () => {
 				onClose={() => {}}
 			/>,
 		);
-		await userEvent.click(screen.getByRole("radio", { name: "125%" }));
-		expect(onChange).toHaveBeenCalledWith({ textSize: 125 });
+		expect(screen.queryByLabelText("Text size")).toBeNull();
 		await userEvent.click(screen.getByLabelText("Show timestamps"));
 		expect(onChange).toHaveBeenCalledWith({ showTimestamps: false });
 		await userEvent.click(screen.getByLabelText("Day separators"));
 		expect(onChange).toHaveBeenCalledWith({ dateSeparators: false });
 		await userEvent.click(screen.getByLabelText("Indent wrapped lines"));
 		expect(onChange).toHaveBeenCalledWith({ indentWrapped: true });
+		expect(screen.getByLabelText("Touch the edges")).toBeChecked();
+		await userEvent.click(screen.getByLabelText("Touch the edges"));
+		expect(onChange).toHaveBeenCalledWith({ edgeToEdgeInput: false });
 	});
 
 	it("only offers indenting wrapped lines in the compact layout", () => {
@@ -313,6 +315,11 @@ describe("SettingsForm missed messages to load", () => {
 			/>,
 		);
 		await userEvent.click(screen.getByRole("tab", { name: "Messages" }));
+		const textSize = screen.getByLabelText("Text size");
+		expect(textSize).toHaveValue(15);
+		await userEvent.clear(textSize);
+		await userEvent.type(textSize, "20");
+		expect(onChange).toHaveBeenCalledWith({ messageTextSize: 20 });
 		const input = screen.getByLabelText("Missed messages to load on connect");
 		expect(input).toHaveValue(200);
 		// Sized for the 4 digits of the maximum, see input.settings-number

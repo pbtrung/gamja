@@ -43,7 +43,7 @@ textarea.composer-input {
 	background: none;
 	box-shadow: none;
 	color: var(--fg);
-	font-size: var(--chat-font-size);
+	font-size: 1rem;
 	line-height: 1.4;
 	resize: none;
 }
@@ -137,4 +137,25 @@ textarea.composer-input:focus {
 
 .composer-send:not(:disabled) {
 	color: var(--accent);
+}
+
+/* Flat input spanning the chat pane, without the outer gutter. */
+#composer.edge-to-edge {
+	padding: 0;
+}
+
+#composer.edge-to-edge .composer-box {
+	padding: 0.25rem 0.75rem;
+	border-width: 1px 0 0;
+	border-radius: 0;
+}
+
+#composer.edge-to-edge .composer-input,
+#composer.edge-to-edge .composer-buttons .icon-btn {
+	border-radius: 0;
+}
+
+#composer.edge-to-edge .typing-indicator:not(:empty),
+#composer.edge-to-edge .composer-reply {
+	margin: 0.25rem 0.75rem;
 }

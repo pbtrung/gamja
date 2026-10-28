@@ -25,6 +25,8 @@ interface ComposerProps {
 	draftKey?: unknown;
 	readOnly: boolean;
 	commandOnly: boolean;
+	/** Extend the input to the chat pane's edges, with square corners */
+	edgeToEdgeInput?: boolean;
 	maxLen?: number;
 	/** Set if messages may span several lines (draft/multiline) */
 	multiline?: MultilineLimits | null;
@@ -59,6 +61,7 @@ export default function Composer({
 	draftKey,
 	readOnly,
 	commandOnly,
+	edgeToEdgeInput = true,
 	maxLen,
 	multiline,
 	onSubmit,
@@ -253,6 +256,9 @@ export default function Composer({
 	}, [readOnly, commandOnly, focus, normalizeNewlines]);
 
 	const classes: string[] = [];
+	if (edgeToEdgeInput) {
+		classes.push("edge-to-edge");
+	}
 	if (readOnly && !text) {
 		classes.push("read-only");
 	}

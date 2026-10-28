@@ -61,18 +61,21 @@ describe("display settings", () => {
 			dateSeparators: true,
 			indentWrapped: false,
 			clock12h: false,
-			textSize: 100,
+			messageTextSize: 15,
 			showTyping: true,
 			sendTyping: true,
 		});
 	});
 
-	it("falls back to the default text size", () => {
-		const size = (textSize: unknown) =>
-			S.textSize({ ...S.defaultSettings, textSize: textSize as number });
-		expect(size(125)).toBe(125);
-		expect(size(117)).toBe(100);
-		expect(size("x")).toBe(100);
+	it("allows integer message text sizes from 10 to 20 px", () => {
+		const size = (messageTextSize: unknown) =>
+			S.messageTextSize({ ...S.defaultSettings, messageTextSize: messageTextSize as number });
+		for (let pixels = 10; pixels <= 20; pixels++) {
+			expect(size(pixels)).toBe(pixels);
+		}
+		for (const invalid of [9, 21, 12.5, "x", Number.NaN, Infinity]) {
+			expect(size(invalid)).toBe(15);
+		}
 	});
 });
 
@@ -90,6 +93,7 @@ describe("sanitizeSettings", () => {
 				showTimestamps: "yes",
 				autoAwayMinutes: Number.NaN,
 				unknown: true,
+				textSize: 125,
 				toString: "x",
 			}),
 		).toEqual({ layout: "columns", nickColors: false, nickColumnWidth: 20, theme: "zenburn" });

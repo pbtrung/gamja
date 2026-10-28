@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
-import { textSize, type Settings } from "../../../state";
+import type { Settings } from "../../../state";
 import { THEMES } from "../../../themes";
-import { layouts, nickAligns, nickColumnWidths, textSizes } from "./options";
+import { layouts, nickAligns, nickColumnWidths } from "./options";
 import { LayoutPreview, ThemePreview } from "./previews";
 import { SegmentedRow, ToggleRow } from "./rows";
 
@@ -91,15 +91,14 @@ export default function AppearancePane({ settings, onChange }: PaneProps) {
 				)}
 			</div>
 
-			<h3 className="settings-heading">Text</h3>
+			<h3 className="settings-heading">Message input</h3>
 			<div className="settings-card">
-				<SegmentedRow
-					name="textSize"
-					label="Text size"
-					hint="Of the whole interface"
-					options={textSizes}
-					value={textSize(settings)}
-					onChange={(textSize) => onChange({ textSize })}
+				<ToggleRow
+					name="edgeToEdgeInput"
+					label="Touch the edges"
+					hint="Extend the input box to the sides and bottom of the chat pane, with square corners"
+					checked={settings.edgeToEdgeInput}
+					onChange={(edgeToEdgeInput) => onChange({ edgeToEdgeInput })}
 				/>
 			</div>
 

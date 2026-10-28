@@ -184,7 +184,8 @@ test.describe("bouncer dialog screenshots", () => {
 		await page.keyboard.press("Control+k");
 		await shotDialog(page, "switcher");
 		await tabs.getByRole("tab", { name: "#dialogs" }).click();
-		await page.getByRole("button", { name: "Search" }).click();
+		await page.getByRole("button", { name: "More actions" }).click();
+		await page.getByRole("menuitem", { name: "Search" }).click();
 		await shotDialog(page, "search");
 		await page.getByRole("textbox", { name: "Type a message" }).fill("/help");
 		await page.keyboard.press("Enter");

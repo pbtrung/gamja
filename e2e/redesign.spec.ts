@@ -71,3 +71,56 @@ test("uses drawers at tablet widths and closes them with the backdrop or Escape"
 	await expect(sidebar).toBeHidden();
 	await expect(toggle).toBeFocused();
 });
+
+test("touches the chat pane edges by default and remembers the input setting", async ({ page, connect }) => {
+	await connect(page, "tester", { channels: ["#edges"] });
+	const input = page.locator(".composer-box");
+	for (const width of [412, 1280]) {
+		await page.setViewportSize({ width, height: 800 });
+		await expect(input).toHaveCSS("border-radius", "0px");
+		const chatBounds = (await page.locator("#buffer").boundingBox())!;
+		const inputBounds = (await input.boundingBox())!;
+		expect(inputBounds.x).toBe(chatBounds.x);
+		expect(inputBounds.width).toBe(chatBounds.width);
+		expect(inputBounds.y + inputBounds.height).toBe(800);
+	}
+	await page.getByRole("button", { name: "Settings" }).click();
+	const setting = page.getByRole("checkbox", { name: "Touch the edges", exact: true });
+	await expect(setting).toBeChecked();
+	await setting.click();
+	await page.keyboard.press("Escape");
+	await expect(input).toHaveCSS("border-radius", "14px");
+	await connect(page, "tester", { channels: ["#edges"] });
+	await expect(input).toBeVisible();
+	await expect(input).toHaveCSS("border-radius", "14px");
+});
+
+test("sizes buffer text in pixels and remembers it without resizing the interface", async ({
+	page,
+	connect,
+	bot,
+}) => {
+	const bob = await bot("bob");
+	await bob.join("#size");
+	await connect(page, "tester", { channels: ["#size"] });
+	bob.privmsg("#size", "message text size");
+	const text = page.locator("#buffer .logline-content", { hasText: "message text size" });
+	await expect(text).toHaveCSS("font-size", "15px");
+	await page.getByRole("button", { name: "Settings" }).click();
+	await expect(page.getByLabel("Text size", { exact: true })).toHaveCount(0);
+	await page.getByRole("tab", { name: "Messages", exact: true }).click();
+	const size = page.getByRole("spinbutton", { name: "Text size", exact: true });
+	await expect(size).toHaveValue("15");
+	for (let pixels = 10; pixels <= 20; pixels++) {
+		await size.fill(String(pixels));
+		await expect(text).toHaveCSS("font-size", `${pixels}px`);
+		await expect(page.locator("body")).toHaveCSS("font-size", "16px");
+		await expect(page.locator("#buffer-header h1")).toHaveCSS("font-size", "16px");
+		await expect(page.locator(".composer-input")).toHaveCSS("font-size", "16px");
+	}
+	await page.keyboard.press("Escape");
+	await page.setViewportSize({ width: 412, height: 800 });
+	await expect(text).toHaveCSS("font-size", "20px");
+	await connect(page, "tester", { channels: ["#size"] });
+	await expect(page.locator("#buffer")).toHaveCSS("font-size", "20px");
+});

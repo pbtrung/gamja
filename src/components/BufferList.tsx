@@ -203,13 +203,6 @@ const BufferItem = memo(function BufferItem({
 						{hiddenUnread}
 					</span>
 				) : null}
-				{buffer.type === BufferType.SERVER && (
-					<span
-						className={`connection-status status-${connectionStatus(server, bouncerNetwork)}`}
-						aria-hidden="true"
-						title={connectionLabel[connectionStatus(server, bouncerNetwork)]}
-					/>
-				)}
 				{buffer.unread !== Unread.NONE ? (
 					<span className="unread-indicator" aria-hidden="true" />
 				) : null}

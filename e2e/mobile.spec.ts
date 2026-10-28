@@ -9,6 +9,7 @@ test("opens the buffer list from the header on small screens", async ({ page, co
 	await expect(page.locator("#buffer-list")).toBeHidden();
 	await page.getByRole("button", { name: "Open buffer list" }).click();
 	await expect(page.locator("#buffer-list")).toBeVisible();
+	await expect(page.getByRole("button", { name: "Close buffer list" })).toHaveCount(0);
 	await page.getByRole("tab", { name: "FakeNet" }).click();
 	await expect(page.locator("#buffer-list")).toBeHidden();
 	await expect(page.locator("#buffer-header h1")).toHaveText("FakeNet");
@@ -61,6 +62,7 @@ test("opens member actions by tapping a nick on touch screens", async ({ page, c
 	await expect(page.locator("#buffer-header h1")).toHaveText("#tap");
 	await page.getByRole("button", { name: "Open member list" }).click();
 	const members = page.locator("#member-list");
+	await expect(page.getByRole("button", { name: "Close member list" })).toHaveCount(0);
 	await expect(members.getByRole("button", { name: "Actions for bob" })).toBeHidden();
 	await members.getByRole("link", { name: "@bob" }).tap();
 	const menu = page.getByRole("menu", { name: "Actions for bob" });

@@ -29,6 +29,7 @@ function setup(
 			bouncerNetID: null,
 			reliableUserAccounts: false,
 			users: new irc.CaseMapMap(null, irc.CaseMapping.RFC1459),
+			metadata: new irc.CaseMapMap(null, irc.CaseMapping.RFC1459),
 			...serverPatch,
 		} as Server,
 		user: null,
@@ -128,7 +129,13 @@ describe("BufferHeader", () => {
 		});
 		expect(screen.getByRole("heading", { name: "#c" })).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "https://x.org" })).toBeInTheDocument();
-		expect(buttons()).toEqual(["Open buffer list", "Open member list", "Search", "Leave", "Settings"]);
+		expect(buttons()).toEqual([
+			"Open buffer list",
+			"More actions",
+			"Open member list",
+			"Leave",
+			"Settings",
+		]);
 		await userEvent.click(screen.getByRole("button", { name: "Leave" }));
 		expect(props.onClose).toHaveBeenCalled();
 	});
@@ -266,11 +273,40 @@ describe("BufferHeader", () => {
 		expect(join.querySelector(".action-label")).toBeNull();
 	});
 
-	it("shows Detach and Join as icons only", () => {
-		setup({
+	it("puts Pin, Mute, Search and Detach in the desktop channel menu", async () => {
+		const props = setup({
 			buffer: { type: BufferType.CHANNEL, name: "#c", joined: true },
+			onSetMetadata: vi.fn(),
+			onSearch: vi.fn(),
 			onDetach: vi.fn(),
 		});
-		expect(screen.getByRole("button", { name: "Detach" })).not.toHaveTextContent("Detach");
+		expect(buttons()).toEqual([
+			"Open buffer list",
+			"More actions",
+			"Open member list",
+			"Leave",
+			"Settings",
+		]);
+		const more = screen.getByRole("button", { name: "More actions" });
+		expect(more.querySelector("svg.lucide-ellipsis-vertical")).toBeInTheDocument();
+		for (const label of ["Pin", "Mute", "Search", "Detach"]) {
+			await userEvent.click(more);
+			expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+				"Pin",
+				"Mute",
+				"Search",
+				"Detach",
+			]);
+			await userEvent.click(screen.getByRole("menuitem", { name: label }));
+			expect(screen.queryByRole("menu")).toBeNull();
+		}
+		expect(props.onSetMetadata).toHaveBeenCalledWith("pinned", true);
+		expect(props.onSetMetadata).toHaveBeenCalledWith("muted", true);
+		expect(props.onSearch).toHaveBeenCalled();
+		expect(props.onDetach).toHaveBeenCalled();
+		await userEvent.click(screen.getByRole("button", { name: "Open member list" }));
+		expect(props.onOpenMemberList).toHaveBeenCalled();
+		await userEvent.click(screen.getByRole("button", { name: "Settings" }));
+		expect(props.onOpenSettings).toHaveBeenCalled();
 	});
 });

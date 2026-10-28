@@ -28,10 +28,6 @@
 		width: 1.75rem;
 	}
 
-	.panel-close {
-		display: inline-flex;
-	}
-
 	#buffer-list.expand,
 	#member-list.expand {
 		position: fixed;

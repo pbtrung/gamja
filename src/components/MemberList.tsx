@@ -10,7 +10,6 @@ import {
 	Shield,
 	ShieldOff,
 	UserX,
-	X,
 } from "lucide-react";
 import * as irc from "../lib/irc";
 import type { BouncerNetwork, MemberAction, User } from "../state";
@@ -148,7 +147,6 @@ const MemberItem = memo(function MemberItem({
 });
 
 interface MemberListProps {
-	onClose?: () => void;
 	members: irc.CaseMapMap<string>;
 	users: irc.CaseMapMap<User>;
 	prefixes?: string;
@@ -183,7 +181,6 @@ function groupMembers(sorted: [string, string][]): { title: string; members: [st
 }
 
 function MemberList({
-	onClose,
 	members,
 	users,
 	prefixes,
@@ -235,14 +232,6 @@ function MemberList({
 					label="Filter users"
 					placeholder={`Filter ${members.size} ${members.size === 1 ? "user" : "users"}`}
 				/>
-				{onClose && (
-					<IconButton
-						icon={X}
-						label="Close member list"
-						className="panel-close"
-						onClick={onClose}
-					/>
-				)}
 			</header>
 			<div className="member-items">
 				{groups.map((group) => (

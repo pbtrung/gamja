@@ -1,4 +1,12 @@
-import { BACKLOG_SIZE_MAX, BACKLOG_SIZE_MIN, backlogSize, type Settings } from "../../../state";
+import {
+	BACKLOG_SIZE_MAX,
+	BACKLOG_SIZE_MIN,
+	MESSAGE_TEXT_SIZE_MAX,
+	MESSAGE_TEXT_SIZE_MIN,
+	backlogSize,
+	messageTextSize,
+	type Settings,
+} from "../../../state";
 import { eventModes } from "./options";
 import { NumberRow, SegmentedRow, ToggleRow } from "./rows";
 
@@ -13,6 +21,15 @@ export default function MessagesPane({ settings, onChange }: PaneProps) {
 		<>
 			<h3 className="settings-heading">Messages</h3>
 			<div className="settings-card">
+				<NumberRow
+					name="messageTextSize"
+					label="Text size"
+					hint="Buffer text in pixels (10–20 px)"
+					min={MESSAGE_TEXT_SIZE_MIN}
+					max={MESSAGE_TEXT_SIZE_MAX}
+					value={messageTextSize(settings)}
+					onChange={(messageTextSize) => onChange({ messageTextSize })}
+				/>
 				<ToggleRow
 					name="secondsInTimestamps"
 					label="Show seconds in time indicator"

@@ -894,11 +894,12 @@ describe("reactions, replies, redaction and typing", () => {
 		expect(sentRaw()).toEqual([]);
 	});
 
-	it("applies the text size", () => {
+	it("applies the message text size without resizing the interface", () => {
 		const app = new AppController();
-		app.handleSettingsChange({ textSize: 110 });
-		expect(document.documentElement.style.fontSize).toBe("110%");
-		app.handleSettingsChange({ textSize: 100 });
+		app.handleSettingsChange({ messageTextSize: 20 });
+		expect(document.documentElement.style.getPropertyValue("--chat-font-size")).toBe("20px");
+		app.handleSettingsChange({ messageTextSize: 15 });
+		expect(document.documentElement.style.getPropertyValue("--chat-font-size")).toBe("15px");
 		expect(document.documentElement.style.fontSize).toBe("");
 	});
 

@@ -280,6 +280,19 @@ export default function BufferHeader(props: BufferHeaderProps) {
 		actions.unshift(...toggles);
 	}
 
+	// Desktop channels keep the main controls beside an overflow menu.
+	const desktopChannel = !smallScreen && buffer.type === BufferType.CHANNEL;
+	const menuActions = smallScreen
+		? actions
+		: desktopChannel
+			? actions.filter((action) => !["join", "part", "settings"].includes(action.key))
+			: [];
+	const inlineActions = smallScreen
+		? []
+		: desktopChannel
+			? actions.filter((action) => ["join", "part", "settings"].includes(action.key))
+			: actions;
+
 	let name = buffer.name;
 	if (buffer.type === BufferType.SERVER) {
 		name = getServerName(server, bouncerNetwork);
@@ -340,26 +353,18 @@ export default function BufferHeader(props: BufferHeaderProps) {
 			) : null}
 			<div className="actions">
 				<div className="btn-group" role="group" aria-label="Buffer actions">
-					{smallScreen ? (
-						<>
-							{actions.length > 0 && (
-								<Menu
-									items={actions}
-									label="Buffer actions"
-									toggleLabel="More actions"
-									toggleIcon={EllipsisVertical}
-								/>
-							)}
-							{memberListToggle}
-						</>
-					) : (
-						<>
-							{memberListToggle}
-							{actions.map(({ key, ...action }) => (
-								<ActionButton key={key} {...action} iconOnly />
-							))}
-						</>
+					{menuActions.length > 0 && (
+						<Menu
+							items={menuActions}
+							label="Buffer actions"
+							toggleLabel="More actions"
+							toggleIcon={EllipsisVertical}
+						/>
 					)}
+					{memberListToggle}
+					{inlineActions.map(({ key, ...action }) => (
+						<ActionButton key={key} {...action} iconOnly />
+					))}
 				</div>
 			</div>
 		</>

@@ -145,12 +145,6 @@ function Chat({ state }: { state: AppState }) {
 							label="Filter buffers"
 							placeholder="Filter buffers"
 						/>
-						<IconButton
-							icon={X}
-							label="Close buffer list"
-							className="panel-close"
-							onClick={() => (smallScreen ? closePanels() : app.setBufferListHidden(true))}
-						/>
 					</header>
 					<BufferList
 						filter={bufferFilter}
@@ -256,7 +250,6 @@ function Chat({ state }: { state: AppState }) {
 				<aside id="member-list" className={memberListClass} aria-label="Members list">
 					<div className="member-list-panel">
 						<MemberList
-							onClose={closePanels}
 							members={activeBuffer.members}
 							users={activeServer.users}
 							prefixes={activeServer.membershipModes?.map((m) => m.prefix).join("")}
@@ -280,6 +273,7 @@ function Chat({ state }: { state: AppState }) {
 
 			<Composer
 				ref={composer}
+				edgeToEdgeInput={state.settings.edgeToEdgeInput}
 				draftKey={activeID}
 				status={state.settings.showTyping ? <TypingIndicator buffer={activeBuffer} /> : null}
 				replyTo={state.replyTo?.buffer === activeBuffer?.id ? state.replyTo : null}
