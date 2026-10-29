@@ -23,6 +23,8 @@ import type { MessageNotification } from "./notifications";
 import { startupMethods, type StartupMethods } from "./startup";
 import { buffersMethods, type BuffersMethods } from "./buffers";
 import { readMethods, type ReadMethods } from "./read";
+import { navigationMethods, type NavigationMethods } from "./navigation";
+import { panelsMethods, type PanelsMethods } from "./panels";
 import { notificationsMethods, type NotificationsMethods } from "./notifications";
 import { routingMethods, type RoutingMethods } from "./routing";
 import { historyMethods, type HistoryMethods } from "./history";
@@ -637,11 +639,6 @@ export default class AppController {
 	 * Briefly switching tabs doesn't count.
 	 */
 
-	/**
-	 * Find a buffer by name when its server isn't known: on the active server
-	 * first, otherwise the one with the most important unread state.
-	 */
-
 	destroy(): void {
 		for (const client of this.clients.values()) {
 			client.disconnect();
@@ -660,6 +657,8 @@ export default interface AppController // eslint-disable-line @typescript-eslint
 		StartupMethods,
 		BuffersMethods,
 		ReadMethods,
+		NavigationMethods,
+		PanelsMethods,
 		NotificationsMethods,
 		RoutingMethods,
 		HistoryMethods,
@@ -674,6 +673,8 @@ Object.assign(
 	startupMethods,
 	buffersMethods,
 	readMethods,
+	navigationMethods,
+	panelsMethods,
 	notificationsMethods,
 	routingMethods,
 	historyMethods,
