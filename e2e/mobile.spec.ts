@@ -83,3 +83,29 @@ test("honors the timestamp preference on mobile", async ({ page, connect, bot, s
 	await expect(line).toBeVisible();
 	await expect(line.locator(".timestamp")).toBeHidden();
 });
+
+test("opens and closes the side panels by swiping", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#swipe");
+	await connect(page, "tester", { channels: ["#swipe"] });
+	await expect(page.locator("#buffer-header h1")).toHaveText("#swipe");
+	const swipe = (fromX: number, toX: number) =>
+		page.locator("#buffer").evaluate(
+			(el, [fromX, toX]) => {
+				const point = (x: number) =>
+					new Touch({ identifier: 1, target: el, clientX: x, clientY: 300 });
+				el.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [point(fromX)] }));
+				el.dispatchEvent(new TouchEvent("touchend", { bubbles: true, changedTouches: [point(toX)] }));
+			},
+			[fromX, toX],
+		);
+
+	await swipe(20, 300);
+	await expect(page.locator("#buffer-list")).toBeVisible();
+	await swipe(300, 20);
+	await expect(page.locator("#buffer-list")).toBeHidden();
+	await swipe(300, 20);
+	await expect(page.locator("#member-list")).toBeVisible();
+	await swipe(20, 300);
+	await expect(page.locator("#member-list")).toBeHidden();
+});

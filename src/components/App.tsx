@@ -18,6 +18,7 @@ import FilterInput from "./FilterInput";
 import MemberList from "./MemberList";
 import TypingIndicator from "./TypingIndicator";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
+import useSwipe from "./useSwipe";
 import ConnectForm from "./forms/ConnectForm";
 
 function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void }) {
@@ -53,6 +54,26 @@ function Chat({ state }: { state: AppState }) {
 	}, [smallScreen, state.openPanels.bufferList, state.openPanels.memberList, closePanels]);
 
 	useEffect(() => app.registerComposer(() => composer.current?.focus()), [app]);
+
+	// Swipe right to show the buffer list (or hide the member list), left
+	// to show the member list (or hide the buffer list)
+	useSwipe(smallScreen, (direction) => {
+		const { openPanels, activeBuffer } = app.state;
+		const open = direction === "right" ? openPanels.bufferList : openPanels.memberList;
+		const other = direction === "right" ? openPanels.memberList : openPanels.bufferList;
+		if (other) {
+			app.setOpenPanel(direction === "right" ? "memberList" : "bufferList", false);
+		} else if (!open) {
+			if (direction === "right") {
+				app.setOpenPanel("bufferList", true);
+			} else if (
+				activeBuffer !== null &&
+				app.state.buffers.get(activeBuffer)?.type === BufferType.CHANNEL
+			) {
+				app.setOpenPanel("memberList", true);
+			}
+		}
+	});
 
 	const activeBuffer = state.activeBuffer !== null ? (state.buffers.get(state.activeBuffer) ?? null) : null;
 	const activeServer = activeBuffer ? (state.servers.get(activeBuffer.server) ?? null) : null;
