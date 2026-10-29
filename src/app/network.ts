@@ -5,11 +5,11 @@ import type { Message } from "../lib/irc";
 import type Client from "../lib/client";
 import { ClientStatus, MULTIPLEX_CAP } from "../lib/client";
 import * as S from "../state";
-import { SERVER_BUFFER, BufferType, ReceiptType, Unread, type BufferID } from "../state";
+import { SERVER_BUFFER, BufferType, type BufferID } from "../state";
 import * as webpush from "./webpush";
 import { splitHostPort } from "./config";
 import type AppController from "./controller";
-import { getReceipt, storeServer } from "./history";
+import { storeServer } from "./history";
 
 /** Maximum length of the channel list of a JOIN, IRC lines are 512 bytes */
 const MAX_JOIN_LENGTH = 400;
@@ -265,47 +265,6 @@ export const networkMethods = {
 				netClient.params.autojoin = [];
 			}
 		}
-	},
-
-	handleMarkRead(this: AppController, serverID: number, client: Client, msg: Message): void {
-		const target = msg.params[0];
-		const bound = msg.params[1];
-		if (!bound || bound === "*" || !bound.startsWith("timestamp=")) {
-			return;
-		}
-		const readReceipt = { time: bound.replace("timestamp=", "") };
-		const stored = this.bufferStore.get({ name: target, server: storeServer(client) });
-		if (S.isReceiptBefore(readReceipt, getReceipt(stored, ReceiptType.READ))) {
-			return;
-		}
-		this.closeNotifications(serverID, client, target, readReceipt);
-
-		const buf = S.getBuffer(this.state, { server: serverID, name: target });
-		let unread: Unread = Unread.NONE;
-		if (buf) {
-			// Re-compute unread status
-			const server = this.state.servers.get(serverID);
-			for (let i = buf.messages.length - 1; i >= 0 && unread !== Unread.HIGHLIGHT; i--) {
-				const m = buf.messages[i];
-				if (m.command !== "PRIVMSG" && m.command !== "NOTICE") {
-					continue;
-				}
-				if (S.isMessageBeforeReceipt(m, readReceipt)) {
-					break;
-				}
-				unread = S.unionUnread(unread, this.chatMessageUnread(client, server, buf.name, m));
-			}
-			this.setBufferState(buf.id, { unread });
-		}
-
-		this.bufferStore.put({
-			name: target,
-			server: storeServer(client),
-			unread,
-			closed: !buf,
-			receipts: { [ReceiptType.READ]: readReceipt },
-		});
-		this.updateDocumentTitle();
 	},
 
 	findBouncerNetIDByHost(this: AppController, host: string): string | null {

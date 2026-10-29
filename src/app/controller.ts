@@ -22,6 +22,7 @@ import { getReceipt, storeServer, type HistoryBatch } from "./history";
 import type { MessageNotification } from "./notifications";
 import { startupMethods, type StartupMethods } from "./startup";
 import { buffersMethods, type BuffersMethods } from "./buffers";
+import { readMethods, type ReadMethods } from "./read";
 import { notificationsMethods, type NotificationsMethods } from "./notifications";
 import { routingMethods, type RoutingMethods } from "./routing";
 import { historyMethods, type HistoryMethods } from "./history";
@@ -204,12 +205,6 @@ export default class AppController {
 		}
 		return this.state.bouncerNetworks.get(server.bouncerNetID) ?? null;
 	}
-
-	/**
-	 * Store the receipts of a buffer, and send its read marker if it moved.
-	 * With a batch, only the last read marker of each buffer is sent, once the
-	 * whole batch is handled.
-	 */
 
 	prepareChatMessage(serverID: number, msg: Message): void {
 		// Treat server-wide broadcasts as highlights. They're sent by server
@@ -667,6 +662,7 @@ export default interface AppController // eslint-disable-line @typescript-eslint
 	extends
 		StartupMethods,
 		BuffersMethods,
+		ReadMethods,
 		NotificationsMethods,
 		RoutingMethods,
 		HistoryMethods,
@@ -678,6 +674,7 @@ Object.assign(
 	AppController.prototype,
 	startupMethods,
 	buffersMethods,
+	readMethods,
 	notificationsMethods,
 	routingMethods,
 	historyMethods,

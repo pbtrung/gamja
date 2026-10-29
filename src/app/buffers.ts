@@ -1,35 +1,18 @@
-/** Buffers: creating, switching, reading, opening and closing them. */
+/** Buffers: creating, switching, opening and closing them. */
 
 import * as irc from "../lib/irc";
-import type Client from "../lib/client";
 import { ClientStatus, type WhoxField } from "../lib/client";
 import * as S from "../state";
-import { SERVER_BUFFER, BufferType, ReceiptType, Unread, type Buffer, type BufferID } from "../state";
+import { SERVER_BUFFER, BufferType, ReceiptType, type Buffer, type BufferID } from "../state";
 import * as store from "../store";
 import { splitHostPort } from "./config";
 import type AppController from "./controller";
-import { getReceipt, storeServer, type HistoryBatch } from "./history";
+import { getReceipt, storeServer } from "./history";
 
 /** User details requested with WHO, see User in state.ts */
 const WHO_FIELDS: WhoxField[] = ["flags", "hostname", "nick", "realname", "username", "account"];
 
 export const buffersMethods = {
-	syncBufferUnread(this: AppController, serverID: number, name: string): void {
-		const client = this.clients.get(serverID)!;
-
-		const stored = this.bufferStore.get({ name, server: storeServer(client) });
-		if (client.caps.enabled.has("draft/chathistory") && stored) {
-			this.setBufferState({ server: serverID, name }, { unread: stored.unread });
-			this.updateDocumentTitle();
-		}
-
-		this.bufferStore.put({
-			name,
-			server: storeServer(client),
-			closed: false,
-		});
-	},
-
 	createBuffer(this: AppController, serverID: number, name: string): number {
 		const client = this.clients.get(serverID)!;
 		let id = 0;
@@ -44,33 +27,6 @@ export const buffersMethods = {
 			this.syncBufferUnread(serverID, name);
 		}
 		return id;
-	},
-
-	sendReadReceipt(this: AppController, client: Client, storedBuffer: store.BufferUpdate): void {
-		if (!client.supportsReadMarker() || client.status !== ClientStatus.REGISTERED) {
-			return;
-		}
-		const readReceipt = storedBuffer.receipts?.[ReceiptType.READ];
-		if (storedBuffer.name === SERVER_BUFFER || !readReceipt) {
-			return;
-		}
-		client.setReadMarker(storedBuffer.name, readReceipt.time);
-	},
-
-	storeReceipts(
-		this: AppController,
-		client: Client,
-		update: store.BufferUpdate,
-		batch?: HistoryBatch,
-	): void {
-		if (!this.bufferStore.put(update)) {
-			return;
-		}
-		if (!batch) {
-			this.sendReadReceipt(client, update);
-		} else if (update.receipts?.[ReceiptType.READ]) {
-			batch.readMarkers.set(client.cm(update.name), update);
-		}
 	},
 
 	switchBuffer(this: AppController, id: BufferID): void {
@@ -145,37 +101,6 @@ export const buffersMethods = {
 			console.warn(`Failed to fetch NAMES for ${buf.name}:`, err);
 			this.setBufferState(buf.id, { hasNames: false });
 		});
-	},
-
-	markBufferAsRead(this: AppController, id: BufferID): void {
-		const buf = S.getBuffer(this.state, id);
-		if (!buf) {
-			return;
-		}
-		this.setBufferState(buf.id, { unread: Unread.NONE });
-
-		const client = this.clients.get(buf.server);
-		if (!client) {
-			return;
-		}
-
-		this.closeNotifications(buf.server, client, buf.name);
-
-		// Stored even without messages loaded, or the unread state would
-		// come back on reload
-		const update: store.BufferUpdate = {
-			name: buf.name,
-			server: storeServer(client),
-			unread: Unread.NONE,
-		};
-		const lastMsg = buf.messages.at(-1);
-		// Missed messages not fetched yet haven't been read
-		if (lastMsg && !buf.gap) {
-			update.receipts = { [ReceiptType.READ]: S.receiptFromMessage(lastMsg) };
-		}
-		this.storeReceipts(client, update);
-
-		this.updateDocumentTitle();
 	},
 
 	/** Open an irc:// URL. Returns false if the URL couldn't be handled. */
