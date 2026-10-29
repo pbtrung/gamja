@@ -1,15 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, X } from "lucide-react";
-import { flash } from "../lib/flash";
-
-/** A message and its distance from the top of the viewport, in pixels */
-interface Anchor {
-	key: string;
-	offset: number;
-}
-
-/** Saved scroll anchors, by scroll key. null means "stick to the bottom". */
-const positions = new Map<unknown, Anchor | null>();
+import { JumpToUnread, ScrollToLatest } from "./scroller/JumpButtons";
+import {
+	prefersReducedMotion,
+	restorePosition,
+	savePosition,
+	scrollToBottom,
+	scrollToMessage,
+} from "./scroller/position";
+import useNewCount from "./scroller/useNewCount";
+import useStickToBottom from "./scroller/useStickToBottom";
+import useUnreadMarker from "./scroller/useUnreadMarker";
 
 interface ChatScrollerProps {
 	scrollKey: unknown;
@@ -28,65 +28,6 @@ interface ChatScrollerProps {
 	unreadLabel?: string;
 	/** Called when scrolling to the bottom, or away from it */
 	onBottomChange?: (atBottom: boolean) => void;
-}
-
-function isAtBottom(el: HTMLElement): boolean {
-	return Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) <= 10;
-}
-
-function scrollToBottom(el: HTMLElement): void {
-	el.scrollTop = el.scrollHeight;
-}
-
-function prefersReducedMotion(): boolean {
-	return (
-		typeof window.matchMedia === "function" &&
-		window.matchMedia("(prefers-reduced-motion: reduce)").matches
-	);
-}
-
-/** How many anchors come after the one with the given key, 0 if it's gone */
-function countAnchorsAfter(el: HTMLElement, stickTo: string, key: string): number {
-	const anchors = [...el.querySelectorAll<HTMLElement>(stickTo)];
-	const i = anchors.findLastIndex((anchor) => anchor.dataset.key === key);
-	return i < 0 ? 0 : anchors.length - 1 - i;
-}
-
-function lastAnchorKey(el: HTMLElement, stickTo: string): string | null {
-	const anchors = el.querySelectorAll<HTMLElement>(stickTo);
-	return anchors[anchors.length - 1]?.dataset.key ?? null;
-}
-
-function firstVisibleAnchor(el: HTMLElement, stickTo: string): Anchor | null {
-	const top = el.getBoundingClientRect().top;
-	const anchors = el.querySelectorAll<HTMLElement>(stickTo);
-	// Anchors are laid out from top to bottom: find the first one starting
-	// in view with a binary search. This runs on every scroll event, and
-	// measuring each of the thousands of lines above the view is slow.
-	let lo = 0;
-	let hi = anchors.length;
-	while (lo < hi) {
-		const mid = (lo + hi) >>> 1;
-		if (anchors[mid].getBoundingClientRect().top >= top) {
-			hi = mid;
-		} else {
-			lo = mid + 1;
-		}
-	}
-	for (let i = lo; i < anchors.length; i++) {
-		const key = anchors[i].dataset.key;
-		if (key) {
-			return { key, offset: anchors[i].getBoundingClientRect().top - top };
-		}
-	}
-	return null;
-}
-
-/** Save the scroll position of a key, returns whether it's at the bottom. */
-function savePosition(el: HTMLElement, scrollKey: unknown, stickTo: string): boolean {
-	const atBottom = isAtBottom(el);
-	positions.set(scrollKey, atBottom ? null : firstVisibleAnchor(el, stickTo));
-	return atBottom;
 }
 
 /**
@@ -108,18 +49,16 @@ export default function ChatScroller({
 	onBottomChange,
 }: ChatScrollerProps) {
 	const ref = useRef<HTMLElement>(null);
-	const [unreadAbove, setUnreadAbove] = useState(false);
-	// The jump button was closed, or the user scrolled down to the end: by
-	// scroll key and marker, so that another marker shows it again
-	const [unreadDismissed, setUnreadDismissed] = useState<string | null>(null);
 	const unreadKey = `${String(scrollKey)}:${unreadLabel}`;
-	// The last message when the user left the bottom: the ones after it are
-	// new, counted on the button scrolling back down
-	const lastSeenKey = useRef<string | null>(null);
-	const [newCount, setNewCount] = useState(0);
+	const unread = useUnreadMarker(ref, unreadMarker, unreadKey);
 	// Offers to scroll back to the latest messages when scrolled up
 	const [awayFromBottom, setAwayFromBottom] = useState(false);
 	const stickToBottom = useRef(true);
+	const {
+		count: newCount,
+		update: updateNewCount,
+		reset: resetNewCount,
+	} = useNewCount(stickTo, stickToBottom);
 	const onScrollTopRef = useRef(onScrollTop);
 
 	const onBottomChangeRef = useRef(onBottomChange);
@@ -133,140 +72,56 @@ export default function ChatScroller({
 		onBottomChangeRef.current?.(!awayFromBottom);
 	}, [awayFromBottom]);
 
-	function updateNewCount(el: HTMLElement) {
-		if (stickToBottom.current) {
-			lastSeenKey.current = null;
-		} else if (lastSeenKey.current === null) {
-			lastSeenKey.current = lastAnchorKey(el, stickTo);
-		}
-		setNewCount(lastSeenKey.current === null ? 0 : countAnchorsAfter(el, stickTo, lastSeenKey.current));
-	}
-
 	function save(el: HTMLElement) {
 		const wasAtBottom = stickToBottom.current;
 		stickToBottom.current = savePosition(el, scrollKey, stickTo);
 		setAwayFromBottom(!stickToBottom.current);
 		if (stickToBottom.current && !wasAtBottom) {
 			// Read down to the end
-			setUnreadDismissed(unreadKey);
+			unread.dismiss();
 		}
 		updateNewCount(el);
 	}
 
 	// Restore the position when the content changes: either the buffer
 	// changed or messages were added. Size changes while sticking to the
-	// bottom are handled by the resize observer below.
+	// bottom are handled by useStickToBottom.
 	useLayoutEffect(() => {
 		const el = ref.current;
 		if (!el) {
 			return;
 		}
-		if (jumpTo) {
-			const target = el.querySelector<HTMLElement>(`[data-msgid="${CSS.escape(jumpTo)}"]`);
-			if (target) {
-				el.scrollTop +=
-					target.getBoundingClientRect().top - el.getBoundingClientRect().top - el.clientHeight / 3;
-				flash(target);
-				stickToBottom.current = savePosition(el, scrollKey, stickTo);
-				setAwayFromBottom(!stickToBottom.current);
-				updateNewCount(el);
-				onJumped?.();
-				return;
-			}
+		if (jumpTo && scrollToMessage(el, jumpTo)) {
+			stickToBottom.current = savePosition(el, scrollKey, stickTo);
+			setAwayFromBottom(!stickToBottom.current);
+			updateNewCount(el);
+			onJumped?.();
+			return;
 		}
 
 		// Put the anchor back where it was, to the pixel: re-renders that
 		// don't change the messages above it mustn't move the view
-		const saved = positions.get(scrollKey) ?? null;
-		const anchor = saved ? el.querySelector<HTMLElement>(`[data-key="${CSS.escape(saved.key)}"]`) : null;
-		if (saved && anchor) {
-			el.scrollTop +=
-				anchor.getBoundingClientRect().top - el.getBoundingClientRect().top - saved.offset;
-			stickToBottom.current = false;
-		} else {
-			scrollToBottom(el);
-			stickToBottom.current = true;
-		}
+		stickToBottom.current = restorePosition(el, scrollKey);
 		setAwayFromBottom(!stickToBottom.current);
 		updateNewCount(el);
 
 		if (el.scrollTop === 0) {
 			onScrollTopRef.current();
 		}
-		// updateNewCount only reads refs and the stickTo dependency
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [scrollKey, jumpTo, onJumped, stickTo, children]);
+	}, [scrollKey, jumpTo, onJumped, stickTo, children, updateNewCount]);
 
 	// Messages already there when switching buffers aren't new
 	useLayoutEffect(() => {
-		lastSeenKey.current = null;
+		resetNewCount();
 		const el = ref.current;
 		if (el) {
 			updateNewCount(el);
 		}
+		// updateNewCount only changes with stickTo
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [scrollKey]);
 
-	useEffect(() => {
-		const el = ref.current;
-		if (!el || typeof ResizeObserver === "undefined") {
-			return;
-		}
-		const observer = new ResizeObserver(() => {
-			if (stickToBottom.current) {
-				scrollToBottom(el);
-			}
-		});
-		// Children can be replaced (e.g. an error fallback): watch new ones too
-		const observeChildren = () => {
-			for (const child of el.children) {
-				observer.observe(child);
-			}
-		};
-		observer.observe(el);
-		observeChildren();
-		const mutationObserver = new MutationObserver(observeChildren);
-		mutationObserver.observe(el, { childList: true });
-		return () => {
-			observer.disconnect();
-			mutationObserver.disconnect();
-		};
-	}, []);
-
-	// Watch whether the unread marker is above the view, it can come and go
-	useEffect(() => {
-		const el = ref.current;
-		if (!el || !unreadMarker || typeof IntersectionObserver === "undefined") {
-			return;
-		}
-		let marker: Element | null = null;
-		const observer = new IntersectionObserver(([entry]) => {
-			const rootTop = entry.rootBounds?.top ?? el.getBoundingClientRect().top;
-			setUnreadAbove(!entry.isIntersecting && entry.boundingClientRect.bottom <= rootTop);
-		});
-		const update = () => {
-			const next = el.querySelector(unreadMarker);
-			if (next === marker) {
-				return;
-			}
-			if (marker) {
-				observer.unobserve(marker);
-			}
-			marker = next;
-			if (marker) {
-				observer.observe(marker);
-			} else {
-				setUnreadAbove(false);
-			}
-		};
-		update();
-		const mutationObserver = new MutationObserver(update);
-		mutationObserver.observe(el, { childList: true, subtree: true });
-		return () => {
-			observer.disconnect();
-			mutationObserver.disconnect();
-		};
-	}, [unreadMarker]);
+	useStickToBottom(ref, stickToBottom);
 
 	function jumpToUnread() {
 		const el = ref.current;
@@ -276,7 +131,7 @@ export default function ChatScroller({
 		}
 		el.scrollTop += marker.getBoundingClientRect().top - el.getBoundingClientRect().top - 8;
 		save(el);
-		setUnreadDismissed(unreadKey);
+		unread.dismiss();
 	}
 
 	function scrollToLatest() {
@@ -308,43 +163,11 @@ export default function ChatScroller({
 				}
 			}}
 		>
-			{unreadAbove && unreadDismissed !== unreadKey && (
-				<div className="jump-unread">
-					<div className="jump-pill" role="group" aria-label="New messages">
-						<button type="button" className="btn btn-sm" onClick={jumpToUnread}>
-							<ArrowUp aria-hidden="true" /> {unreadLabel}
-						</button>
-						<button
-							type="button"
-							className="btn btn-sm jump-dismiss"
-							title="Dismiss"
-							aria-label="Dismiss"
-							onClick={() => setUnreadDismissed(unreadKey)}
-						>
-							<X aria-hidden="true" />
-						</button>
-					</div>
-				</div>
+			{unread.shown && (
+				<JumpToUnread label={unreadLabel} onJump={jumpToUnread} onDismiss={unread.dismiss} />
 			)}
 			{children}
-			{awayFromBottom && (
-				<div className="scroll-latest">
-					<button
-						type="button"
-						className="btn"
-						title="Scroll to latest messages"
-						aria-label={
-							newCount > 0
-								? `Scroll to latest messages, ${newCount} new`
-								: "Scroll to latest messages"
-						}
-						onClick={scrollToLatest}
-					>
-						{newCount > 0 && <span className="new-count">{newCount} new</span>}
-						<ArrowDown aria-hidden="true" />
-					</button>
-				</div>
-			)}
+			{awayFromBottom && <ScrollToLatest newCount={newCount} onClick={scrollToLatest} />}
 		</section>
 	);
 }
