@@ -3,44 +3,25 @@
 import * as irc from "../irc";
 import type { Message, OutgoingMessage, Prefix, Batch } from "../irc";
 import { Backoff } from "./backoff";
-import { WEBSOCKET_CLOSE_CODES, WebSocketError, IRCError } from "./errors";
+import { WEBSOCKET_CLOSE_CODES, WebSocketError } from "./errors";
+import { handleMessage } from "./incoming";
+import {
+	listenSocket,
+	openSocket,
+	RECONNECT_MAX_DELAY_MSEC,
+	RECONNECT_MIN_DELAY_MSEC,
+	scheduleReconnect,
+	sendRegistration,
+} from "./lifecycle";
+import { handlePongTimeout, scheduleLagCheck, setPingInterval, startRegistrationTimeout } from "./keepalive";
+import { sendPendingMonitor } from "./monitor";
 import { assembleMultiline, expandMultiline, type MultilineBatches } from "./multiline";
 import { Multiplexer } from "./multiplex";
+import { redactForLog } from "./redact";
 import { roundtrip } from "./roundtrip";
-import { ClientStatus, type ClientParams, type MessageEventDetail } from "./types";
-
-const RECONNECT_MIN_DELAY_MSEC = 10 * 1000; // 10s
-const LAG_FIRST_DELAY_MSEC = 2 * 1000;
-const LAG_INTERVAL_MSEC = 30 * 1000;
-const LAG_TOKEN_PREFIX = "gamja-lag-";
-// Without a PONG by then, the connection is considered dead: browsers take a
-// long time to notice a TCP connection silently dropped by the network
-const PONG_TIMEOUT_MSEC = 60 * 1000;
-const REGISTRATION_TIMEOUT_MSEC = 60 * 1000;
-const RECONNECT_MAX_DELAY_MSEC = 10 * 60 * 1000; // 10min
+import { ClientStatus, type ClientParams } from "./types";
 
 const FALLBACK_SERVER_PREFIX: Prefix = { name: "*" };
-
-const REDACTED = "<redacted>";
-// AUTHENTICATE parameters worth logging: mechanism names, empty responses,
-// aborts. Anything else is a base64-encoded credential.
-const SASL_LOGGABLE = /^(\+|\*|PLAIN|EXTERNAL|OAUTHBEARER|SCRAM-[A-Z0-9-]+)$/;
-
-/** Hide passwords, SASL payloads and verification codes from debug logs. */
-function redactForLog(msg: OutgoingMessage): OutgoingMessage {
-	const params = msg.params ?? [];
-	switch (msg.command.toUpperCase()) {
-		case "PASS":
-			return { ...msg, params: params.map(() => REDACTED) };
-		case "AUTHENTICATE":
-			return { ...msg, params: params.map((p) => (SASL_LOGGABLE.test(String(p)) ? p : REDACTED)) };
-		case "REGISTER":
-		case "VERIFY":
-			// REGISTER <account> <email> <password>, VERIFY <account> <code>
-			return { ...msg, params: params.map((p, i) => (i === params.length - 1 ? REDACTED : p)) };
-	}
-	return msg;
-}
 
 /** The parts of a WebSocket a connection uses, which a VirtualSocket has too. */
 export interface Socket {
@@ -128,8 +109,7 @@ export abstract class ClientConnection extends EventTarget {
 		this.autoReconnect = autoReconnect;
 
 		this.setReconnectAt(null);
-		const mux = this.params.multiplexer;
-		if (mux) {
+		if (this.params.multiplexer) {
 			console.log("Attaching bouncer network " + this.params.bouncerNetwork);
 		} else {
 			console.log("Connecting to " + this.params.url);
@@ -137,43 +117,11 @@ export abstract class ClientConnection extends EventTarget {
 		this.setStatus(ClientStatus.CONNECTING);
 		this.lastReconnectDate = new Date();
 
-		let ws: Socket;
-		try {
-			ws = mux ? mux.open(this.params.bouncerNetwork!, this) : new WebSocket(this.params.url);
-		} catch (err) {
-			console.error("Failed to create connection:", err);
-			setTimeout(() => {
-				this.dispatchError(new Error("Failed to create connection", { cause: err }));
-				this.setStatus(ClientStatus.DISCONNECTED);
-			}, 0);
-			return;
+		const ws = openSocket(this);
+		if (ws) {
+			this.ws = ws;
+			listenSocket(this, ws);
 		}
-		this.ws = ws;
-		// Events of a socket we've already replaced or closed are ignored: its
-		// state was reset when it stopped being the current one
-		ws.addEventListener("open", () => {
-			if (this.ws === ws) {
-				this.handleOpen();
-			}
-		});
-
-		ws.addEventListener("message", (e) => {
-			if (this.ws !== ws) {
-				return;
-			}
-			const event = e as MessageEvent;
-			try {
-				this.handleMessage(event);
-			} catch (err) {
-				// Skip the offending line instead of dropping the connection
-				console.error("Failed to handle message:", event.data, err);
-				this.dispatchError(err);
-			}
-		});
-
-		ws.addEventListener("close", (event) => {
-			this.handleClose(ws, (event as CloseEvent).code);
-		});
 	}
 
 	/**
@@ -199,19 +147,7 @@ export abstract class ClientConnection extends EventTarget {
 			if (!navigator.onLine) {
 				console.info("Waiting for network to go back online");
 			} else {
-				let delay = this.reconnectBackoff.next();
-				const sinceLastReconnect = Date.now() - this.lastReconnectDate.getTime();
-				if (sinceLastReconnect < RECONNECT_MIN_DELAY_MSEC) {
-					delay = Math.max(delay, RECONNECT_MIN_DELAY_MSEC);
-				}
-				console.info("Reconnecting to server in " + delay / 1000 + " seconds");
-				if (this.reconnectTimeoutID) {
-					clearTimeout(this.reconnectTimeoutID);
-				}
-				this.reconnectTimeoutID = setTimeout(() => {
-					this.reconnect();
-				}, delay);
-				this.setReconnectAt(Date.now() + delay);
+				scheduleReconnect(this);
 			}
 		}
 	}
@@ -254,31 +190,13 @@ export abstract class ClientConnection extends EventTarget {
 		}
 	}
 
-	/**
-	 * Measure the lag now and then, the PONG tells how long it took. This also
-	 * checks that the connection is alive: the PONG must come in time.
-	 */
+	/** See keepalive.ts */
 	scheduleLagCheck(delay: number): void {
-		clearTimeout(this.lagTimeoutID);
-		this.lagTimeoutID = setTimeout(() => {
-			const ws = this.ws;
-			if (this.status !== ClientStatus.REGISTERED || !ws) {
-				return;
-			}
-			this.send({ command: "PING", params: [LAG_TOKEN_PREFIX + Date.now()] });
-			// Cleared by the PONG, which schedules the next check
-			this.lagTimeoutID = setTimeout(() => {
-				this.handlePongTimeout(ws);
-			}, PONG_TIMEOUT_MSEC);
-		}, delay);
+		scheduleLagCheck(this, delay);
 	}
 
 	handlePongTimeout(ws: Socket): void {
-		if (this.ws !== ws) {
-			return;
-		}
-		console.warn(`No PONG in ${PONG_TIMEOUT_MSEC / 1000} seconds, dropping the connection`);
-		this.dropConnection(ws, WEBSOCKET_CLOSE_CODES.ABNORMAL_CLOSURE);
+		handlePongTimeout(this, ws);
 	}
 
 	/**
@@ -339,19 +257,7 @@ export abstract class ClientConnection extends EventTarget {
 		// An attached network shares the bouncer connection's socket, which
 		// is kept alive by the bouncer connection
 		this.setPingInterval(mux ? 0 : this.params.ping || 0);
-		// The PONG checks only start once registered: a server or proxy which
-		// never replies would leave us registering forever. Cleared on
-		// RPL_WELCOME by scheduleLagCheck().
-		const ws = this.ws!;
-		clearTimeout(this.lagTimeoutID);
-		this.lagTimeoutID = setTimeout(() => {
-			if (this.ws === ws && this.status !== ClientStatus.REGISTERED) {
-				console.warn(
-					`Not registered in ${REGISTRATION_TIMEOUT_MSEC / 1000} seconds, dropping the connection`,
-				);
-				this.dropConnection(ws, WEBSOCKET_CLOSE_CODES.ABNORMAL_CLOSURE);
-			}
-		}, REGISTRATION_TIMEOUT_MSEC);
+		startRegistrationTimeout(this, this.ws!);
 
 		this.nick = this.params.nick;
 
@@ -363,15 +269,7 @@ export abstract class ClientConnection extends EventTarget {
 			return;
 		}
 
-		this.send({ command: "CAP", params: ["LS", "302"] });
-		if (this.params.pass) {
-			this.send({ command: "PASS", params: [this.params.pass] });
-		}
-		this.send({ command: "NICK", params: [this.nick] });
-		this.send({
-			command: "USER",
-			params: [this.params.username, "0", "*", this.params.realname],
-		});
+		sendRegistration(this, this.nick);
 	}
 
 	pushPendingList(k: string, msg: Message): void {
@@ -388,220 +286,9 @@ export abstract class ClientConnection extends EventTarget {
 		this.pendingLists.delete(k);
 	}
 
+	/** See incoming.ts */
 	handleMessage(event: MessageEvent): void {
-		if (typeof event.data !== "string") {
-			console.error("Received unsupported data type:", event.data);
-			// Browsers don't let clients close with 1003, only 1000 and 3000-4999
-			this.dropConnection(this.ws!, WEBSOCKET_CLOSE_CODES.UNSUPPORTED_DATA);
-			return;
-		}
-
-		const raw = event.data;
-		if (this.debug) {
-			console.debug("Received:", raw);
-		}
-
-		// A line of a network attached to this bouncer connection
-		if (this.multiplexer?.route(raw)) {
-			return;
-		}
-
-		const msg = this.assembleMultiline(irc.parseMessage(raw));
-		if (!msg) {
-			return;
-		}
-
-		// If the prefix is missing, assume it's coming from the server on the
-		// other end of the connection
-		if (!msg.prefix) {
-			msg.prefix = this.serverPrefix;
-		}
-
-		let msgBatch: Batch | null = null;
-		const batchTag = msg.tags["batch"];
-		if (batchTag) {
-			msgBatch = this.batches.get(batchTag) || null;
-			if (msgBatch) {
-				msg.batch = msgBatch;
-			}
-		}
-
-		let deleteBatch: string | null = null;
-		switch (msg.command) {
-			case irc.RPL_WELCOME:
-				if (this.wantsSASL() && !this.supportsCap) {
-					this.dispatchError(new Error("Server doesn't support SASL"));
-					this.disconnect();
-					return;
-				}
-
-				if (msg.prefix) {
-					this.serverPrefix = msg.prefix;
-				}
-				this.nick = msg.params[0];
-
-				console.log("Registration complete");
-				// Not on open: a gateway may accept the socket, then fail to
-				// reach the IRC server, and must be retried less and less
-				this.reconnectBackoff.reset();
-				this.setStatus(ClientStatus.REGISTERED);
-				// Restore the away status without draft/pre-away
-				this.syncAway();
-				this.scheduleLagCheck(LAG_FIRST_DELAY_MSEC);
-				break;
-			case irc.RPL_ISUPPORT: {
-				const tokens = msg.params.slice(1, -1);
-				this.isupport.parse(tokens);
-				this.updateCaseMapping();
-				// The server may have started supporting MONITOR
-				this.sendPendingMonitor();
-				break;
-			}
-			case irc.ERR_MONLISTFULL: {
-				// The list is shorter than advertised, e.g. shared with other
-				// clients by a bouncer: wait for unmonitor() to make room
-				for (const target of (msg.params[2] ?? "").split(",")) {
-					if (this.monitored.has(target)) {
-						this.monitored.set(target, false);
-					}
-				}
-				this.monitorLimit = Array.from(this.monitored.values()).filter((sent) => sent).length;
-				msg.internal = true;
-				break;
-			}
-			case "CAP":
-				this.handleCap(msg);
-				break;
-			case irc.RPL_LOGGEDIN:
-				console.log("Logged in");
-				break;
-			case irc.RPL_LOGGEDOUT:
-				console.log("Logged out");
-				break;
-			case irc.RPL_NAMREPLY:
-				this.pushPendingList("NAMES " + msg.params[2], msg);
-				break;
-			case irc.RPL_ENDOFNAMES:
-				this.endPendingList("NAMES " + msg.params[1], msg);
-				break;
-			case irc.RPL_WHOISUSER:
-			case irc.RPL_WHOISSERVER:
-			case irc.RPL_WHOISOPERATOR:
-			case irc.RPL_WHOISIDLE:
-			case irc.RPL_WHOISCHANNELS:
-			case irc.RPL_WHOISACCOUNT:
-				this.pushPendingList("WHOIS " + msg.params[1], msg);
-				break;
-			case irc.RPL_ENDOFWHOIS:
-				this.endPendingList("WHOIS " + msg.params[1], msg);
-				break;
-			case irc.RPL_WHOREPLY:
-			case irc.RPL_WHOSPCRPL:
-				this.pushPendingList("WHO", msg);
-				break;
-			case irc.RPL_ENDOFWHO:
-				this.endPendingList("WHO", msg);
-				break;
-			case "PING":
-				// The token is required, but some servers omit it
-				this.send({ command: "PONG", params: msg.params.slice(0, 1) });
-				break;
-			case "PONG": {
-				const token = msg.params[1] ?? "";
-				if (token.startsWith(LAG_TOKEN_PREFIX)) {
-					const sent = parseInt(token.slice(LAG_TOKEN_PREFIX.length), 10);
-					if (!Number.isNaN(sent)) {
-						this.setLag(Math.max(0, Date.now() - sent));
-					}
-					this.scheduleLagCheck(LAG_INTERVAL_MSEC);
-				}
-				break;
-			}
-			case "NICK": {
-				const newNick = msg.params[0];
-				if (this.isMyNick(msg.prefix.name)) {
-					this.nick = newNick;
-				}
-				break;
-			}
-			case "BATCH": {
-				const { start, name } = irc.parseBatchRef(msg);
-				if (start) {
-					const batch: Batch = {
-						name,
-						type: msg.params[1],
-						params: msg.params.slice(2),
-						tags: msg.tags,
-						parent: msgBatch,
-					};
-					this.batches.set(name, batch);
-				} else {
-					deleteBatch = name;
-				}
-				break;
-			}
-			case "ERROR": {
-				// Sent before closing the link, e.g. on server restarts and ping
-				// timeouts: keep reconnecting. Fatal registration errors come
-				// before, as numerics.
-				this.dispatchError(new IRCError(msg));
-				const ws = this.ws;
-				if (ws) {
-					this.dropConnection(ws, WEBSOCKET_CLOSE_CODES.NORMAL_CLOSURE);
-				}
-				break;
-			}
-			case irc.ERR_PASSWDMISMATCH:
-			case irc.ERR_ERRONEUSNICKNAME:
-			case irc.ERR_NICKNAMEINUSE:
-			case irc.ERR_NICKCOLLISION:
-			case irc.ERR_UNAVAILRESOURCE:
-			case irc.ERR_NOPERMFORHOST:
-			case irc.ERR_YOUREBANNEDCREEP:
-				this.dispatchError(new IRCError(msg));
-				if (this.status !== ClientStatus.REGISTERED) {
-					this.disconnect();
-				}
-				break;
-			case "FAIL":
-				if (this.status === ClientStatus.REGISTERED) {
-					break;
-				}
-				if (msg.params[0] === "BOUNCER" && msg.params[2] === "BIND") {
-					this.dispatchError(
-						new Error("Failed to bind to bouncer network", {
-							cause: new IRCError(msg),
-						}),
-					);
-					this.disconnect();
-				}
-				if (msg.params[1] === "ACCOUNT_REQUIRED") {
-					this.dispatchError(new IRCError(msg));
-					this.disconnect();
-				}
-				break;
-		}
-
-		// Pending roundtrips first: they may mark the message as internal. A
-		// capture listener wouldn't do: browsers call the listeners of a plain
-		// EventTarget in the order they were added.
-		// Copied, handlers remove themselves once done
-		if (this.roundtripHandlers.size > 0) {
-			for (const handler of [...this.roundtripHandlers]) {
-				handler(msg);
-			}
-		}
-		this.dispatchEvent(
-			new CustomEvent<MessageEventDetail>("message", {
-				detail: { message: msg, batch: msgBatch },
-			}),
-		);
-
-		// Delete after firing the message event so that handlers can access
-		// the batch
-		if (deleteBatch) {
-			this.batches.delete(deleteBatch);
-		}
+		handleMessage(this, event);
 	}
 
 	/**
@@ -679,20 +366,7 @@ export abstract class ClientConnection extends EventTarget {
 	}
 
 	setPingInterval(sec: number): void {
-		if (this.pingIntervalID) {
-			clearInterval(this.pingIntervalID);
-		}
-		this.pingIntervalID = null;
-
-		if (sec <= 0) {
-			return;
-		}
-
-		this.pingIntervalID = setInterval(() => {
-			if (this.ws) {
-				this.send({ command: "PING", params: ["gamja"] });
-			}
-		}, sec * 1000);
+		setPingInterval(this, sec);
 	}
 
 	/** The multiplexer of this bouncer connection, created on first use. */
@@ -712,25 +386,7 @@ export abstract class ClientConnection extends EventTarget {
 
 	/** Send the pending monitored targets, as far as the server's limit allows. */
 	sendPendingMonitor(): void {
-		let room = Math.min(this.isupport.monitor(), this.monitorLimit);
-		const pending: string[] = [];
-		for (const [target, sent] of this.monitored) {
-			if (sent) {
-				room--;
-			} else {
-				pending.push(target);
-			}
-		}
-		const targets = pending.slice(0, Math.max(0, room));
-		if (targets.length === 0) {
-			return;
-		}
-		for (const target of targets) {
-			this.monitored.set(target, true);
-		}
-		for (const chunk of irc.chunkTargets(targets, this.isupport.targMax("MONITOR"))) {
-			this.send({ command: "MONITOR", params: ["+", chunk.join(",")] });
-		}
+		sendPendingMonitor(this);
 	}
 
 	// Implemented by RegistrationClient
