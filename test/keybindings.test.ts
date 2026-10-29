@@ -72,6 +72,48 @@ describe("keybindings", () => {
 		cleanup();
 	});
 
+	it("jumps back to the previous buffer", async () => {
+		const { app, cleanup, name } = await withBuffers();
+		app.switchBuffer(getBuffer(app.state, { name: "#a" })!.id);
+		app.switchBuffer(getBuffer(app.state, { name: "#b" })!.id);
+		expect(press("<", { altKey: true }).defaultPrevented).toBe(true);
+		expect(name()).toBe("#a");
+		// On the key left of Z, whatever it types
+		press("≤", { code: "IntlBackslash", altKey: true });
+		expect(name()).toBe("#b");
+		cleanup();
+	});
+
+	it("toggles the member list of channels", async () => {
+		const { app, cleanup } = await withBuffers();
+		const shown = app.state.settings.showMemberList;
+		press("n", { altKey: true });
+		// Not in the server buffer
+		expect(app.state.settings.showMemberList).toBe(shown);
+		app.switchBuffer(getBuffer(app.state, { name: "#a" })!.id);
+		press("n", { altKey: true });
+		expect(app.state.settings.showMemberList).toBe(!shown);
+		cleanup();
+	});
+
+	it("focuses the composer", async () => {
+		const { app, cleanup } = await withBuffers();
+		let focused = 0;
+		const unregister = app.registerComposer(() => focused++);
+		press("l", { altKey: true });
+		expect(focused).toBe(1);
+		unregister();
+		cleanup();
+	});
+
+	it("shows the buffer list to filter it", async () => {
+		const { app, cleanup } = await withBuffers();
+		app.setBufferListHidden(true);
+		press("g", { altKey: true });
+		expect(app.state.bufferListHidden).toBe(false);
+		cleanup();
+	});
+
 	it("matches Alt bindings on the physical key (macOS)", async () => {
 		const { app, cleanup } = await withBuffers();
 		app.setBufferState({ name: "#a" }, { unread: Unread.MESSAGE });

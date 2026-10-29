@@ -55,6 +55,8 @@ export default class AppController {
 	messageNotifications = new Set<MessageNotification>();
 	baseTitle = "gamja";
 	lastFocusPingDate: Date | null = null;
+	/** The buffer active before the current one, see keybindings.ts */
+	previousBuffer: number | null = null;
 	/** Whether the latest messages of the active buffer are in view */
 	scrolledToLatest = true;
 	/** Browser APIs for Web Push, null if unsupported */

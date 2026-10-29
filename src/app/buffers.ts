@@ -94,6 +94,7 @@ export const buffersMethods = {
 			openPanels: { ...state.openPanels, bufferList: false },
 		}));
 		if (prevActive !== null && prevActive !== buf.id) {
+			this.previousBuffer = prevActive;
 			// It may have been left scrolled up with older messages loaded
 			this.trimBuffer(prevActive);
 		}
@@ -437,6 +438,31 @@ export const buffersMethods = {
 				[panel]: open === "toggle" ? !state.openPanels[panel] : open,
 			},
 		}));
+	},
+
+	/** Show or hide the buffer list: a drawer on small screens. */
+	toggleBufferList(this: AppController, smallScreen: boolean): void {
+		if (smallScreen) {
+			this.setOpenPanel("memberList", false);
+			this.setOpenPanel("bufferList", "toggle");
+		} else {
+			this.setBufferListHidden(!this.state.bufferListHidden);
+		}
+	},
+
+	/** Show or hide the member list: a drawer on small screens, the
+	 * showMemberList setting on large ones. */
+	toggleMemberList(this: AppController, smallScreen: boolean): void {
+		if (smallScreen) {
+			this.setOpenPanel("bufferList", false);
+			this.setOpenPanel("memberList", "toggle");
+		} else {
+			const { settings, openPanels } = this.state;
+			this.setOpenPanel("memberList", false);
+			this.handleSettingsChange({
+				showMemberList: !(settings.showMemberList || openPanels.memberList),
+			});
+		}
 	},
 
 	/** Hide or show the buffer list on large screens. */

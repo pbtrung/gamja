@@ -7,6 +7,11 @@ import {
 	type Buffer,
 } from "./state";
 import type AppController from "./app/controller";
+import { SMALL_SCREEN } from "./components/useMediaQuery";
+
+function isSmallScreen(): boolean {
+	return typeof window.matchMedia === "function" && window.matchMedia(SMALL_SCREEN).matches;
+}
 
 interface KeyBinding {
 	key: string;
@@ -98,6 +103,52 @@ export const keybindings: KeyBinding[] = [
 		},
 	},
 	{
+		key: "<",
+		altKey: true,
+		description: "Jump to the previously viewed buffer",
+		execute: (app) => {
+			const prev = app.previousBuffer;
+			if (prev !== null && app.state.buffers.has(prev)) {
+				app.switchBuffer(prev);
+			}
+		},
+	},
+	{
+		key: "n",
+		altKey: true,
+		description: "Show or hide the member list",
+		execute: (app) => {
+			const buf =
+				app.state.activeBuffer !== null ? app.state.buffers.get(app.state.activeBuffer) : null;
+			if (buf?.type === BufferType.CHANNEL) {
+				app.toggleMemberList(isSmallScreen());
+			}
+		},
+	},
+	{
+		key: "l",
+		altKey: true,
+		description: "Focus the message input",
+		execute: (app) => {
+			app.ui.focusComposer?.();
+		},
+	},
+	{
+		key: "g",
+		altKey: true,
+		description: "Filter the buffer list",
+		execute: (app) => {
+			if (isSmallScreen()) {
+				app.setOpenPanel("memberList", false);
+				app.setOpenPanel("bufferList", true);
+			} else if (app.state.bufferListHidden) {
+				app.setBufferListHidden(false);
+			}
+			// The list may only be rendered now
+			requestAnimationFrame(() => document.getElementById("buffer-filter")?.focus());
+		},
+	},
+	{
 		key: "f",
 		altKey: true,
 		description: "Search messages",
@@ -134,6 +185,11 @@ export function setup(app: AppController, target: Window = window): () => void {
 		// (e.g. Polish "ą"), those must stay typeable
 		if (!candidates && event.altKey && /^Key[A-Z]$/.test(event.code) && !/^\p{L}$/u.test(event.key)) {
 			candidates = byKey.get(event.code.slice(3).toLowerCase());
+		}
+		// Alt+< is on the key left of Z on ISO keyboards, where the ` key
+		// is on macOS, and types other characters on some layouts
+		if (!candidates && event.altKey && (event.code === "IntlBackslash" || event.code === "Backquote")) {
+			candidates = byKey.get("<");
 		}
 		if (!candidates) {
 			return;

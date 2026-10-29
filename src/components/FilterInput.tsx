@@ -2,6 +2,7 @@ import { Search, X } from "lucide-react";
 import IconButton from "./IconButton";
 
 interface FilterInputProps {
+	id?: string;
 	value: string;
 	onChange: (value: string) => void;
 	label: string;
@@ -9,12 +10,13 @@ interface FilterInputProps {
 }
 
 /** Shared sidebar search, matching the buffer and member filters. */
-export default function FilterInput({ value, onChange, label, placeholder }: FilterInputProps) {
+export default function FilterInput({ id, value, onChange, label, placeholder }: FilterInputProps) {
 	return (
 		<div className="filter-input">
 			<Search aria-hidden="true" />
 			<input
 				type="search"
+				id={id}
 				aria-label={label}
 				placeholder={placeholder}
 				value={value}

@@ -135,6 +135,7 @@ function Chat({ state }: { state: AppState }) {
 				<div className="buffer-list-panel">
 					<header className="sidebar-filter">
 						<FilterInput
+							id="buffer-filter"
 							value={bufferFilter}
 							onChange={setBufferFilter}
 							label="Filter buffers"
@@ -199,27 +200,8 @@ function Chat({ state }: { state: AppState }) {
 						onManageNetwork={() => app.handleManageNetworkClick(activeBuffer.server)}
 						onOpenSettings={() => app.handleOpenSettingsClick()}
 						onSearch={activeServer.features.search ? () => app.openSearch("buffer") : undefined}
-						onOpenBufferList={() => {
-							if (smallScreen) {
-								app.setOpenPanel("memberList", false);
-								app.setOpenPanel("bufferList", "toggle");
-							} else {
-								app.setBufferListHidden(!state.bufferListHidden);
-							}
-						}}
-						onOpenMemberList={() => {
-							if (smallScreen) {
-								app.setOpenPanel("bufferList", false);
-								app.setOpenPanel("memberList", "toggle");
-							} else {
-								app.setOpenPanel("memberList", false);
-								app.handleSettingsChange({
-									showMemberList: !(
-										state.settings.showMemberList || state.openPanels.memberList
-									),
-								});
-							}
-						}}
+						onOpenBufferList={() => app.toggleBufferList(smallScreen)}
+						onOpenMemberList={() => app.toggleMemberList(smallScreen)}
 					/>
 				</header>
 			)}
