@@ -18,11 +18,11 @@ import {
 	createBuffer,
 	getBuffer,
 	leftChannel,
-	sortBuffers,
 	updateBuffer,
 	updateServer,
 	updateState,
 } from "./buffers";
+import { sortBuffers } from "./display";
 
 /** Rename a nick in the channels of a server, or remove it with null. */
 /**
