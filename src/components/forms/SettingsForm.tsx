@@ -13,6 +13,8 @@ import { settingsTabs, type SettingsTab } from "./settings/options";
 
 interface SettingsFormProps {
 	settings: Settings;
+	bufferListUnreadOnly?: boolean;
+	onBufferListUnreadOnlyChange?: (enabled: boolean) => void;
 	/** The section shown, kept by the form itself if not given */
 	tab?: SettingsTab;
 	onTabChange?: (tab: SettingsTab) => void;
@@ -139,7 +141,14 @@ export default function SettingsForm(props: SettingsFormProps) {
 			pane = <FontPane settings={settings} onChange={onChange} />;
 			break;
 		case "messages":
-			pane = <MessagesPane settings={settings} onChange={onChange} />;
+			pane = (
+				<MessagesPane
+					settings={settings}
+					onChange={onChange}
+					bufferListUnreadOnly={props.bufferListUnreadOnly}
+					onBufferListUnreadOnlyChange={props.onBufferListUnreadOnlyChange}
+				/>
+			);
 			break;
 		case "notifications":
 			pane = (

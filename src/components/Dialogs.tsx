@@ -195,6 +195,8 @@ export default function Dialogs({ state }: { state: AppState }) {
 							tab={tab}
 							onTabChange={setTab}
 							settings={state.settings}
+							bufferListUnreadOnly={state.bufferListUnreadOnly}
+							onBufferListUnreadOnlyChange={(enabled) => app.setBufferListUnreadOnly(enabled)}
 							showProtocolHandler={dialog.showProtocolHandler}
 							pushAvailable={app.canEnablePush()}
 							onPushChange={(enabled) => app.setPushNotifications(enabled)}

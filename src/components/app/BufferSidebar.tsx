@@ -1,12 +1,10 @@
 import { useCallback, useState } from "react";
-import { ListFilter } from "lucide-react";
 import type { Buffer } from "../../state";
 import { useController } from "../../app/context";
 import type { AppState } from "../../app/store";
 import * as store from "../../store";
 import BufferList from "../BufferList";
 import FilterInput from "../FilterInput";
-import IconButton from "../IconButton";
 import PaneResizer from "../PaneResizer";
 
 interface BufferSidebarProps {
@@ -40,13 +38,6 @@ export default function BufferSidebar({ state, smallScreen }: BufferSidebarProps
 						onChange={setBufferFilter}
 						label="Filter buffers"
 						placeholder="Filter buffers"
-					/>
-					<IconButton
-						icon={ListFilter}
-						label="Only show unread buffers"
-						className="unread-only-toggle"
-						pressed={state.bufferListUnreadOnly}
-						onClick={() => app.setBufferListUnreadOnly(!state.bufferListUnreadOnly)}
 					/>
 				</header>
 				<BufferList

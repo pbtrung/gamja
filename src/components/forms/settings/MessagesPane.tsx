@@ -5,10 +5,17 @@ import { NumberRow, SegmentedRow, ToggleRow } from "./rows";
 interface PaneProps {
 	settings: Settings;
 	onChange: (settings: Partial<Settings>) => void;
+	bufferListUnreadOnly?: boolean;
+	onBufferListUnreadOnlyChange?: (enabled: boolean) => void;
 }
 
 /** The Messages tab: timestamps, chat events, backlog and typing */
-export default function MessagesPane({ settings, onChange }: PaneProps) {
+export default function MessagesPane({
+	settings,
+	onChange,
+	bufferListUnreadOnly = false,
+	onBufferListUnreadOnlyChange,
+}: PaneProps) {
 	return (
 		<>
 			<h3 className="settings-heading">Messages</h3>
@@ -34,6 +41,15 @@ export default function MessagesPane({ settings, onChange }: PaneProps) {
 					checked={settings.showMemberList}
 					onChange={(checked) => onChange({ showMemberList: checked })}
 				/>
+				{onBufferListUnreadOnlyChange && (
+					<ToggleRow
+						name="bufferListUnreadOnly"
+						label="Only show unread buffers"
+						hint="Keep unread buffers and the active buffer visible in the left pane"
+						checked={bufferListUnreadOnly}
+						onChange={onBufferListUnreadOnlyChange}
+					/>
+				)}
 				<SegmentedRow
 					name="bufferEvents"
 					label="Chat events"
