@@ -27,6 +27,8 @@ import { notificationsMethods, type NotificationsMethods } from "./notifications
 import { routingMethods, type RoutingMethods } from "./routing";
 import { historyMethods, type HistoryMethods } from "./history";
 import { networkMethods, type NetworkMethods } from "./network";
+import { registrationMethods, type RegistrationMethods } from "./registration";
+import { pushMethods, type PushMethods } from "./push";
 import { messagingMethods, type MessagingMethods } from "./messaging";
 import { dialogsMethods, type DialogsMethods } from "./dialogs";
 import { windowMethods, type WindowMethods } from "./window";
@@ -472,11 +474,6 @@ export default class AppController {
 		status: "done",
 	};
 
-	/**
-	 * Detach a channel on soju: the bouncer stays in it and keeps logging,
-	 * but it's hidden from clients until joined again.
-	 */
-
 	handleMessage(serverID: number, msg: Message): void {
 		const client = this.clients.get(serverID);
 		if (!client) {
@@ -667,6 +664,8 @@ export default interface AppController // eslint-disable-line @typescript-eslint
 		RoutingMethods,
 		HistoryMethods,
 		NetworkMethods,
+		RegistrationMethods,
+		PushMethods,
 		MessagingMethods,
 		DialogsMethods,
 		WindowMethods {}
@@ -679,6 +678,8 @@ Object.assign(
 	routingMethods,
 	historyMethods,
 	networkMethods,
+	registrationMethods,
+	pushMethods,
 	messagingMethods,
 	dialogsMethods,
 	windowMethods,
