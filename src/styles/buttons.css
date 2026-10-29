@@ -156,3 +156,8 @@
 	font-variant-numeric: tabular-nums;
 	line-height: 1;
 }
+
+.icon-btn[aria-pressed="true"] {
+	background-color: var(--bg-hover);
+	color: var(--accent);
+}

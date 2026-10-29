@@ -37,6 +37,43 @@ describe("BufferList", () => {
 		expect(tabs[3].closest("li")).toHaveClass("muted");
 	});
 
+	it("only shows unread buffers, the active one and their networks", () => {
+		const client = {
+			isChannel: (name: string) => name.startsWith("#"),
+			cm: irc.CaseMapping.RFC1459,
+		} as unknown as Client;
+		let state = S.createState();
+		const ids: number[] = [];
+		for (const net of ["one", "two"]) {
+			const [serverID, update] = S.createServer(state);
+			state = { ...state, ...update };
+			for (const name of [S.SERVER_BUFFER, `#${net}-a`, `#${net}-b`]) {
+				const [id, update] = S.createBuffer(state, name, serverID, client);
+				state = { ...state, ...update };
+				ids.push(id);
+			}
+		}
+		state = { ...state, ...S.updateBuffer(state, ids[2], { unread: S.Unread.MESSAGE }) };
+		const props = {
+			buffers: state.buffers,
+			servers: state.servers,
+			bouncerNetworks: new Map(),
+			activeBuffer: ids[1],
+			onBufferClick: vi.fn(),
+			onBufferClose: vi.fn(),
+		};
+		const { rerender } = render(<BufferList {...props} unreadOnly />);
+		const names = () =>
+			within(screen.getByRole("tablist"))
+				.queryAllByRole("tab")
+				.map((t) => t.textContent);
+		expect(names()).toEqual([expect.any(String), "#one-a", "#one-b"]);
+		rerender(<BufferList {...props} unreadOnly filter="two" />);
+		expect(screen.getByText("No buffer matches the filter.")).toBeInTheDocument();
+		rerender(<BufferList {...props} unreadOnly={false} />);
+		expect(names()).toHaveLength(6);
+	});
+
 	it("closes buffers on middle click, without opening the link", () => {
 		const client = {
 			isChannel: (name: string) => name.startsWith("#"),

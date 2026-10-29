@@ -79,6 +79,7 @@ export default class AppController {
 		this.update({
 			collapsedNetworks: new Set(store.collapsedNetworks.load() ?? []),
 			bufferListHidden: store.bufferListHidden.load() ?? false,
+			bufferListUnreadOnly: store.bufferListUnreadOnly.load() ?? false,
 		});
 		if (this.state.settings.autoAwayMinutes <= 0) {
 			this.present = true;

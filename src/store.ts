@@ -73,6 +73,8 @@ export const settings = new SettingsItem("settings");
 export const collapsedNetworks = new Item<string[]>("collapsedNetworks");
 /** Whether the buffer list is hidden on large screens */
 export const bufferListHidden = new Item<boolean>("bufferListHidden");
+/** Whether the buffer list only shows the unread buffers */
+export const bufferListUnreadOnly = new Item<boolean>("bufferListUnreadOnly");
 /** Reactions picked last, most recent first */
 export const recentReactions = new Item<string[]>("recentReactions");
 

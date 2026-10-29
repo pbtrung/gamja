@@ -213,6 +213,8 @@ const BufferItem = memo(function BufferItem({
 
 interface BufferListProps {
 	filter?: string;
+	/** Only show the unread buffers, the active one and their networks */
+	unreadOnly?: boolean;
 	buffers: Map<number, Buffer>;
 	servers: Map<number, Server>;
 	bouncerNetworks: Map<string, BouncerNetwork>;
@@ -265,15 +267,19 @@ function BufferList(props: BufferListProps) {
 				getServerName(server, network ?? null)
 					.toLowerCase()
 					.includes(query);
-			return {
-				...group,
-				shown: serverMatches
-					? group.shown
-					: group.shown.filter((buf) => buf.name.toLowerCase().includes(query)),
-				serverMatches,
-			};
+			let shown = serverMatches
+				? group.shown
+				: group.shown.filter((buf) => buf.name.toLowerCase().includes(query));
+			if (props.unreadOnly) {
+				shown = shown.filter((buf) => buf.unread !== Unread.NONE || buf.id === props.activeBuffer);
+			}
+			const serverShown =
+				!props.unreadOnly ||
+				shown.length > 0 ||
+				group.server.some((buf) => buf.unread !== Unread.NONE || buf.id === props.activeBuffer);
+			return { ...group, shown, serverMatches, serverShown };
 		})
-		.filter((group) => !query || group.serverMatches || group.shown.length > 0);
+		.filter((group) => group.serverShown && (!query || group.serverMatches || group.shown.length > 0));
 	const shown = groups.flatMap((group) => [...group.server, ...group.shown]);
 	// The active buffer is the one Tab reaches, or the first one if none
 	const tabStop = shown.some((buf) => buf.id === props.activeBuffer) ? props.activeBuffer : shown[0]?.id;
@@ -320,7 +326,7 @@ function BufferList(props: BufferListProps) {
 			{items}
 			{shown.length === 0 && (
 				<li className="filter-empty" role="presentation">
-					No buffer matches the filter.
+					{props.unreadOnly && !query ? "No unread buffer." : "No buffer matches the filter."}
 				</li>
 			)}
 		</ul>

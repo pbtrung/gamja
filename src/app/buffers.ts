@@ -465,6 +465,12 @@ export const buffersMethods = {
 		}
 	},
 
+	/** Only show the unread buffers in the buffer list, or all of them. */
+	setBufferListUnreadOnly(this: AppController, unreadOnly: boolean): void {
+		store.bufferListUnreadOnly.put(unreadOnly);
+		this.update({ bufferListUnreadOnly: unreadOnly });
+	},
+
 	/** Hide or show the buffer list on large screens. */
 	setBufferListHidden(this: AppController, hidden: boolean): void {
 		store.bufferListHidden.put(hidden);

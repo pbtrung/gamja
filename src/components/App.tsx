@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
-import { X } from "lucide-react";
+import { ListFilter, X } from "lucide-react";
 import * as irc from "../lib/irc";
 import { BufferType, ServerStatus, Unread, unionUnread, type Buffer, type MemberAction } from "../state";
 import { setup as setupKeybindings } from "../keybindings";
@@ -162,9 +162,17 @@ function Chat({ state }: { state: AppState }) {
 							label="Filter buffers"
 							placeholder="Filter buffers"
 						/>
+						<IconButton
+							icon={ListFilter}
+							label="Only show unread buffers"
+							className="unread-only-toggle"
+							pressed={state.bufferListUnreadOnly}
+							onClick={() => app.setBufferListUnreadOnly(!state.bufferListUnreadOnly)}
+						/>
 					</header>
 					<BufferList
 						filter={bufferFilter}
+						unreadOnly={state.bufferListUnreadOnly}
 						buffers={state.buffers}
 						servers={state.servers}
 						bouncerNetworks={state.bouncerNetworks}

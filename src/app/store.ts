@@ -82,6 +82,8 @@ export interface AppState extends State {
 	collapsedNetworks: ReadonlySet<string>;
 	/** Buffer list hidden on large screens, small screens use openPanels */
 	bufferListHidden: boolean;
+	/** The buffer list only shows the unread buffers */
+	bufferListUnreadOnly: boolean;
 	openPanels: {
 		bufferList: boolean;
 		memberList: boolean;
@@ -103,6 +105,7 @@ export function createAppStore(): AppStore {
 		awayMessage: null,
 		collapsedNetworks: new Set(),
 		bufferListHidden: false,
+		bufferListUnreadOnly: false,
 		openPanels: {
 			bufferList: false,
 			memberList: false,
