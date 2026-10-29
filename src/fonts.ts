@@ -4,14 +4,7 @@ import "@fontsource-variable/jetbrains-mono/index.css";
 import "@fontsource-variable/jetbrains-mono/wght-italic.css";
 import "@fontsource-variable/literata/index.css";
 import "@fontsource-variable/literata/wght-italic.css";
-import "@fontsource/iosevka/400.css";
-import "@fontsource/iosevka/400-italic.css";
-import "@fontsource/iosevka/600.css";
-import "@fontsource/iosevka/700.css";
-import "@fontsource/iosevka-aile/400.css";
-import "@fontsource/iosevka-aile/400-italic.css";
-import "@fontsource/iosevka-aile/600.css";
-import "@fontsource/iosevka-aile/700.css";
+import "./styles/fonts.css";
 import {
 	DEFAULT_TEXT_SIZES,
 	FONT_AREAS,

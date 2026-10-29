@@ -1,0 +1,73 @@
+/*
+ * Iosevka faces, see fonts.ts. Declared here rather than with @fontsource's
+ * own stylesheets: those also ship a WOFF copy of each face, which every
+ * browser supporting WOFF2 ignores, and Iosevka's are large.
+ */
+
+@font-face {
+	font-family: "Iosevka";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400;
+	src: url("../../node_modules/@fontsource/iosevka/files/iosevka-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka";
+	font-style: italic;
+	font-display: swap;
+	font-weight: 400;
+	src: url("../../node_modules/@fontsource/iosevka/files/iosevka-latin-400-italic.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 600;
+	src: url("../../node_modules/@fontsource/iosevka/files/iosevka-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 700;
+	src: url("../../node_modules/@fontsource/iosevka/files/iosevka-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka Aile";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400;
+	src: url("../../node_modules/@fontsource/iosevka-aile/files/iosevka-aile-latin-400-normal.woff2")
+		format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka Aile";
+	font-style: italic;
+	font-display: swap;
+	font-weight: 400;
+	src: url("../../node_modules/@fontsource/iosevka-aile/files/iosevka-aile-latin-400-italic.woff2")
+		format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka Aile";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 600;
+	src: url("../../node_modules/@fontsource/iosevka-aile/files/iosevka-aile-latin-600-normal.woff2")
+		format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka Aile";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 700;
+	src: url("../../node_modules/@fontsource/iosevka-aile/files/iosevka-aile-latin-700-normal.woff2")
+		format("woff2");
+}
