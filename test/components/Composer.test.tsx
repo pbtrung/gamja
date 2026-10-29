@@ -207,6 +207,28 @@ describe("Composer replies and typing", () => {
 		expect(onTextChange).not.toHaveBeenCalled();
 	});
 
+	it("completes nicks with a button on touch screens", async () => {
+		const { unmount } = setup();
+		expect(screen.queryByRole("button", { name: "Complete nickname" })).toBeNull();
+		unmount();
+		vi.stubGlobal(
+			"matchMedia",
+			(query: string) =>
+				({
+					matches: query === "(hover: none)",
+					addEventListener() {},
+					removeEventListener() {},
+				}) as unknown as MediaQueryList,
+		);
+		const { input } = setup();
+		await userEvent.type(input, "hi al");
+		const button = screen.getByRole("button", { name: "Complete nickname" });
+		await userEvent.click(button);
+		expect(input).toHaveValue("hi alice");
+		await userEvent.click(button);
+		expect(input).toHaveValue("hi albert");
+	});
+
 	it("recalls sent messages with Up and Down", async () => {
 		const { input } = setup();
 		await userEvent.type(input, "one{Enter}two{Enter}two{Enter}draft");

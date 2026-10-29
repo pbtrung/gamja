@@ -9,9 +9,10 @@ import {
 	type ReactNode,
 	type Ref,
 } from "react";
-import { CornerUpRight, SendHorizontal, X } from "lucide-react";
+import { AtSign, CornerUpRight, SendHorizontal, X } from "lucide-react";
 import type { ReplyTo } from "../app/store";
 import IconButton from "./IconButton";
+import useMediaQuery from "./useMediaQuery";
 import { computeAutocomplete, type Autocomplete } from "../lib/autocomplete";
 import { splitMultiline, type MultilineLimits } from "../lib/irc";
 
@@ -207,27 +208,34 @@ export default function Composer({
 			return;
 		}
 
-		if (event.key !== "Tab" || !collapsed) {
-			return;
+		if (event.key === "Tab" && collapsed && complete(input, event.shiftKey)) {
+			event.preventDefault();
 		}
+	}
 
+	/** Complete the word before the caret, or cycle through the matches.
+	 * Returns whether there was a match. */
+	function complete(input: HTMLTextAreaElement, backwards: boolean): boolean {
 		const ac = computeAutocomplete(
 			text,
 			input.selectionStart,
 			lastAutocomplete.current,
-			event.shiftKey,
+			backwards,
 			autocomplete,
 		);
 		if (!ac) {
-			return;
+			return false;
 		}
-		event.preventDefault();
 		lastAutocomplete.current = ac;
 		setText(ac.text);
 		requestAnimationFrame(() => {
 			input.selectionStart = input.selectionEnd = ac.caretPos;
 		});
+		return true;
 	}
+
+	// Touch keyboards have no Tab key: a button completes nicks instead
+	const touchScreen = useMediaQuery("(hover: none)");
 
 	// Without multi-line message support, flatten newlines
 	const normalizeNewlines = useCallback(
@@ -359,6 +367,24 @@ export default function Composer({
 					onKeyDown={handleKeyDown}
 				/>
 				<div className="composer-buttons">
+					{touchScreen && !readOnly && (
+						<button
+							type="button"
+							className="icon-btn composer-complete"
+							title="Complete nickname"
+							aria-label="Complete nickname"
+							// Keep the focus, and the on-screen keyboard, in the input
+							onPointerDown={(event) => event.preventDefault()}
+							onClick={() => {
+								const input = inputRef.current;
+								if (input && input.selectionStart === input.selectionEnd) {
+									complete(input, false);
+								}
+							}}
+						>
+							<AtSign aria-hidden="true" />
+						</button>
+					)}
 					<IconButton
 						type="submit"
 						icon={SendHorizontal}
