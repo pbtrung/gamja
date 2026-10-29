@@ -117,6 +117,8 @@ export const windowMethods = {
 		};
 	},
 
+	/** Mark the user as away while the page stays hidden, see
+	 * draft/pre-away. Briefly switching tabs doesn't count. */
 	handleVisibilityChange(this: AppController): void {
 		clearTimeout(this.awayTimeoutID);
 		const minutes = this.state.settings.autoAwayMinutes;

@@ -192,6 +192,8 @@ export const messagingMethods = {
 		return this.sendChatMessage("PRIVMSG", target, text);
 	},
 
+	/** Send a PRIVMSG or NOTICE, and show it if the server won't echo it.
+	 * Returns false if it couldn't be sent. */
 	sendChatMessage(
 		this: AppController,
 		command: "PRIVMSG" | "NOTICE",

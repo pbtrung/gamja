@@ -47,6 +47,14 @@ function applyConfigFile(config: Config, connectParams: ConnectParams): void {
 }
 
 export const startupMethods = {
+	/**
+	 * Handle configuration data and populate the connection parameters.
+	 * The priority order is:
+	 * - URL params
+	 * - Saved parameters in local storage
+	 * - Configuration data (fetched from the config.json file)
+	 * - Default server URL constructed from the current URL location
+	 */
 	async handleConfig(this: AppController, config: Config): Promise<void> {
 		let connectParams: ConnectParams = { ...this.state.connectParams };
 		applyConfigFile(config, connectParams);
@@ -146,6 +154,11 @@ export const startupMethods = {
 		}
 	},
 
+	/**
+	 * Get an OAuth 2.0 token, from the authorization code in the URL or by
+	 * redirecting to the authorization server. Returns false if the token
+	 * isn't available (yet).
+	 */
 	async handleOauth2Redirect(
 		this: AppController,
 		queryParams: Record<string, string>,

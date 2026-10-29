@@ -46,6 +46,11 @@ export const notificationsMethods = {
 		}
 	},
 
+	/**
+	 * Unread state brought by a PRIVMSG or NOTICE not read yet: nothing for
+	 * our own messages and blocked users (soju's metadata), a highlight for
+	 * mentions and private messages, unless the buffer is muted.
+	 */
 	chatMessageUnread(
 		this: AppController,
 		client: Client,
