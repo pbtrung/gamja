@@ -280,17 +280,20 @@ export default function BufferHeader(props: BufferHeaderProps) {
 		actions.unshift(...toggles);
 	}
 
-	// Desktop channels keep the main controls beside an overflow menu.
-	const desktopChannel = !smallScreen && buffer.type === BufferType.CHANNEL;
+	// Channels and users keep their main controls beside an overflow menu
+	// on desktop
+	const mainActions = ["join", "part", "close", "settings"];
+	const desktopTarget =
+		!smallScreen && (buffer.type === BufferType.CHANNEL || buffer.type === BufferType.NICK);
 	const menuActions = smallScreen
 		? actions
-		: desktopChannel
-			? actions.filter((action) => !["join", "part", "settings"].includes(action.key))
+		: desktopTarget
+			? actions.filter((action) => !mainActions.includes(action.key))
 			: [];
 	const inlineActions = smallScreen
 		? []
-		: desktopChannel
-			? actions.filter((action) => ["join", "part", "settings"].includes(action.key))
+		: desktopTarget
+			? actions.filter((action) => mainActions.includes(action.key))
 			: actions;
 
 	let name = buffer.name;

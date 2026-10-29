@@ -273,6 +273,24 @@ describe("BufferHeader", () => {
 		expect(join.querySelector(".action-label")).toBeNull();
 	});
 
+	it("puts Pin, Mute, Block and Search in the desktop user menu", async () => {
+		const props = setup({
+			buffer: { type: BufferType.NICK, name: "bob" },
+			onSetMetadata: vi.fn(),
+			onSearch: vi.fn(),
+		});
+		expect(buttons()).toEqual(["Open buffer list", "More actions", "Close", "Settings"]);
+		await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+		expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+			"Pin",
+			"Mute",
+			"Block",
+			"Search",
+		]);
+		await userEvent.click(screen.getByRole("menuitem", { name: "Block" }));
+		expect(props.onSetMetadata).toHaveBeenCalledWith("blocked", true);
+	});
+
 	it("puts Pin, Mute, Search and Detach in the desktop channel menu", async () => {
 		const props = setup({
 			buffer: { type: BufferType.CHANNEL, name: "#c", joined: true },
