@@ -28,6 +28,8 @@ import { panelsMethods, type PanelsMethods } from "./panels";
 import { notificationsMethods, type NotificationsMethods } from "./notifications";
 import { routingMethods, type RoutingMethods } from "./routing";
 import { historyMethods, type HistoryMethods } from "./history";
+import { backlogMethods, type BacklogMethods } from "./backlog";
+import { searchMethods, type SearchMethods } from "./search";
 import { networkMethods, type NetworkMethods } from "./network";
 import { registrationMethods, type RegistrationMethods } from "./registration";
 import { pushMethods, type PushMethods } from "./push";
@@ -323,12 +325,6 @@ export default class AppController {
 			this.updateDocumentTitle();
 		}
 	}
-
-	/**
-	 * Show a page of chat history, with one state update per buffer. Live
-	 * history, missed while disconnected, is handled like new messages: it
-	 * marks buffers unread and notifies.
-	 */
 
 	/**
 	 * Connect to a server, or to a bouncer network. A bouncer network is
@@ -629,12 +625,6 @@ export default class AppController {
 	 */
 
 	/**
-	 * Record that missed messages weren't all fetched: those between the
-	 * last loaded message and the oldest of the fetched page. Without loaded
-	 * messages, they are fetched as older history instead.
-	 */
-
-	/**
 	 * Mark the user as away while the page stays hidden, see draft/pre-away.
 	 * Briefly switching tabs doesn't count.
 	 */
@@ -662,6 +652,8 @@ export default interface AppController // eslint-disable-line @typescript-eslint
 		NotificationsMethods,
 		RoutingMethods,
 		HistoryMethods,
+		BacklogMethods,
+		SearchMethods,
 		NetworkMethods,
 		RegistrationMethods,
 		PushMethods,
@@ -678,6 +670,8 @@ Object.assign(
 	notificationsMethods,
 	routingMethods,
 	historyMethods,
+	backlogMethods,
+	searchMethods,
 	networkMethods,
 	registrationMethods,
 	pushMethods,
