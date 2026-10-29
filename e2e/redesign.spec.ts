@@ -109,9 +109,7 @@ test("sizes each area's text in pixels and remembers it without resizing the int
 	await page.getByRole("button", { name: "Settings" }).click();
 	await expect(page.getByLabel("Text size", { exact: true })).toHaveCount(0);
 	await page.getByRole("tab", { name: "Font", exact: true }).click();
-	const area = (title: string) =>
-		page.locator(".font-area").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
-	const size = area("Messages").getByRole("spinbutton", { name: "Text size", exact: true });
+	const size = page.getByRole("spinbutton", { name: "Text size", exact: true });
 	await expect(size).toHaveValue("15");
 	for (let pixels = 10; pixels <= 24; pixels++) {
 		await size.fill(String(pixels));
@@ -119,16 +117,18 @@ test("sizes each area's text in pixels and remembers it without resizing the int
 		await expect(page.locator("body")).toHaveCSS("font-size", "16px");
 		await expect(page.locator("#buffer-header h1")).toHaveCSS("font-size", "16px");
 	}
-	await area("Buffer header").getByRole("spinbutton", { name: "Text size", exact: true }).fill("20");
-	await expect(page.locator("#buffer-header h1")).toHaveCSS("font-size", "20px");
-	await area("Messages").getByRole("combobox", { name: "Font" }).selectOption("Iosevka (dense mono)");
-	await expect(text).toHaveCSS("font-family", /Iosevka/);
+	await expect(page.getByRole("combobox", { name: "Font" }).locator("option")).toHaveText([
+		"Inter",
+		"JetBrains Mono",
+	]);
+	await page.getByRole("combobox", { name: "Font" }).selectOption("JetBrains Mono");
+	await expect(text).toHaveCSS("font-family", /JetBrains Mono/);
 	await page.keyboard.press("Escape");
 	await page.setViewportSize({ width: 412, height: 800 });
 	await expect(text).toHaveCSS("font-size", "24px");
 	await connect(page, "tester", { channels: ["#size"] });
 	await expect(page.locator("#buffer")).toHaveCSS("font-size", "24px");
-	await expect(page.locator("#buffer")).toHaveCSS("font-family", /Iosevka/);
+	await expect(page.locator("#buffer")).toHaveCSS("font-family", /JetBrains Mono/);
 });
 
 test("resizes the side panes by dragging their inner edges", async ({ page, connect, bot, settings }) => {

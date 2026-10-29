@@ -68,20 +68,21 @@ describe("display settings", () => {
 	});
 
 	it("allows integer text sizes from 10 to 24 px", () => {
-		const size = (headerTextSize: unknown) =>
-			S.fontSettings({ ...S.defaultSettings, headerTextSize: headerTextSize as number }, "header").size;
+		const size = (messageTextSize: unknown) =>
+			S.messageTextSize({ ...S.defaultSettings, messageTextSize: messageTextSize as number });
 		for (let pixels = 10; pixels <= 24; pixels++) {
 			expect(size(pixels)).toBe(pixels);
 		}
 		for (const invalid of [9, 25, 12.5, "x", Number.NaN, Infinity]) {
-			expect(size(invalid)).toBe(16);
+			expect(size(invalid)).toBe(15);
 		}
 	});
 
 	it("only keeps known fonts", () => {
-		expect(S.sanitizeSettings({ messagesFont: "iosevka", headerFont: "comic-sans" })).toEqual({
-			messagesFont: "iosevka",
+		expect(S.sanitizeSettings({ messagesFont: "jetbrains-mono", headerFont: "inter" })).toEqual({
+			messagesFont: "jetbrains-mono",
 		});
+		expect(S.sanitizeSettings({ messagesFont: "iosevka" })).toEqual({});
 	});
 });
 

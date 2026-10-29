@@ -287,10 +287,6 @@ select.settings-select {
 	padding: 0.375rem 0.5rem;
 }
 
-.font-area + .font-area {
-	margin-top: 1.5rem;
-}
-
 /* A line of text in the chosen font and size */
 .font-sample {
 	margin: 0;

@@ -1,7 +1,6 @@
 /** Dialogs: account, settings and help. */
 
 import type Client from "../lib/client";
-import * as S from "../state";
 import type { Settings } from "../state";
 import * as store from "../store";
 import { applyTheme } from "../themes";
@@ -152,8 +151,7 @@ export const dialogsMethods = {
 		if (settings.theme !== undefined) {
 			applyTheme(updated.theme);
 		}
-		const fontKeys = Object.values(S.FONT_SETTING_KEYS).flatMap(({ font, size }) => [font, size]);
-		if (fontKeys.some((key) => settings[key] !== undefined)) {
+		if (settings.messagesFont !== undefined || settings.messageTextSize !== undefined) {
 			applyFonts(updated);
 		}
 		if (settings.autoAwayMinutes !== undefined && typeof document !== "undefined") {

@@ -32,18 +32,11 @@ function contrast(a: string, b: string): number {
 }
 
 describe("applyFonts", () => {
-	it("sets the font and text size of each area without resizing the interface", () => {
+	it("sets the font and text size of the messages without resizing the interface", () => {
 		const style = document.documentElement.style;
-		applyFonts({
-			...defaultSettings,
-			messageTextSize: 20,
-			messagesFont: "iosevka",
-			bufferListTextSize: 18,
-		});
+		applyFonts({ ...defaultSettings, messageTextSize: 20, messagesFont: "jetbrains-mono" });
 		expect(style.getPropertyValue("--chat-font-size")).toBe("20px");
-		expect(style.getPropertyValue("--messages-font")).toContain("Iosevka");
-		expect(style.getPropertyValue("--buffer-list-scale")).toBe("1.2");
-		expect(style.getPropertyValue("--header-scale")).toBe("1");
+		expect(style.getPropertyValue("--messages-font")).toContain("JetBrains Mono");
 		applyFonts(defaultSettings);
 		expect(style.getPropertyValue("--chat-font-size")).toBe("15px");
 		expect(style.getPropertyValue("--messages-font")).toBe("var(--font-sans)");

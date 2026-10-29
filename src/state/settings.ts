@@ -14,28 +14,9 @@ export type MessageLayout = (typeof MESSAGE_LAYOUTS)[number];
 export const NICK_ALIGNS = ["right", "left"] as const;
 export type NickAlign = (typeof NICK_ALIGNS)[number];
 
-export const FONT_IDS = [
-	"inter",
-	"system",
-	"literata",
-	"iosevka-aile",
-	"iosevka",
-	"jetbrains-mono",
-	"monospace",
-] as const;
+/** Fonts of the messages, see fonts.ts */
+export const FONT_IDS = ["inter", "jetbrains-mono"] as const;
 export type FontID = (typeof FONT_IDS)[number];
-
-/** The parts of the interface with their own font settings */
-export const FONT_AREAS = ["bufferList", "memberList", "header", "messages"] as const;
-export type FontArea = (typeof FONT_AREAS)[number];
-
-/** Size of the main text of each area, in pixels, by default */
-export const DEFAULT_TEXT_SIZES: Record<FontArea, number> = {
-	bufferList: 15,
-	memberList: 14,
-	header: 16,
-	messages: 15,
-};
 
 export interface Settings {
 	/** Color theme ID, see themes.ts */
@@ -72,15 +53,9 @@ export interface Settings {
 	indentWrapped: boolean;
 	/** Show timestamps as 01:34 PM instead of 13:34 */
 	clock12h: boolean;
-	/** Font of each area, see fonts.ts */
-	bufferListFont: FontID;
-	memberListFont: FontID;
-	headerFont: FontID;
+	/** Font of the messages and the message input, see fonts.ts */
 	messagesFont: FontID;
-	/** Text size of each area, in pixels, see fontSettings() */
-	bufferListTextSize: number;
-	memberListTextSize: number;
-	headerTextSize: number;
+	/** Text size of the messages, in pixels, see messageTextSize() */
 	messageTextSize: number;
 	/** Show who is typing in the current buffer */
 	showTyping: boolean;
@@ -117,14 +92,8 @@ export const defaultSettings: Settings = {
 	dateSeparators: true,
 	indentWrapped: false,
 	clock12h: false,
-	bufferListFont: "inter",
-	memberListFont: "inter",
-	headerFont: "inter",
 	messagesFont: "inter",
-	bufferListTextSize: DEFAULT_TEXT_SIZES.bufferList,
-	memberListTextSize: DEFAULT_TEXT_SIZES.memberList,
-	headerTextSize: DEFAULT_TEXT_SIZES.header,
-	messageTextSize: DEFAULT_TEXT_SIZES.messages,
+	messageTextSize: 15,
 	showTyping: true,
 	sendTyping: true,
 	bufferEvents: BufferEventsDisplayMode.FOLD,
@@ -138,26 +107,13 @@ export const defaultSettings: Settings = {
 export const TEXT_SIZE_MIN = 10;
 export const TEXT_SIZE_MAX = 24;
 
-/** The settings keys of the font and text size of each area */
-export const FONT_SETTING_KEYS = {
-	bufferList: { font: "bufferListFont", size: "bufferListTextSize" },
-	memberList: { font: "memberListFont", size: "memberListTextSize" },
-	header: { font: "headerFont", size: "headerTextSize" },
-	messages: { font: "messagesFont", size: "messageTextSize" },
-} as const satisfies Record<FontArea, { font: keyof Settings; size: keyof Settings }>;
-
-/** The font and text size of an area, falling back to the default text
- * size for an invalid stored value. */
-export function fontSettings(settings: Settings, area: FontArea): { font: FontID; size: number } {
-	const keys = FONT_SETTING_KEYS[area];
-	const size = settings[keys.size];
-	return {
-		font: settings[keys.font],
-		size:
-			Number.isInteger(size) && size >= TEXT_SIZE_MIN && size <= TEXT_SIZE_MAX
-				? size
-				: DEFAULT_TEXT_SIZES[area],
-	};
+/** The message text size, falling back to the default for an invalid
+ * stored value. */
+export function messageTextSize(settings: Settings): number {
+	const size = settings.messageTextSize;
+	return Number.isInteger(size) && size >= TEXT_SIZE_MIN && size <= TEXT_SIZE_MAX
+		? size
+		: defaultSettings.messageTextSize;
 }
 
 /** Bounds of the backlogSize setting */
@@ -180,9 +136,6 @@ const SETTING_VALUES: Partial<Record<keyof Settings, readonly string[]>> = {
 	nickAlign: NICK_ALIGNS,
 	notifications: NOTIFICATION_LEVELS,
 	bufferEvents: Object.values(BufferEventsDisplayMode),
-	bufferListFont: FONT_IDS,
-	memberListFont: FONT_IDS,
-	headerFont: FONT_IDS,
 	messagesFont: FONT_IDS,
 };
 
