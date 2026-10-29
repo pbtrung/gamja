@@ -75,6 +75,9 @@ export const collapsedNetworks = new Item<string[]>("collapsedNetworks");
 export const bufferListHidden = new Item<boolean>("bufferListHidden");
 /** Whether the buffer list only shows the unread buffers */
 export const bufferListUnreadOnly = new Item<boolean>("bufferListUnreadOnly");
+/** Widths of the side panes on large screens, in pixels, see PaneResizer */
+export const bufferListWidth = new Item<number>("bufferListWidth");
+export const memberListWidth = new Item<number>("memberListWidth");
 /** Reactions picked last, most recent first */
 export const recentReactions = new Item<string[]>("recentReactions");
 

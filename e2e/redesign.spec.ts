@@ -130,3 +130,40 @@ test("sizes each area's text in pixels and remembers it without resizing the int
 	await expect(page.locator("#buffer")).toHaveCSS("font-size", "24px");
 	await expect(page.locator("#buffer")).toHaveCSS("font-family", /Iosevka/);
 });
+
+test("resizes the side panes by dragging their inner edges", async ({ page, connect, bot, settings }) => {
+	await settings({ showMemberList: true });
+	const bob = await bot("bob");
+	await bob.join("#wide");
+	await page.setViewportSize({ width: 1280, height: 700 });
+	await connect(page, "tester", { channels: ["#wide"] });
+	const bufferList = page.locator("#buffer-list");
+	const memberList = page.locator("#member-list");
+	const width = async (pane: typeof bufferList) => (await pane.boundingBox())!.width;
+	const drag = async (name: string, dx: number) => {
+		const box = (await page.getByRole("separator", { name }).boundingBox())!;
+		const x = box.x + box.width / 2;
+		const y = box.y + box.height / 2;
+		await page.mouse.move(x, y);
+		await page.mouse.down();
+		await page.mouse.move(x + dx / 2, y);
+		await page.mouse.move(x + dx, y);
+		await page.mouse.up();
+	};
+
+	const bufferListBefore = await width(bufferList);
+	await drag("Resize the buffer list", 100);
+	expect(Math.round(await width(bufferList))).toBe(Math.round(bufferListBefore + 100));
+	const memberListBefore = await width(memberList);
+	await drag("Resize the member list", -60);
+	expect(Math.round(await width(memberList))).toBe(Math.round(memberListBefore + 60));
+
+	// Remembered
+	await connect(page, "tester", { channels: ["#wide"] });
+	await expect(page.locator("#buffer-header h1")).toHaveText("#wide");
+	expect(Math.round(await width(bufferList))).toBe(Math.round(bufferListBefore + 100));
+
+	// Double click resets
+	await page.getByRole("separator", { name: "Resize the buffer list" }).dblclick();
+	expect(Math.round(await width(bufferList))).toBe(Math.round(bufferListBefore));
+});

@@ -16,6 +16,8 @@ import ErrorBoundary from "./ErrorBoundary";
 import IconButton from "./IconButton";
 import FilterInput from "./FilterInput";
 import MemberList from "./MemberList";
+import PaneResizer from "./PaneResizer";
+import * as store from "../store";
 import TypingIndicator from "./TypingIndicator";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import useSwipe from "./useSwipe";
@@ -183,6 +185,15 @@ function Chat({ state }: { state: AppState }) {
 						onToggleCollapse={handleToggleCollapse}
 					/>
 				</div>
+				{!smallScreen && (
+					<PaneResizer
+						side="left"
+						label="Resize the buffer list"
+						controls="buffer-list"
+						cssVariable="--buffer-list-custom-width"
+						item={store.bufferListWidth}
+					/>
+				)}
 			</nav>
 
 			{activeBuffer && activeServer && (
@@ -239,6 +250,15 @@ function Chat({ state }: { state: AppState }) {
 
 			{activeBuffer?.type === BufferType.CHANNEL && activeServer && (
 				<aside id="member-list" className={memberListClass} aria-label="Members list">
+					{!smallScreen && (
+						<PaneResizer
+							side="right"
+							label="Resize the member list"
+							controls="member-list"
+							cssVariable="--member-list-custom-width"
+							item={store.memberListWidth}
+						/>
+					)}
 					<div className="member-list-panel">
 						<MemberList
 							members={activeBuffer.members}

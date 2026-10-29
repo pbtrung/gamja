@@ -445,3 +445,66 @@ li.unread-highlight .unread-indicator,
 	--text-scale: var(--member-list-scale);
 	font-family: var(--member-list-font);
 }
+
+/* Handles on the inner edges of the side panes, dragged to resize them on
+   large screens, see PaneResizer */
+@media (min-width: 968px) {
+	#buffer-list,
+	#member-list {
+		position: relative;
+	}
+
+	.buffer-list-panel {
+		width: var(--buffer-list-custom-width, var(--sidebar-width));
+	}
+
+	.member-list-panel {
+		width: var(--member-list-custom-width, var(--member-list-width));
+	}
+}
+
+.pane-resizer {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	z-index: 6;
+	width: 7px;
+	cursor: col-resize;
+	touch-action: none;
+}
+
+.pane-resizer.left {
+	right: -4px;
+}
+
+.pane-resizer.right {
+	left: -4px;
+}
+
+.pane-resizer::after {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 3px;
+	width: 1px;
+	background-color: transparent;
+	transition: background-color var(--transition);
+	content: "";
+}
+
+.pane-resizer:hover::after,
+.pane-resizer:focus-visible::after,
+.resizing-pane .pane-resizer::after {
+	background-color: var(--accent);
+}
+
+.pane-resizer:focus-visible {
+	outline: none;
+}
+
+/* While dragging: no text selection, and the cursor stays the same */
+.resizing-pane,
+.resizing-pane * {
+	cursor: col-resize !important;
+	user-select: none !important;
+}
