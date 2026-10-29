@@ -900,6 +900,8 @@ describe("reactions, replies, redaction and typing", () => {
 		expect(document.documentElement.style.getPropertyValue("--chat-font-size")).toBe("20px");
 		app.handleSettingsChange({ messageTextSize: 15 });
 		expect(document.documentElement.style.getPropertyValue("--chat-font-size")).toBe("15px");
+		app.handleSettingsChange({ headerFont: "literata" });
+		expect(document.documentElement.style.getPropertyValue("--header-font")).toContain("Literata");
 		expect(document.documentElement.style.fontSize).toBe("");
 	});
 

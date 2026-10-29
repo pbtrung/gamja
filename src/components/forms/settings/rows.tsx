@@ -144,3 +144,50 @@ export function SegmentedRow<T extends string | number>({
 		</div>
 	);
 }
+
+interface SelectRowProps<T> {
+	name: string;
+	label: string;
+	hint?: string;
+	options: { value: T; label: string }[];
+	value: T;
+	onChange: (value: T) => void;
+}
+
+/** A setting with a label and a hint on the left and a dropdown list on the right */
+export function SelectRow<T extends string>({
+	name,
+	label,
+	hint,
+	options,
+	value,
+	onChange,
+}: SelectRowProps<T>) {
+	const id = useId();
+	return (
+		<div className="settings-row">
+			<div className="settings-row-text">
+				<label htmlFor={id + "-input"}>{label}</label>
+				{hint && (
+					<span className="settings-row-hint" id={id + "-hint"}>
+						{hint}
+					</span>
+				)}
+			</div>
+			<select
+				id={id + "-input"}
+				className="settings-select"
+				name={name}
+				value={value}
+				aria-describedby={hint ? id + "-hint" : undefined}
+				onChange={(event) => onChange(event.target.value as T)}
+			>
+				{options.map((option) => (
+					<option key={option.value} value={option.value}>
+						{option.label}
+					</option>
+				))}
+			</select>
+		</div>
+	);
+}

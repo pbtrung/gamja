@@ -12,6 +12,7 @@
 	overflow-y: auto;
 	background-color: var(--bg);
 	color: var(--fg);
+	font-family: var(--messages-font);
 	font-size: var(--chat-font-size);
 	overflow-wrap: break-word;
 }

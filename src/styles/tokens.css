@@ -16,7 +16,16 @@
 	--sidebar-width: 15rem;
 	--member-list-width: 12.5rem;
 	--header-height: 3rem;
+	/* Fonts of each area, and the factor of their text sizes but the
+	   messages', see fonts.ts */
 	--chat-font-size: 15px;
+	--messages-font: var(--font-sans);
+	--buffer-list-font: var(--font-sans);
+	--buffer-list-scale: 1;
+	--member-list-font: var(--font-sans);
+	--member-list-scale: 1;
+	--header-font: var(--font-sans);
+	--header-scale: 1;
 
 	--transition: 0.12s ease-in-out;
 }

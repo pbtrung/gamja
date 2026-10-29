@@ -5,6 +5,7 @@ import Dialog from "../Dialog";
 import Menu from "../Menu";
 import type { Settings } from "../../state";
 import AppearancePane from "./settings/AppearancePane";
+import FontPane from "./settings/FontPane";
 import MessagesPane from "./settings/MessagesPane";
 import NotificationsPane from "./settings/NotificationsPane";
 import AboutPane from "./settings/AboutPane";
@@ -133,6 +134,9 @@ export default function SettingsForm(props: SettingsFormProps) {
 			break;
 		case "appearance":
 			pane = <AppearancePane settings={settings} onChange={onChange} />;
+			break;
+		case "font":
+			pane = <FontPane settings={settings} onChange={onChange} />;
 			break;
 		case "messages":
 			pane = <MessagesPane settings={settings} onChange={onChange} />;

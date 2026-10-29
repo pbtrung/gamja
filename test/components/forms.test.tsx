@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import * as irc from "../../src/lib/irc";
@@ -314,12 +314,16 @@ describe("SettingsForm missed messages to load", () => {
 				onClose={() => {}}
 			/>,
 		);
-		await userEvent.click(screen.getByRole("tab", { name: "Messages" }));
-		const textSize = screen.getByLabelText("Text size");
+		await userEvent.click(screen.getByRole("tab", { name: "Font" }));
+		const messages = within(screen.getByRole("heading", { name: "Messages" }).closest("section")!);
+		const textSize = messages.getByLabelText("Text size");
 		expect(textSize).toHaveValue(15);
 		await userEvent.clear(textSize);
 		await userEvent.type(textSize, "20");
 		expect(onChange).toHaveBeenCalledWith({ messageTextSize: 20 });
+		await userEvent.selectOptions(messages.getByLabelText("Font"), "JetBrains Mono");
+		expect(onChange).toHaveBeenCalledWith({ messagesFont: "jetbrains-mono" });
+		await userEvent.click(screen.getByRole("tab", { name: "Messages" }));
 		const input = screen.getByLabelText("Missed messages to load on connect");
 		expect(input).toHaveValue(200);
 		// Sized for the 4 digits of the maximum, see input.settings-number

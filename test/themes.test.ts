@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { THEMES, applyMessageTextSize, applyTheme, getTheme } from "../src/themes";
+import { THEMES, applyTheme, getTheme } from "../src/themes";
+import { applyFonts } from "../src/fonts";
+import { defaultSettings } from "../src/state";
 
 const css = readFileSync("src/styles/themes.css", "utf8");
 const tokensCSS = readFileSync("src/styles/tokens.css", "utf8");
@@ -29,13 +31,23 @@ function contrast(a: string, b: string): number {
 	return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-describe("applyMessageTextSize", () => {
-	it("sets the chat font size without resizing the interface", () => {
-		applyMessageTextSize(20);
-		expect(document.documentElement.style.getPropertyValue("--chat-font-size")).toBe("20px");
-		applyMessageTextSize(15);
-		expect(document.documentElement.style.getPropertyValue("--chat-font-size")).toBe("15px");
-		expect(document.documentElement.style.fontSize).toBe("");
+describe("applyFonts", () => {
+	it("sets the font and text size of each area without resizing the interface", () => {
+		const style = document.documentElement.style;
+		applyFonts({
+			...defaultSettings,
+			messageTextSize: 20,
+			messagesFont: "iosevka",
+			bufferListTextSize: 18,
+		});
+		expect(style.getPropertyValue("--chat-font-size")).toBe("20px");
+		expect(style.getPropertyValue("--messages-font")).toContain("Iosevka");
+		expect(style.getPropertyValue("--buffer-list-scale")).toBe("1.2");
+		expect(style.getPropertyValue("--header-scale")).toBe("1");
+		applyFonts(defaultSettings);
+		expect(style.getPropertyValue("--chat-font-size")).toBe("15px");
+		expect(style.getPropertyValue("--messages-font")).toBe("var(--font-sans)");
+		expect(style.fontSize).toBe("");
 	});
 });
 

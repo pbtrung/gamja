@@ -55,11 +55,6 @@ export function getTheme(id: string | undefined | null): Theme {
 	return THEMES.find((t) => t.id === id) ?? THEMES[0];
 }
 
-/** Apply a text size, in pixels, to the buffer area. */
-export function applyMessageTextSize(pixels: number, doc: Document = document): void {
-	doc.documentElement.style.setProperty("--chat-font-size", `${pixels}px`);
-}
-
 /** Apply a theme to the document. */
 export function applyTheme(id: string | undefined | null, doc: Document = document): void {
 	const theme = getTheme(id);

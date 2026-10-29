@@ -43,7 +43,9 @@ textarea.composer-input {
 	background: none;
 	box-shadow: none;
 	color: var(--fg);
-	font-size: 1rem;
+	font-family: var(--messages-font);
+	/* 16px with the default 15px messages */
+	font-size: calc(var(--chat-font-size) * 16 / 15);
 	line-height: 1.4;
 	resize: none;
 }

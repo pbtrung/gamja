@@ -71,7 +71,7 @@
 	padding: 0.375rem 2rem;
 	border-color: var(--border);
 	background: var(--input-bg);
-	font-size: 0.875rem;
+	font-size: calc(0.875rem * var(--text-scale, 1));
 	line-height: 1.5;
 }
 
@@ -85,14 +85,14 @@
 	right: 0.125rem;
 	width: 1.75rem;
 	height: 1.75rem;
-	font-size: 0.875rem;
+	font-size: calc(0.875rem * var(--text-scale, 1));
 	transform: translateY(-50%);
 }
 
 .filter-empty {
 	padding: 0.75rem 0.5rem;
 	color: var(--fg-muted);
-	font-size: 0.85rem;
+	font-size: calc(0.85rem * var(--text-scale, 1));
 }
 
 @media (min-width: 968px) {
@@ -123,7 +123,7 @@
 	padding: 0.25rem 0.5rem;
 	border-radius: var(--radius);
 	color: var(--fg-muted);
-	font-size: 0.925rem;
+	font-size: calc(0.925rem * var(--text-scale, 1));
 	line-height: 1.4;
 	text-decoration: none;
 	transition:
@@ -155,7 +155,7 @@
 }
 
 .buffer-items li.type-server .buffer-name {
-	font-size: 0.8rem;
+	font-size: calc(0.8rem * var(--text-scale, 1));
 	font-weight: 700;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
@@ -204,7 +204,7 @@
 	border-radius: 999px;
 	background-color: var(--bg-active);
 	color: var(--fg-emphasis);
-	font-size: 0.75rem;
+	font-size: calc(0.75rem * var(--text-scale, 1));
 	font-weight: 600;
 	line-height: 1.25rem;
 	text-align: center;
@@ -297,7 +297,7 @@ li.unread-highlight .unread-indicator,
 	margin: 0;
 	padding: 0.35rem 0.5rem 0.25rem;
 	color: var(--fg-muted);
-	font-size: 0.7rem;
+	font-size: calc(0.7rem * var(--text-scale, 1));
 	font-weight: 600;
 	letter-spacing: 0.05em;
 	text-transform: uppercase;
@@ -343,7 +343,7 @@ li.unread-highlight .unread-indicator,
 	width: 1.5rem;
 	height: 1.5rem;
 	border-radius: var(--radius-sm);
-	font-size: 1rem;
+	font-size: calc(1rem * var(--text-scale, 1));
 	transform: translateY(-50%);
 	opacity: 0;
 }
@@ -385,7 +385,7 @@ li.unread-highlight .unread-indicator,
 	border-radius: 50%;
 	background-color: var(--nick-color, var(--fg-subtle));
 	color: var(--avatar-fg);
-	font-size: 0.75rem;
+	font-size: calc(0.75rem * var(--text-scale, 1));
 	font-weight: 600;
 	text-transform: uppercase;
 }
@@ -418,7 +418,7 @@ li.unread-highlight .unread-indicator,
 .member-items li a {
 	border-radius: 0.375rem;
 	color: var(--chrome-fg);
-	font-size: 0.9rem;
+	font-size: calc(0.9rem * var(--text-scale, 1));
 }
 
 .buffer-icon {
@@ -433,4 +433,15 @@ li.unread-highlight .unread-indicator,
 	border: 0;
 	background: var(--backdrop);
 	cursor: pointer;
+}
+
+/* Font settings of the side panels, see fonts.ts */
+#buffer-list {
+	--text-scale: var(--buffer-list-scale);
+	font-family: var(--buffer-list-font);
+}
+
+#member-list {
+	--text-scale: var(--member-list-scale);
+	font-family: var(--member-list-font);
 }
