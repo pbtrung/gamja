@@ -207,6 +207,33 @@ describe("Composer replies and typing", () => {
 		expect(onTextChange).not.toHaveBeenCalled();
 	});
 
+	it("recalls sent messages with Up and Down", async () => {
+		const { input } = setup();
+		await userEvent.type(input, "one{Enter}two{Enter}two{Enter}draft");
+		await userEvent.keyboard("{ArrowUp}");
+		expect(input).toHaveValue("two");
+		// Repeated messages are remembered once
+		await userEvent.keyboard("{ArrowUp}");
+		expect(input).toHaveValue("one");
+		await userEvent.keyboard("{ArrowUp}");
+		expect(input).toHaveValue("one");
+		await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+		expect(input).toHaveValue("draft");
+	});
+
+	it("keeps sent messages per buffer", async () => {
+		const props = { readOnly: false, commandOnly: false, onSubmit: vi.fn(), autocomplete: () => [] };
+		const { rerender } = render(<Composer {...props} draftKey={1} />);
+		const input = screen.getByRole("textbox");
+		await userEvent.type(input, "in one{Enter}");
+		rerender(<Composer {...props} draftKey={2} />);
+		await userEvent.type(input, "{ArrowUp}");
+		expect(input).toHaveValue("");
+		rerender(<Composer {...props} draftKey={1} />);
+		await userEvent.type(input, "{ArrowUp}");
+		expect(input).toHaveValue("in one");
+	});
+
 	it("renders a status line", () => {
 		setup({ status: <p>bob is typing…</p> });
 		expect(screen.getByText("bob is typing…")).toBeInTheDocument();

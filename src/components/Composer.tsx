@@ -15,6 +15,9 @@ import IconButton from "./IconButton";
 import { computeAutocomplete, type Autocomplete } from "../lib/autocomplete";
 import { splitMultiline, type MultilineLimits } from "../lib/irc";
 
+/** How many sent messages each buffer remembers, see history below */
+const HISTORY_SIZE = 100;
+
 export interface ComposerHandle {
 	focus(): void;
 }
@@ -87,6 +90,11 @@ export default function Composer({
 	}
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const lastAutocomplete = useRef<Autocomplete | null>(null);
+	// Sent messages per buffer, oldest first, recalled with Up and Down
+	const history = useRef(new Map<unknown, string[]>());
+	// Position in the history of the active buffer (its length when not
+	// browsing it), and the text typed before browsing it
+	const historyPos = useRef<{ key: unknown; index: number; typed: string } | null>(null);
 
 	const focus = useCallback(() => {
 		if (!inputRef.current) {
@@ -128,8 +136,39 @@ export default function Composer({
 		if (onSubmit(text) === false) {
 			return;
 		}
+		const sent = history.current.get(draftKey) ?? [];
+		if (sent.at(-1) !== text) {
+			sent.push(text);
+			sent.splice(0, sent.length - HISTORY_SIZE);
+		}
+		history.current.set(draftKey, sent);
+		historyPos.current = null;
 		setText("");
 		lastAutocomplete.current = null;
+	}
+
+	/** Recall an older (-1) or newer (1) sent message, returns whether there was one */
+	function browseHistory(delta: -1 | 1): boolean {
+		const sent = history.current.get(draftKey) ?? [];
+		let pos = historyPos.current;
+		if (!pos || pos.key !== draftKey) {
+			pos = { key: draftKey, index: sent.length, typed: text };
+		}
+		const index = pos.index + delta;
+		if (index < 0 || index > sent.length) {
+			return false;
+		}
+		historyPos.current = { ...pos, index };
+		const recalled = index === sent.length ? pos.typed : sent[index];
+		setText(recalled);
+		lastAutocomplete.current = null;
+		requestAnimationFrame(() => {
+			const input = inputRef.current;
+			if (input) {
+				input.selectionStart = input.selectionEnd = recalled.length;
+			}
+		});
+		return true;
 	}
 
 	function handleSubmit(event: FormEvent) {
@@ -152,7 +191,23 @@ export default function Composer({
 			return;
 		}
 
-		if (event.key !== "Tab" || input.selectionStart !== input.selectionEnd) {
+		// Up on the first line and Down on the last one browse the sent
+		// messages, other lines move the caret
+		const collapsed = input.selectionStart === input.selectionEnd;
+		const noModifier = !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+		if (
+			collapsed &&
+			noModifier &&
+			((event.key === "ArrowUp" && !text.slice(0, input.selectionStart).includes("\n")) ||
+				(event.key === "ArrowDown" && !text.slice(input.selectionEnd).includes("\n")))
+		) {
+			if (browseHistory(event.key === "ArrowUp" ? -1 : 1)) {
+				event.preventDefault();
+			}
+			return;
+		}
+
+		if (event.key !== "Tab" || !collapsed) {
 			return;
 		}
 
