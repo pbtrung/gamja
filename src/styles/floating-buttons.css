@@ -11,14 +11,26 @@
 	overflow: visible;
 }
 
+/* The jump button and its dismiss button, joined in one pill */
+.jump-pill {
+	display: flex;
+	border-radius: 999px;
+	box-shadow: var(--shadow-lg);
+}
+
 .jump-unread .btn {
 	padding: 0.4rem 0.9rem;
 	border-color: var(--accent);
-	border-radius: 999px;
+	border-radius: 999px 0 0 999px;
 	background-color: var(--accent);
 	color: var(--accent-fg);
 	font-weight: 600;
-	box-shadow: var(--shadow-lg);
+}
+
+.jump-unread .jump-dismiss {
+	padding: 0.4rem 0.6rem;
+	border-left-color: color-mix(in srgb, var(--accent-fg) 30%, var(--accent));
+	border-radius: 0 999px 999px 0;
 }
 
 .jump-unread .btn:hover {
@@ -59,4 +71,10 @@
 	border-color: var(--accent-hover);
 	background-color: var(--accent-hover);
 	color: var(--accent-fg);
+}
+
+.scroll-latest .new-count {
+	margin-right: 0.25rem;
+	font-size: 0.8125rem;
+	font-weight: 600;
 }

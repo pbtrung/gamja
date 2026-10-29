@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { flash } from "../lib/flash";
 
 /** A message and its distance from the top of the viewport, in pixels */
@@ -24,6 +24,8 @@ interface ChatScrollerProps {
 	onJumped?: () => void;
 	/** Selector for the unread marker: offers to jump to it when scrolled past */
 	unreadMarker?: string;
+	/** Text of the button jumping to the unread marker */
+	unreadLabel?: string;
 	/** Called when scrolling to the bottom, or away from it */
 	onBottomChange?: (atBottom: boolean) => void;
 }
@@ -41,6 +43,18 @@ function prefersReducedMotion(): boolean {
 		typeof window.matchMedia === "function" &&
 		window.matchMedia("(prefers-reduced-motion: reduce)").matches
 	);
+}
+
+/** How many anchors come after the one with the given key, 0 if it's gone */
+function countAnchorsAfter(el: HTMLElement, stickTo: string, key: string): number {
+	const anchors = [...el.querySelectorAll<HTMLElement>(stickTo)];
+	const i = anchors.findLastIndex((anchor) => anchor.dataset.key === key);
+	return i < 0 ? 0 : anchors.length - 1 - i;
+}
+
+function lastAnchorKey(el: HTMLElement, stickTo: string): string | null {
+	const anchors = el.querySelectorAll<HTMLElement>(stickTo);
+	return anchors[anchors.length - 1]?.dataset.key ?? null;
 }
 
 function firstVisibleAnchor(el: HTMLElement, stickTo: string): Anchor | null {
@@ -90,10 +104,19 @@ export default function ChatScroller({
 	jumpTo,
 	onJumped,
 	unreadMarker,
+	unreadLabel = "Jump to new messages",
 	onBottomChange,
 }: ChatScrollerProps) {
 	const ref = useRef<HTMLElement>(null);
 	const [unreadAbove, setUnreadAbove] = useState(false);
+	// The jump button was closed, or the user scrolled down to the end: by
+	// scroll key and marker, so that another marker shows it again
+	const [unreadDismissed, setUnreadDismissed] = useState<string | null>(null);
+	const unreadKey = `${String(scrollKey)}:${unreadLabel}`;
+	// The last message when the user left the bottom: the ones after it are
+	// new, counted on the button scrolling back down
+	const lastSeenKey = useRef<string | null>(null);
+	const [newCount, setNewCount] = useState(0);
 	// Offers to scroll back to the latest messages when scrolled up
 	const [awayFromBottom, setAwayFromBottom] = useState(false);
 	const stickToBottom = useRef(true);
@@ -110,9 +133,24 @@ export default function ChatScroller({
 		onBottomChangeRef.current?.(!awayFromBottom);
 	}, [awayFromBottom]);
 
+	function updateNewCount(el: HTMLElement) {
+		if (stickToBottom.current) {
+			lastSeenKey.current = null;
+		} else if (lastSeenKey.current === null) {
+			lastSeenKey.current = lastAnchorKey(el, stickTo);
+		}
+		setNewCount(lastSeenKey.current === null ? 0 : countAnchorsAfter(el, stickTo, lastSeenKey.current));
+	}
+
 	function save(el: HTMLElement) {
+		const wasAtBottom = stickToBottom.current;
 		stickToBottom.current = savePosition(el, scrollKey, stickTo);
 		setAwayFromBottom(!stickToBottom.current);
+		if (stickToBottom.current && !wasAtBottom) {
+			// Read down to the end
+			setUnreadDismissed(unreadKey);
+		}
+		updateNewCount(el);
 	}
 
 	// Restore the position when the content changes: either the buffer
@@ -131,6 +169,7 @@ export default function ChatScroller({
 				flash(target);
 				stickToBottom.current = savePosition(el, scrollKey, stickTo);
 				setAwayFromBottom(!stickToBottom.current);
+				updateNewCount(el);
 				onJumped?.();
 				return;
 			}
@@ -149,11 +188,24 @@ export default function ChatScroller({
 			stickToBottom.current = true;
 		}
 		setAwayFromBottom(!stickToBottom.current);
+		updateNewCount(el);
 
 		if (el.scrollTop === 0) {
 			onScrollTopRef.current();
 		}
+		// updateNewCount only reads refs and the stickTo dependency
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [scrollKey, jumpTo, onJumped, stickTo, children]);
+
+	// Messages already there when switching buffers aren't new
+	useLayoutEffect(() => {
+		lastSeenKey.current = null;
+		const el = ref.current;
+		if (el) {
+			updateNewCount(el);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [scrollKey]);
 
 	useEffect(() => {
 		const el = ref.current;
@@ -224,6 +276,7 @@ export default function ChatScroller({
 		}
 		el.scrollTop += marker.getBoundingClientRect().top - el.getBoundingClientRect().top - 8;
 		save(el);
+		setUnreadDismissed(unreadKey);
 	}
 
 	function scrollToLatest() {
@@ -255,11 +308,22 @@ export default function ChatScroller({
 				}
 			}}
 		>
-			{unreadAbove && (
+			{unreadAbove && unreadDismissed !== unreadKey && (
 				<div className="jump-unread">
-					<button type="button" className="btn btn-sm" onClick={jumpToUnread}>
-						<ArrowUp aria-hidden="true" /> Jump to new messages
-					</button>
+					<div className="jump-pill" role="group" aria-label="New messages">
+						<button type="button" className="btn btn-sm" onClick={jumpToUnread}>
+							<ArrowUp aria-hidden="true" /> {unreadLabel}
+						</button>
+						<button
+							type="button"
+							className="btn btn-sm jump-dismiss"
+							title="Dismiss"
+							aria-label="Dismiss"
+							onClick={() => setUnreadDismissed(unreadKey)}
+						>
+							<X aria-hidden="true" />
+						</button>
+					</div>
 				</div>
 			)}
 			{children}
@@ -269,9 +333,14 @@ export default function ChatScroller({
 						type="button"
 						className="btn"
 						title="Scroll to latest messages"
-						aria-label="Scroll to latest messages"
+						aria-label={
+							newCount > 0
+								? `Scroll to latest messages, ${newCount} new`
+								: "Scroll to latest messages"
+						}
 						onClick={scrollToLatest}
 					>
+						{newCount > 0 && <span className="new-count">{newCount} new</span>}
 						<ArrowDown aria-hidden="true" />
 					</button>
 				</div>

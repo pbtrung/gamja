@@ -154,11 +154,16 @@ test("jumps to the unread marker when scrolled past it", async ({ page, connect,
 	await page.getByRole("tab", { name: "#busy" }).click();
 	await expect(page.locator("#buffer .talk").last()).toContainText("unread 39");
 
-	const jump = page.getByRole("button", { name: "Jump to new messages" });
+	const jump = page.getByRole("button", { name: /^40 new messages since \d\d:\d\d$/ });
 	await expect(jump).toBeVisible();
 	await jump.click();
 	await expect(page.locator(".unread-separator")).toBeInViewport();
 	await expect(jump).toBeHidden();
+	// Both go away a while later, and new messages don't bring them back
+	await expect(page.locator(".unread-separator")).toHaveCount(0, { timeout: 12_000 });
+	bob.privmsg("#busy", "later");
+	await expect(page.locator("#buffer .talk").last()).toContainText("later");
+	await expect(page.locator(".unread-separator")).toHaveCount(0);
 });
 
 test("hides a member's actions button once its menu is closed", async ({ page, connect, bot }) => {

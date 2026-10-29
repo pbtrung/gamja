@@ -51,6 +51,24 @@ describe("ChatScroller", () => {
 		expect(latestButton()).toBeNull();
 	});
 
+	it("counts the messages received since scrolling up", () => {
+		key++;
+		const messages = (n: number) =>
+			Array.from({ length: n }, (_, i) => (
+				<div className="msg" data-key={String(i)} key={i}>
+					message {i}
+				</div>
+			));
+		const props = { scrollKey: `buffer-${key}`, stickTo: ".msg", onScrollTop: vi.fn() };
+		const { rerender } = render(<ChatScroller {...props}>{messages(2)}</ChatScroller>);
+		const log = screen.getByRole("log");
+		log.scrollTop = 400;
+		fireEvent.scroll(log);
+		rerender(<ChatScroller {...props}>{messages(5)}</ChatScroller>);
+		const button = screen.getByRole("button", { name: "Scroll to latest messages, 3 new" });
+		expect(button).toHaveTextContent("3 new");
+	});
+
 	it("reports scrolling away from the bottom and back", () => {
 		const onBottomChange = vi.fn();
 		key++;

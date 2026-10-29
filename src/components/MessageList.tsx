@@ -38,6 +38,8 @@ interface MessageListProps extends MessageListHandlers {
 	server: Server;
 	bouncerNetwork: BouncerNetwork | null;
 	settings: Settings;
+	/** Leave out the "New messages" separator, e.g. once it was seen */
+	hideUnreadSeparator?: boolean;
 }
 
 function MessageList(props: MessageListProps) {
@@ -215,6 +217,7 @@ function MessageList(props: MessageListProps) {
 
 		if (
 			!hasUnreadSeparator &&
+			!props.hideUnreadSeparator &&
 			buf.type !== BufferType.SERVER &&
 			!isMessageBeforeReceipt(msg, buf.prevReadReceipt)
 		) {

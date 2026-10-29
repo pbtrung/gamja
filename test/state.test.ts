@@ -610,3 +610,22 @@ describe("reactions and typing", () => {
 		expect([...buf.typing.keys()]).toEqual(["carol"]);
 	});
 });
+
+describe("unreadSince", () => {
+	it("counts the chat messages after the receipt", () => {
+		const msg = (time: string, command = "PRIVMSG") => ({
+			...irc.parseMessage(`@time=${time} :bob!u@h ${command} #c :hi`),
+			key: time,
+		});
+		const messages = [
+			msg("2030-01-01T00:00:00.000Z"),
+			msg("2030-01-01T00:01:00.000Z", "JOIN"),
+			msg("2030-01-01T00:02:00.000Z"),
+			msg("2030-01-01T00:03:00.000Z", "NOTICE"),
+		] as unknown as Parameters<typeof S.unreadSince>[0];
+		const since = S.unreadSince(messages, { time: "2030-01-01T00:00:30.000Z" });
+		expect(since?.count).toBe(2);
+		expect(since?.first.toISOString()).toBe("2030-01-01T00:02:00.000Z");
+		expect(S.unreadSince(messages, { time: "2030-01-01T00:05:00.000Z" })).toBeNull();
+	});
+});

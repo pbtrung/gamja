@@ -141,3 +141,22 @@ export function mergeMessages(list: Message[], msgs: Message[]): Message[] {
 	}
 	return merged;
 }
+
+/** The chat messages after a read receipt: how many, and the time of the first one */
+export function unreadSince(
+	messages: Message[],
+	receipt: Receipt | null,
+): { count: number; first: Date } | null {
+	let count = 0;
+	let first: string | undefined;
+	for (const msg of messages) {
+		if (
+			(msg.command === "PRIVMSG" || msg.command === "NOTICE") &&
+			!isMessageBeforeReceipt(msg, receipt)
+		) {
+			count++;
+			first ??= msg.tags.time ?? undefined;
+		}
+	}
+	return count > 0 && first ? { count, first: new Date(first) } : null;
+}
