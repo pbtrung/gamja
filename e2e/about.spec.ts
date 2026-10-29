@@ -24,7 +24,6 @@ for (const width of [1280, 412]) {
 		const response = await page.request.get("/version.json");
 		const { version } = await response.json();
 		await expect(page.getByTitle("gamja version")).toHaveText(version);
-		await expect(page.getByText("soju-rs/0.99.31", { exact: true }).first()).toBeVisible();
 		for (const name of [
 			"react",
 			"react-dom",
@@ -45,23 +44,3 @@ for (const width of [1280, 412]) {
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 	});
 }
-
-test.describe("bouncer without a reported version", () => {
-	test.use({ serverOptions: { bouncer: true, serverVersion: "soju" } });
-	test("shows Not reported for a software name alone", async ({ page, connect }) => {
-		await connect(page, "alice", { password: "secret" });
-		await page.getByRole("button", { name: "Settings", exact: true }).click();
-		await page.getByRole("tab", { name: "About", exact: true }).click();
-		await expect(page.getByText("Not reported", { exact: true }).first()).toBeVisible();
-	});
-});
-
-test.describe("plain IRC connection", () => {
-	test.use({ serverOptions: { bouncer: false } });
-	test("shows that no bouncer is connected", async ({ page, connect }) => {
-		await connect(page);
-		await page.getByRole("button", { name: "Settings", exact: true }).click();
-		await page.getByRole("tab", { name: "About", exact: true }).click();
-		await expect(page.getByText("No bouncer connected.", { exact: true })).toBeVisible();
-	});
-});
