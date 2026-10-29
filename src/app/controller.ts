@@ -1,25 +1,17 @@
-import * as irc from "../lib/irc";
-import type { Message } from "../lib/irc";
-import Client, { ClientStatus, IRCError, type MessageEventDetail, type Multiplexer } from "../lib/client";
+import type * as irc from "../lib/irc";
+import type Client from "../lib/client";
+import { ClientStatus } from "../lib/client";
 import * as S from "../state";
-import {
-	SERVER_BUFFER,
-	ReceiptType,
-	Unread,
-	BufferEventsDisplayMode,
-	type Buffer,
-	type BufferID,
-	type Updater,
-	type Server,
-} from "../state";
+import type { Buffer, BufferID, Updater, Server } from "../state";
 import * as store from "../store";
 import * as webpush from "./webpush";
 import { applyTheme } from "../themes";
 import { applyFonts } from "../fonts";
-import { createAppStore, type AppState, type AppStore, type ConnectParams } from "./store";
-import { fetchConfig, resolveServerURL, splitHostPort, type Config } from "./config";
-import { getReceipt, storeServer, type HistoryBatch } from "./history";
+import { createAppStore, type AppState, type AppStore } from "./store";
+import { fetchConfig, type Config } from "./config";
 import type { MessageNotification } from "./notifications";
+import { connectionMethods, type ConnectionMethods } from "./connection";
+import { incomingMethods, type IncomingMethods } from "./incoming";
 import { startupMethods, type StartupMethods } from "./startup";
 import { buffersMethods, type BuffersMethods } from "./buffers";
 import { readMethods, type ReadMethods } from "./read";
@@ -74,6 +66,11 @@ export default class AppController {
 	/** Whether the user is at the page, see Client.present */
 	present = typeof document === "undefined" || document.visibilityState !== "hidden";
 	awayTimeoutID: ReturnType<typeof setTimeout> | undefined;
+	typingState: { buffer: number | null; lastSent: number; status: string } = {
+		buffer: null,
+		lastSent: 0,
+		status: "done",
+	};
 
 	constructor(appStore: AppStore = createAppStore()) {
 		this.store = appStore;
@@ -127,23 +124,6 @@ export default class AppController {
 		this.baseTitle = document.title || "gamja";
 		await this.handleConfig(config ?? (await fetchConfig()));
 	}
-
-	/**
-	 * Handle configuration data and populate the connection parameters.
-	 *
-	 * The priority order is:
-	 *
-	 * - URL params
-	 * - Saved parameters in local storage
-	 * - Configuration data (fetched from the config.json file)
-	 * - Default server URL constructed from the current URL location
-	 */
-
-	/**
-	 * Get an OAuth 2.0 token, from the authorization code in the URL or by
-	 * redirecting to the authorization server. Returns false if the token
-	 * isn't available (yet).
-	 */
 
 	showError(err: unknown): number {
 		console.error("App error: ", err);
@@ -212,423 +192,6 @@ export default class AppController {
 		return this.state.bouncerNetworks.get(server.bouncerNetID) ?? null;
 	}
 
-	prepareChatMessage(serverID: number, msg: Message): void {
-		// Treat server-wide broadcasts as highlights. They're sent by server
-		// operators and can contain important information.
-		if (msg.isHighlight === undefined) {
-			const client = this.clients.get(serverID);
-			msg.isHighlight =
-				!!client?.nick &&
-				(irc.isHighlight(msg, client.nick, client.cm) || irc.isServerBroadcast(msg));
-		}
-
-		if (!msg.tags) {
-			// Can happen for outgoing messages for instance
-			msg.tags = {};
-		}
-		if (!msg.tags.time) {
-			msg.tags.time = irc.formatDate(new Date());
-		}
-	}
-
-	/**
-	 * Unread state brought by a PRIVMSG or NOTICE not read yet: nothing for
-	 * our own messages and blocked users (soju's metadata), a highlight for
-	 * mentions and private messages, unless the buffer is muted.
-	 */
-
-	/**
-	 * Show a message in a buffer, as new: it may mark the buffer unread and
-	 * notify. With a batch, the message is only added once the whole batch is
-	 * handled, see applyHistory().
-	 */
-	handleChatMessage(serverID: number, bufName: string, msg: Message, batch?: HistoryBatch): void {
-		const client = this.clients.get(serverID)!;
-
-		this.prepareChatMessage(serverID, msg);
-
-		const from = msg.prefix?.name ?? "*";
-		const server = this.state.servers.get(serverID);
-		if (
-			S.getTargetMetadata(server, from).blocked &&
-			!S.getBuffer(this.state, { server: serverID, name: bufName })
-		) {
-			return; // Don't open a conversation for a blocked user
-		}
-
-		const stored = this.bufferStore.get({ name: bufName, server: storeServer(client) });
-		let msgUnread: Unread = Unread.NONE;
-		if (
-			(msg.command === "PRIVMSG" || msg.command === "NOTICE") &&
-			!S.isMessageBeforeReceipt(msg, getReceipt(stored, ReceiptType.READ))
-		) {
-			msgUnread = this.chatMessageUnread(client, server, bufName, msg);
-			if (!S.isMessageBeforeReceipt(msg, getReceipt(stored, ReceiptType.DELIVERED))) {
-				this.notifyChatMessage(serverID, bufName, msg, msgUnread);
-			}
-		}
-		if (msg.command === "INVITE" && client.isMyNick(msg.params[0])) {
-			msgUnread = Unread.HIGHLIGHT;
-			this.notifyInvite(serverID, bufName, msg);
-		}
-
-		if (
-			msg.command !== "PART" &&
-			msg.command !== "QUIT" &&
-			msg.command !== irc.RPL_MONONLINE &&
-			msg.command !== irc.RPL_MONOFFLINE
-		) {
-			this.createBuffer(serverID, bufName);
-		}
-
-		const bufID = { server: serverID, name: bufName };
-		if (batch) {
-			this.queueHistoryMessage(batch, bufID, msg);
-		} else {
-			this.update((state) => S.addMessage(state, msg, bufID));
-			this.trimBuffer(bufID);
-		}
-		if (msg.command === "PRIVMSG" || msg.command === "NOTICE") {
-			this.setBufferState(bufID, (b) =>
-				b.typing.size > 0 ? S.applyTyping(b, from, "done", client.cm) : undefined,
-			);
-		}
-
-		const buf = S.getBuffer(this.state, bufID);
-		if (!buf) {
-			return;
-		}
-
-		let unread = buf.unread;
-		let prevReadReceipt = buf.prevReadReceipt;
-		const receipts: store.Receipts = { [ReceiptType.DELIVERED]: S.receiptFromMessage(msg) };
-
-		// Scrolled up, the user is reading older messages, not this one
-		if (!this.isBufferVisible(buf.id) || !this.scrolledToLatest) {
-			unread = S.unionUnread(unread, msgUnread);
-		} else if (!buf.gap) {
-			// With missed messages not fetched yet, the user hasn't read them
-			receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
-		}
-
-		// Don't show unread marker for my own messages
-		if (client.isMyNick(from) && !S.isMessageBeforeReceipt(msg, prevReadReceipt)) {
-			prevReadReceipt = S.receiptFromMessage(msg);
-		}
-
-		this.storeReceipts(client, { name: buf.name, server: storeServer(client), unread, receipts }, batch);
-		if (unread !== buf.unread || prevReadReceipt !== buf.prevReadReceipt) {
-			this.setBufferState(buf.id, { unread, prevReadReceipt });
-		}
-
-		if (msgUnread === Unread.HIGHLIGHT) {
-			this.updateDocumentTitle();
-		}
-	}
-
-	/**
-	 * Connect to a server, or to a bouncer network. A bouncer network is
-	 * attached to the bouncer connection of the multiplexer if given, rather
-	 * than getting its own connection (soju.im/multiplex).
-	 */
-	connect(params: Partial<ConnectParams>, multiplexer: Multiplexer | null = null): number {
-		// Merge our previous connection params so that config options such as
-		// the ping interval are applied
-		const merged: ConnectParams = {
-			...this.state.connectParams,
-			...params,
-		};
-
-		let serverID = 0;
-		this.update((state) => {
-			let update;
-			[serverID, update] = S.createServer(state);
-			return update;
-		});
-		// Per-network connections reuse these params, they mustn't become the
-		// params of the next top-level connection
-		if (!params.bouncerNetwork) {
-			this.update({ connectParams: merged });
-		}
-
-		const client = new Client({
-			url: resolveServerURL(merged.url, window.location),
-			nick: merged.nick || "",
-			username: merged.username || merged.nick || "",
-			realname: merged.realname || merged.nick || "",
-			pass: merged.pass,
-			saslPlain: merged.saslPlain,
-			saslExternal: merged.saslExternal,
-			saslOauthBearer: merged.saslOauthBearer,
-			bouncerNetwork: merged.bouncerNetwork,
-			multiplexer,
-			ping: merged.ping,
-			autojoin: [...merged.autojoin],
-			eventPlayback: this.state.settings.bufferEvents !== BufferEventsDisplayMode.HIDE,
-		});
-		client.debug = this.debug;
-		client.present = this.present;
-		client.awayMessage = this.state.awayMessage;
-
-		this.clients.set(serverID, client);
-		this.setServerState(serverID, { status: client.status });
-
-		let errorID: number | null = null;
-
-		client.addEventListener("status", () => {
-			this.setServerState(serverID, { status: client.status });
-			switch (client.status) {
-				case ClientStatus.DISCONNECTED:
-					// Features come back with the caps once registered again
-					this.setServerState(serverID, { account: null, features: S.noFeatures });
-					this.update((state) => {
-						const buffers = new Map(state.buffers);
-						state.buffers.forEach((buf) => {
-							if (buf.server !== serverID) {
-								return;
-							}
-							buffers.set(buf.id, { ...buf, ...S.leftChannel(buf) });
-						});
-						return { buffers };
-					});
-					break;
-				case ClientStatus.REGISTERED:
-					this.update({ connectForm: false });
-					if (errorID) {
-						this.dismissError(errorID);
-					}
-					break;
-			}
-		});
-
-		client.addEventListener("message", (event) => {
-			this.handleMessage(serverID, (event as CustomEvent<MessageEventDetail>).detail.message);
-		});
-
-		client.addEventListener("reconnect", () => {
-			this.setServerState(serverID, { reconnectAt: client.reconnectAt });
-		});
-
-		client.addEventListener("lag", () => {
-			this.setServerState(serverID, { lag: client.lag });
-		});
-
-		client.addEventListener("error", (event) => {
-			const err = (event as CustomEvent).detail;
-			errorID = this.showError(err);
-			const { saslPlain, saslExternal, saslOauthBearer } = client.params;
-			if (
-				saslOauthBearer &&
-				!saslPlain &&
-				!saslExternal &&
-				err instanceof IRCError &&
-				err.msg.command === irc.ERR_SASLFAIL
-			) {
-				this.handleOauth2TokenRejected(client);
-			}
-		});
-
-		this.createBuffer(serverID, SERVER_BUFFER);
-		if (!this.state.activeBuffer) {
-			this.switchBuffer({ server: serverID, name: SERVER_BUFFER });
-		}
-
-		if (merged.autojoin.length > 0) {
-			this.switchToChannel = { server: serverID, name: merged.autojoin[0] };
-		}
-
-		return serverID;
-	}
-
-	disconnect(serverID?: number | null): void {
-		if (!serverID) {
-			serverID = S.getActiveServerID(this.state);
-		}
-		if (!serverID) {
-			return;
-		}
-
-		// Keep the client around, so that the server can be reconnected
-		this.clients.get(serverID)?.disconnect();
-	}
-
-	reconnect(serverID?: number | null): void {
-		if (!serverID) {
-			serverID = S.getActiveServerID(this.state);
-		}
-
-		const client = this.getClient(serverID);
-		if (client) {
-			// A manual reconnect also resumes reconnecting after drops, which
-			// /disconnect or a fatal error turned off
-			client.autoReconnect = true;
-			client.reconnect();
-		}
-	}
-
-	typingState: { buffer: number | null; lastSent: number; status: string } = {
-		buffer: null,
-		lastSent: 0,
-		status: "done",
-	};
-
-	handleMessage(serverID: number, msg: Message): void {
-		const client = this.clients.get(serverID);
-		if (!client) {
-			return;
-		}
-
-		if (
-			irc.findBatchByType(msg, "chathistory") ||
-			irc.findBatchByType(msg, "soju.im/search") ||
-			irc.findBatchByType(msg, "search")
-		) {
-			return; // Handled by the caller
-		}
-
-		const destBuffers = this.routeMessage(serverID, msg);
-
-		try {
-			this.update((state) => S.handleMessage(state, msg, serverID, client));
-		} catch (err) {
-			console.error("Failed to handle message:", msg, err);
-		}
-
-		const from = msg.prefix?.name ?? "*";
-		switch (msg.command) {
-			case irc.RPL_WELCOME:
-				this.fetchBacklog(serverID).catch((err) => {
-					console.error("Failed to fetch backlog:", err);
-				});
-				break;
-			case irc.RPL_ENDOFMOTD:
-			case irc.ERR_NOMOTD:
-				this.handleEndOfRegistration(serverID, client);
-				break;
-			case "JOIN": {
-				const channel = msg.params[0];
-
-				if (client.isMyNick(from)) {
-					this.syncBufferUnread(serverID, channel);
-					const buf = S.getBuffer(this.state, { server: serverID, name: channel });
-					if (buf && buf.id === this.state.activeBuffer && client.hasNoImplicitNames()) {
-						this.fetchNames(buf);
-					}
-				}
-				const switchTo = this.switchToChannel;
-				if (
-					switchTo &&
-					client.isMyNick(from) &&
-					(switchTo.server === null || switchTo.server === serverID) &&
-					client.cm(channel) === client.cm(switchTo.name)
-				) {
-					this.switchBuffer({ server: serverID, name: channel });
-					this.switchToChannel = null;
-				}
-				break;
-			}
-			case "BOUNCER":
-				this.handleBouncerNetwork(serverID, client, msg);
-				break;
-			case "RENAME": {
-				const [from, to] = msg.params;
-				const stored = this.bufferStore.get({ name: from, server: storeServer(client) });
-				if (stored) {
-					this.bufferStore.delete({ name: from, server: storeServer(client) });
-					this.bufferStore.put({ ...stored, name: to, server: storeServer(client) });
-				}
-				const buf = S.getBuffer(this.state, { server: serverID, name: to });
-				if (buf && buf.id === this.state.activeBuffer) {
-					this.updateWindowHash();
-					this.updateDocumentTitle();
-				}
-				break;
-			}
-			case "BATCH": {
-				if (!msg.params[0].startsWith("-")) {
-					break;
-				}
-				const name = msg.params[0].slice(1);
-				const batch = client.batches.get(name);
-				if (!batch || batch.type !== "soju.im/bouncer-networks") {
-					break;
-				}
-
-				// We've received a BOUNCER NETWORK batch. If we have a URL to
-				// auto-open and no existing network matches it, ask the user to
-				// create a new network.
-				if (
-					this.autoOpenURL &&
-					this.autoOpenURL.host &&
-					// The URL may have a port, the networks' hosts don't
-					!this.findBouncerNetIDByHost(splitHostPort(this.autoOpenURL.host).host)
-				) {
-					this.openURL(this.autoOpenURL);
-					this.autoOpenURL = null;
-				}
-				break;
-			}
-			case "MARKREAD":
-				this.handleMarkRead(serverID, client, msg);
-				break;
-			case "TAGMSG":
-				this.handleTagMessage(serverID, msg);
-				break;
-			default:
-				// A forward (ERR_LINKCHANNEL) is followed by a JOIN elsewhere,
-				// it's not a failure
-				if (
-					irc.isError(msg.command) &&
-					msg.command !== irc.ERR_NOMOTD &&
-					msg.command !== irc.ERR_LINKCHANNEL &&
-					!msg.internal
-				) {
-					const description = msg.params[msg.params.length - 1];
-					this.showError(description);
-				}
-		}
-
-		for (const bufName of destBuffers) {
-			this.handleChatMessage(serverID, bufName, msg);
-		}
-	}
-
-	handleConnectSubmit(connectParams: Partial<ConnectParams>): void {
-		this.dismissError();
-
-		// Disconnect previous server, if any. This clears the stored
-		// autoconnect params, so store the new ones afterwards.
-		const activeBuffer = S.getBuffer(this.state, this.state.activeBuffer);
-		if (activeBuffer) {
-			this.close({ server: activeBuffer.server, name: SERVER_BUFFER });
-		}
-
-		if (connectParams.autoconnect) {
-			store.autoconnect.put(connectParams);
-		} else {
-			store.autoconnect.put(null);
-		}
-
-		if (this.config.server?.auth === "oauth2" && !connectParams.saslOauthBearer) {
-			// No token yet, or it was rejected: authorize, the page is then
-			// loaded again with a new one
-			void this.redirectOauth2Authorize();
-			return;
-		}
-
-		this.connect(connectParams);
-	}
-
-	/**
-	 * Send a PRIVMSG or NOTICE, and show it if the server won't echo it.
-	 * Returns false if it couldn't be sent.
-	 */
-
-	/**
-	 * Mark the user as away while the page stays hidden, see draft/pre-away.
-	 * Briefly switching tabs doesn't count.
-	 */
-
 	destroy(): void {
 		for (const client of this.clients.values()) {
 			client.disconnect();
@@ -645,6 +208,8 @@ export default class AppController {
 export default interface AppController // eslint-disable-line @typescript-eslint/no-unsafe-declaration-merging
 	extends
 		StartupMethods,
+		ConnectionMethods,
+		IncomingMethods,
 		BuffersMethods,
 		ReadMethods,
 		NavigationMethods,
@@ -663,6 +228,8 @@ export default interface AppController // eslint-disable-line @typescript-eslint
 Object.assign(
 	AppController.prototype,
 	startupMethods,
+	connectionMethods,
+	incomingMethods,
 	buffersMethods,
 	readMethods,
 	navigationMethods,
