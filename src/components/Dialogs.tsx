@@ -10,7 +10,7 @@ import {
 	ShieldCheck,
 	UserPlus,
 } from "lucide-react";
-import { BufferType, ServerStatus, getServerName } from "../state";
+import { getServerName } from "../state";
 import { useController } from "../app/context";
 import type { AppState } from "../app/store";
 import Dialog from "./Dialog";
@@ -195,22 +195,6 @@ export default function Dialogs({ state }: { state: AppState }) {
 							tab={tab}
 							onTabChange={setTab}
 							settings={state.settings}
-							bouncers={Array.from(state.buffers.values()).flatMap((buffer) => {
-								const server = state.servers.get(buffer.server);
-								if (
-									buffer.type !== BufferType.SERVER ||
-									!server?.isBouncer ||
-									server.status !== ServerStatus.REGISTERED
-								) {
-									return [];
-								}
-								return [
-									{
-										name: getServerName(server, app.getBouncerNetwork(server.id)),
-										version: buffer.serverInfo?.version ?? null,
-									},
-								];
-							})}
 							showProtocolHandler={dialog.showProtocolHandler}
 							pushAvailable={app.canEnablePush()}
 							onPushChange={(enabled) => app.setPushNotifications(enabled)}

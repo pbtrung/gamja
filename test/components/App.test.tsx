@@ -164,7 +164,7 @@ describe("App", () => {
 		]);
 	});
 
-	it("shows the app and reported bouncer versions in Settings About", async () => {
+	it("shows the app version in Settings About without a bouncer section", async () => {
 		vi.stubEnv("GAMJA_VERSION", "v1.2.3");
 		try {
 			const app = await renderApp();
@@ -174,9 +174,9 @@ describe("App", () => {
 			await userEvent.click(screen.getByRole("button", { name: "Settings" }));
 			await userEvent.click(screen.getByRole("tab", { name: "About" }));
 			expect(screen.getByTitle("gamja version")).toHaveTextContent("v1.2.3");
-			expect(screen.getByText("soju-rs/0.99.31")).toBeInTheDocument();
-			serverSays(ws, ":srv 004 me bouncer.test soju aiwroO Oov");
-			expect(screen.getByText("Not reported")).toBeInTheDocument();
+			expect(screen.queryByRole("heading", { name: "Bouncer" })).not.toBeInTheDocument();
+			expect(screen.queryByText("soju-rs/0.99.31")).not.toBeInTheDocument();
+			expect(screen.getByRole("heading", { name: "Dependencies" })).toBeInTheDocument();
 		} finally {
 			vi.unstubAllEnvs();
 		}

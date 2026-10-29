@@ -76,9 +76,8 @@ Settings, opened from the header of any buffer, are stored per browser:
   (showing who is typing, sharing when you are).
 - **Notifications**: desktop notifications, away in the background (never, 1,
   5 or 15 minutes) and, with soju, Web Push notifications.
-- **About**: Gamja version, connected soju / soju-rs bouncer versions when
-  reported, and the installed versions of runtime dependencies and Vite.
-  Bouncers reporting only a software name show “Not reported”.
+- **About**: Gamja version and the installed versions of runtime dependencies
+  and Vite.
 
 ### Checks
 

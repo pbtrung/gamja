@@ -1,9 +1,4 @@
-export interface BouncerVersion {
-	name: string;
-	version: string | null;
-}
-
-export default function AboutPane({ bouncers = [] }: { bouncers?: BouncerVersion[] }) {
+export default function AboutPane() {
 	const dependencies = import.meta.env.GAMJA_DEPENDENCIES ?? [];
 	return (
 		<>
@@ -23,21 +18,6 @@ export default function AboutPane({ bouncers = [] }: { bouncers?: BouncerVersion
 					AGPLv3 license
 				</a>
 			</p>
-
-			<h3 className="settings-heading">Bouncer</h3>
-			<p className="settings-row-hint">soju / soju-rs version reported by your connections.</p>
-			{bouncers.length > 0 ? (
-				<dl className="settings-card about-versions">
-					{bouncers.map(({ name, version }, index) => (
-						<div className="settings-row" key={index}>
-							<dt>{name}</dt>
-							<dd>{version && !/^soju(?:-rs)?$/i.test(version) ? version : "Not reported"}</dd>
-						</div>
-					))}
-				</dl>
-			) : (
-				<p className="settings-row-hint">No bouncer connected.</p>
-			)}
 
 			<h3 className="settings-heading">Dependencies</h3>
 			<dl className="settings-card about-versions">

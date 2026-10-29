@@ -7,12 +7,11 @@ import type { Settings } from "../../state";
 import AppearancePane from "./settings/AppearancePane";
 import MessagesPane from "./settings/MessagesPane";
 import NotificationsPane from "./settings/NotificationsPane";
-import AboutPane, { type BouncerVersion } from "./settings/AboutPane";
+import AboutPane from "./settings/AboutPane";
 import { settingsTabs, type SettingsTab } from "./settings/options";
 
 interface SettingsFormProps {
 	settings: Settings;
-	bouncers?: BouncerVersion[];
 	/** The section shown, kept by the form itself if not given */
 	tab?: SettingsTab;
 	onTabChange?: (tab: SettingsTab) => void;
@@ -130,7 +129,7 @@ export default function SettingsForm(props: SettingsFormProps) {
 	let pane: ReactNode;
 	switch (tab) {
 		case "about":
-			pane = <AboutPane bouncers={props.bouncers} />;
+			pane = <AboutPane />;
 			break;
 		case "appearance":
 			pane = <AppearancePane settings={settings} onChange={onChange} />;
