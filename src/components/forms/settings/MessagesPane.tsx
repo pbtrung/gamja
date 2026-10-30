@@ -67,6 +67,13 @@ export default function MessagesPane({
 					value={backlogSize(settings)}
 					onChange={(backlogSize) => onChange({ backlogSize })}
 				/>
+				<ToggleRow
+					name="lazyBacklog"
+					label="Load missed channel messages when opened"
+					hint="Private messages and the open buffer load on connect. Others show as unread, but mentions in them only once opened"
+					checked={settings.lazyBacklog}
+					onChange={(lazyBacklog) => onChange({ lazyBacklog })}
+				/>
 			</div>
 
 			<h3 className="settings-heading">Typing</h3>

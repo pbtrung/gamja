@@ -73,6 +73,7 @@ export const buffersMethods = {
 
 		if (client && client.status === ClientStatus.REGISTERED) {
 			fetchBufferDetails(this, buf, client);
+			this.fetchDeferredBacklog(buf.id);
 		}
 
 		if (!(isInitialSwitch && this.initialRoute)) {

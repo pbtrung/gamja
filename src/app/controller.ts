@@ -20,7 +20,7 @@ import { panelsMethods, type PanelsMethods } from "./panels";
 import { notificationsMethods, type NotificationsMethods } from "./notifications";
 import { routingMethods, type RoutingMethods } from "./routing";
 import { historyMethods, type HistoryMethods } from "./history";
-import { backlogMethods, type BacklogMethods } from "./backlog";
+import { backlogMethods, type BacklogMethods, type DeferredBacklog } from "./backlog";
 import { searchMethods, type SearchMethods } from "./search";
 import { networkMethods, type NetworkMethods } from "./network";
 import { registrationMethods, type RegistrationMethods } from "./registration";
@@ -55,6 +55,9 @@ export default class AppController {
 	messageNotifications = new Set<MessageNotification>();
 	baseTitle = "gamja";
 	lastFocusPingDate: Date | null = null;
+	/** Missed channel messages to fetch once their buffer is opened, by
+	 * buffer ID, see deferBacklog() */
+	deferredBacklogs = new Map<number, DeferredBacklog>();
 	/** The buffer active before the current one, see keybindings.ts */
 	previousBuffer: number | null = null;
 	/** Whether the latest messages of the active buffer are in view */
