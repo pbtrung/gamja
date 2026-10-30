@@ -324,7 +324,7 @@ describe("SettingsForm missed messages to load", () => {
 		await userEvent.selectOptions(messages.getByLabelText("Font"), "JetBrains Mono");
 		expect(onChange).toHaveBeenCalledWith({ messagesFont: "jetbrains-mono" });
 		await userEvent.click(screen.getByRole("tab", { name: "Messages" }));
-		const input = screen.getByLabelText("Missed messages to load on connect");
+		const input = screen.getByLabelText("Missed messages to load");
 		expect(input).toHaveValue(200);
 		// Sized for the 4 digits of the maximum, see input.settings-number
 		expect(input.style.getPropertyValue("--digits")).toBe("4");

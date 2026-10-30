@@ -42,6 +42,10 @@ export interface BatchResult extends Batch {
 export interface ChatHistoryTarget {
 	name: string;
 	latestMessage: string;
+	/** soju.im/unread: a message after the read marker */
+	unread: boolean;
+	/** soju.im/unread: a message mentioning us after the read marker */
+	mention: boolean;
 }
 
 export type BouncerNetworkAttrs = Record<string, string | null | undefined>;

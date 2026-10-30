@@ -53,12 +53,13 @@ While the page stays hidden for a while (a minute by default, see the
 settings), gamja tells soju it's away (`draft/pre-away`), so soju can mark
 you away once all your clients are.
 
-When reconnecting, gamja loads the latest missed messages of the open buffer
-and of private conversations (200 by default, see the settings). Other
-channels with missed messages are marked unread, and load theirs once
-opened: a connect doesn't query the server's history of every busy channel.
-Mentions in them only show once opened; the "load missed channel messages
-when opened" setting loads them all on reconnect instead. If more were missed, a "Load missed messages"
+When reconnecting, gamja only loads the missed messages of the open buffer
+(the latest 200 by default, see the settings); other buffers load theirs once
+opened. It still shows which buffers have unread messages and mentions: with
+soju-rs, the bouncer tells it (`soju.im/unread`), even for conversations
+read on another device. With other servers, buffers with messages after
+their read marker are unread, and private ones count as mentions; a mention
+in a channel then only shows once opened. If more were missed, a "Load missed messages"
 button where they're missing loads the others, and the read marker doesn't
 move past them until then. The server's CHATHISTORY limit (e.g. soju-rs's
 `chathistory-limit`) only changes how many requests that takes.
@@ -76,8 +77,7 @@ Settings, opened from the header of any buffer, are stored per browser:
 - **Messages**: buffer text size (10–20 px, default 15 px), seconds in the
   time indicator, 12-hour clock, member list,
   chat events (joins, parts, quits and nick changes), missed messages to load
-  per buffer on connect (100–4000, default 200), loading those of other
-  channels when opened (default), and typing notifications
+  per buffer (100–4000, default 200), and typing notifications
   (showing who is typing, sharing when you are).
 - **Notifications**: desktop notifications, away in the background (never, 1,
   5 or 15 minutes) and, with soju, Web Push notifications.

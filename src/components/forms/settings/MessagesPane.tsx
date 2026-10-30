@@ -60,19 +60,12 @@ export default function MessagesPane({
 				/>
 				<NumberRow
 					name="backlogSize"
-					label="Missed messages to load on connect"
-					hint="Per buffer, the latest ones: older ones load on demand"
+					label="Missed messages to load"
+					hint="Per buffer, the latest ones, once opened: older ones load on demand"
 					min={BACKLOG_SIZE_MIN}
 					max={BACKLOG_SIZE_MAX}
 					value={backlogSize(settings)}
 					onChange={(backlogSize) => onChange({ backlogSize })}
-				/>
-				<ToggleRow
-					name="lazyBacklog"
-					label="Load missed channel messages when opened"
-					hint="Private messages and the open buffer load on connect. Others show as unread, but mentions in them only once opened"
-					checked={settings.lazyBacklog}
-					onChange={(lazyBacklog) => onChange({ lazyBacklog })}
 				/>
 			</div>
 

@@ -43,6 +43,7 @@ const permanentCaps = [
 	"soju.im/bouncer-networks",
 	"soju.im/no-implicit-names",
 	"soju.im/search",
+	"soju.im/unread",
 	"soju.im/webpush",
 ];
 

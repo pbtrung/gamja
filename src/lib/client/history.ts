@@ -112,6 +112,8 @@ export abstract class HistoryClient extends QueryClient {
 			return {
 				name: msg.params[1],
 				latestMessage: msg.params[2],
+				unread: "soju.im/unread" in msg.tags,
+				mention: "soju.im/mention" in msg.tags,
 			};
 		});
 	}

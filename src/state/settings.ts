@@ -72,9 +72,6 @@ export interface Settings {
 	/** How many of the latest missed messages to load per buffer on
 	 * reconnect, see backlogSize(). Older ones are loaded on demand. */
 	backlogSize: number;
-	/** Load the missed messages of channels other than the active one when
-	 * they are opened, rather than on reconnect */
-	lazyBacklog: boolean;
 }
 
 export const NOTIFICATION_LEVELS = ["mentions", "all", "none"] as const;
@@ -105,7 +102,6 @@ export const defaultSettings: Settings = {
 	notifications: "mentions",
 	autoAwayMinutes: 1,
 	backlogSize: 200,
-	lazyBacklog: true,
 };
 
 export const TEXT_SIZE_MIN = 10;

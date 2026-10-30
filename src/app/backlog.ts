@@ -2,6 +2,7 @@
 
 import type { Message } from "../lib/irc";
 import type Client from "../lib/client";
+import type { ChatHistoryTarget } from "../lib/client/types";
 import { ClientStatus } from "../lib/client";
 import * as S from "../state";
 import { SERVER_BUFFER, ReceiptType, Unread, type BufferID, type Receipt } from "../state";
@@ -87,13 +88,23 @@ function backlogStart(
 	return from;
 }
 
-/** Missed messages of a channel, loaded once its buffer is opened */
+/** Missed messages of a buffer, loaded once it's opened */
 export interface DeferredBacklog {
 	from: S.HistoryBound;
 	to: S.HistoryBound;
 }
 
+/** The lower bound of CHATHISTORY TARGETS listing every target */
+const HISTORY_START = "1970-01-01T00:00:00.000Z";
+
 export const backlogMethods = {
+	/**
+	 * Show which buffers have missed messages and mentions, without loading
+	 * them: only the active buffer's are loaded, the others' once opened.
+	 * With soju.im/unread, the server tells which targets have unread
+	 * messages and mentions after their read marker; otherwise targets with
+	 * messages after ours are unread, and private ones mention us.
+	 */
 	async fetchBacklog(this: AppController, serverID: number): Promise<void> {
 		const client = this.clients.get(serverID)!;
 		if (!client.caps.enabled.has("draft/chathistory")) {
@@ -103,40 +114,97 @@ export const backlogMethods = {
 			return;
 		}
 
+		const serverState = client.caps.enabled.has("soju.im/unread");
 		const lastReceipt = getLatestReceipt(this.bufferStore, storeServer(client), ReceiptType.DELIVERED);
-		if (!lastReceipt) {
+		if (!lastReceipt && !serverState) {
 			return;
 		}
 
 		const bound = latestHistoryBound();
-		const targets = await client.fetchHistoryTargets(bound, lastReceipt.time);
+		// The server's state covers every target, read elsewhere or not
+		const targets = await client.fetchHistoryTargets(
+			bound,
+			serverState ? HISTORY_START : lastReceipt!.time,
+		);
 		// The server may be closed while waiting for the history
 		if (this.clients.get(serverID) !== client) {
 			return;
 		}
-		const lazy = this.state.settings.lazyBacklog;
 		await Promise.all(
 			targets.map(async (target) => {
-				const from = backlogStart(this, serverID, client, target.name, lastReceipt);
-				const to = { time: bound };
-
 				// Query read marker if this is a user (ie, we haven't received
 				// the read marker as part of a JOIN burst)
 				if (client.supportsReadMarker() && client.isNick(target.name)) {
 					client.fetchReadMarker(target.name);
 				}
 
-				// Private messages always notify, and the active buffer is
-				// on screen: load them now. Other channels load once opened,
-				// sparing the server a history query per busy channel.
-				const buf = S.getBuffer(this.state, { server: serverID, name: target.name });
-				if (lazy && buf && client.isChannel(target.name) && buf.id !== this.state.activeBuffer) {
-					this.deferBacklog(serverID, client, buf.id, target.latestMessage, { from, to });
+				const unread = this.targetUnread(serverID, client, target, serverState);
+				let buf = S.getBuffer(this.state, { server: serverID, name: target.name });
+				if (!buf && unread !== Unread.NONE && !client.isChannel(target.name)) {
+					this.createBuffer(serverID, target.name);
+					buf = S.getBuffer(this.state, { server: serverID, name: target.name });
+				}
+				if (!buf) {
 					return;
 				}
-				await this.fetchTargetBacklog(serverID, client, target.name, { from, to });
+
+				// Without loaded messages, opening the buffer loads its
+				// latest ones anyway
+				const lastMsg = buf.messages.at(-1);
+				const from = lastReceipt
+					? backlogStart(this, serverID, client, target.name, lastReceipt)
+					: lastMsg && S.boundFromMessage(lastMsg);
+				const backlog = from && { from, to: { time: bound } };
+				if (buf.id === this.state.activeBuffer) {
+					if (backlog) {
+						await this.fetchTargetBacklog(serverID, client, target.name, backlog);
+					}
+					return;
+				}
+				if (backlog) {
+					const prev = this.deferredBacklogs.get(buf.id);
+					// Missed messages of an earlier disconnection aren't fetched yet
+					this.deferredBacklogs.set(buf.id, prev ? { from: prev.from, to: backlog.to } : backlog);
+				}
+				this.markBufferUnread(buf.id, client, unread);
 			}),
 		);
+	},
+
+	/** The unread state of a target listed by CHATHISTORY TARGETS. */
+	targetUnread(
+		this: AppController,
+		serverID: number,
+		client: Client,
+		target: ChatHistoryTarget,
+		serverState: boolean,
+	): Unread {
+		let unread, mention;
+		if (serverState) {
+			({ unread, mention } = target);
+		} else {
+			const stored = this.bufferStore.get({ name: target.name, server: storeServer(client) });
+			const read = getReceipt(stored, ReceiptType.READ);
+			unread = !read || target.latestMessage > read.time;
+			mention = unread && !client.isChannel(target.name);
+		}
+		const server = this.state.servers.get(serverID);
+		if (mention && !S.getTargetMetadata(server, target.name).muted) {
+			return Unread.HIGHLIGHT;
+		}
+		return unread || mention ? Unread.MESSAGE : Unread.NONE;
+	},
+
+	/** Raise the unread state of a buffer, and store it. */
+	markBufferUnread(this: AppController, id: number, client: Client, level: Unread): void {
+		const buf = S.getBuffer(this.state, id)!;
+		const unread = S.unionUnread(buf.unread, level);
+		if (unread === buf.unread) {
+			return;
+		}
+		this.setBufferState(id, { unread });
+		this.bufferStore.put({ name: buf.name, server: storeServer(client), unread });
+		this.updateDocumentTitle();
 	},
 
 	/**
@@ -176,38 +244,6 @@ export const backlogMethods = {
 			this.markMissedMessages(serverID, target, from, result.messages);
 		}
 		this.applyHistory(serverID, result.messages, { live: true });
-	},
-
-	/**
-	 * Leave the missed messages of a buffer until it's opened, marking it
-	 * unread if they are after its read marker. Whether they mention us is
-	 * unknown until then.
-	 */
-	deferBacklog(
-		this: AppController,
-		serverID: number,
-		client: Client,
-		id: number,
-		latestMessage: string,
-		backlog: DeferredBacklog,
-	): void {
-		const prev = this.deferredBacklogs.get(id);
-		// Missed messages of an earlier disconnection aren't fetched yet
-		this.deferredBacklogs.set(id, prev ? { from: prev.from, to: backlog.to } : backlog);
-
-		const buf = S.getBuffer(this.state, id)!;
-		const stored = this.bufferStore.get({ name: buf.name, server: storeServer(client) });
-		const read = getReceipt(stored, ReceiptType.READ);
-		if (read && latestMessage <= read.time) {
-			return;
-		}
-		const unread = S.unionUnread(buf.unread, Unread.MESSAGE);
-		if (unread === buf.unread) {
-			return;
-		}
-		this.setBufferState(id, { unread });
-		this.bufferStore.put({ name: buf.name, server: storeServer(client), unread });
-		this.updateDocumentTitle();
 	},
 
 	/** Fetch the missed messages left for when the buffer is opened. */

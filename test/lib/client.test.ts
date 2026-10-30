@@ -679,9 +679,13 @@ describe("commands", () => {
 		ws.receive(
 			":srv BATCH +t draft/chathistory-targets",
 			"@batch=t :srv CHATHISTORY TARGETS #c 2020-01-01T00:00:00.000Z",
+			"@batch=t;soju.im/unread;soju.im/mention :srv CHATHISTORY TARGETS #d 2020-01-02T00:00:00.000Z",
 			":srv BATCH -t",
 		);
-		await expect(p2).resolves.toEqual([{ name: "#c", latestMessage: "2020-01-01T00:00:00.000Z" }]);
+		await expect(p2).resolves.toEqual([
+			{ name: "#c", latestMessage: "2020-01-01T00:00:00.000Z", unread: false, mention: false },
+			{ name: "#d", latestMessage: "2020-01-02T00:00:00.000Z", unread: true, mention: true },
+		]);
 	});
 
 	it("doesn't report more history when CHATHISTORY ISUPPORT is missing", async () => {

@@ -1448,34 +1448,37 @@ describe("AppController chat history", () => {
 		"batch server-time echo-message message-tags labeled-response draft/chathistory draft/read-marker";
 
 	/**
-	 * Connect with a stored #c buffer, so that its backlog gets fetched. The
-	 * backlog of other buffers is loaded on connect, unless lazyBacklog.
+	 * Connect with a stored #c buffer, so that its backlog gets fetched once
+	 * it's active.
 	 */
 	async function withBacklog({
 		backlogSize = 100 as number | null,
 		chathistory = 100,
-		lazyBacklog = false,
+		unreadCap = false,
+		stored = true,
 	} = {}) {
 		const t = "2030-01-01T00:00:00.000Z";
 		// null: no stored setting, the default applies
-		localStorage.setItem(
-			"gamja_settings",
-			JSON.stringify(backlogSize !== null ? { backlogSize, lazyBacklog } : { lazyBacklog }),
-		);
-		localStorage.setItem(
-			"gamja_buffers",
-			JSON.stringify({
-				[JSON.stringify({ name: "#c", server: {} })]: {
-					name: "#c",
-					unread: Unread.NONE,
-					closed: false,
-					server: {},
-					receipts: { delivered: { time: t }, read: { time: t } },
-				},
-			}),
-		);
+		if (backlogSize !== null) {
+			localStorage.setItem("gamja_settings", JSON.stringify({ backlogSize }));
+		}
+		if (stored) {
+			localStorage.setItem(
+				"gamja_buffers",
+				JSON.stringify({
+					[JSON.stringify({ name: "#c", server: {} })]: {
+						name: "#c",
+						unread: Unread.NONE,
+						closed: false,
+						server: {},
+						receipts: { delivered: { time: t }, read: { time: t } },
+					},
+				}),
+			);
+		}
 		const h = await connectedApp({ register: false });
-		h.recv(`:srv CAP * LS :${caps}`, `:srv CAP me ACK :${caps}`);
+		const enabled = unreadCap ? `${caps} soju.im/unread` : caps;
+		h.recv(`:srv CAP * LS :${enabled}`, `:srv CAP me ACK :${enabled}`);
 		h.recv(
 			":srv 001 me :Welcome",
 			`:srv 005 me CHANTYPES=# CHATHISTORY=${chathistory} :ok`,
@@ -1502,7 +1505,12 @@ describe("AppController chat history", () => {
 			await flush();
 			return h.sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
 		};
-		return { ...h, reply, replyTargets };
+		/** Open a buffer, as if clicked */
+		const open = (name: string) => {
+			h.app.setBufferState({ name }, { hasInitialWho: true });
+			h.app.switchBuffer(buf(h.app, name)!.id);
+		};
+		return { ...h, reply, replyTargets, targets, open };
 	}
 
 	it("applies the backlog with a single read marker for the buffer being read", async () => {
@@ -1533,67 +1541,82 @@ describe("AppController chat history", () => {
 		expect(sent()).toEqual(["MARKREAD #c timestamp=2030-01-01T00:00:03.000Z"]);
 	});
 
-	it("marks the backlog of other buffers unread", async () => {
-		const { app, recv, sent, reply, replyTargets } = await withBacklog();
-		recv(":me!u@h JOIN #c");
-		const between = await replyTargets();
-		reply(
-			between,
-			"chathistory #c",
-			"time=2030-01-01T00:00:01.000Z :bob!u@h PRIVMSG #c :hi",
-			"time=2030-01-01T00:00:02.000Z :bob!u@h PRIVMSG #c :hi me",
+	it("leaves other buffers unread until opened", async () => {
+		const { app, recv, sent, sentRaw, reply, replyTargets, open } = await withBacklog();
+		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		expect(await replyTargets()).toBeUndefined();
+		expect(buf(app, "#c")!.unread).toBe(Unread.MESSAGE);
+		expect(app.bufferStore.get({ name: "#c", server: { url: "wss://irc.test/socket" } })?.unread).toBe(
+			Unread.MESSAGE,
 		);
+
+		// Opening it loads the latest missed messages, like on connect
+		open("#c");
 		await flush();
-		expect(buf(app, "#c")!.messages).toHaveLength(2);
-		expect(buf(app, "#c")!.unread).toBe(Unread.HIGHLIGHT);
-		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
+		const between = sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
+		expect(between).toMatch(/BETWEEN #c timestamp=\S+ timestamp=2030-01-01T00:00:00.500Z 100$/);
+		sent();
+		reply(between, "chathistory #c", "time=2030-01-01T00:00:01.000Z :bob!u@h PRIVMSG #c :new");
+		await flush();
+		expect(buf(app, "#c")!.messages.map((m) => m.params[1])).toEqual(["old", "new"]);
+
+		// Only once
+		sent();
+		open("#c");
+		await flush();
+		expect(sentRaw().filter((l) => l.includes("CHATHISTORY"))).toEqual([]);
 	});
 
-	describe("with lazyBacklog", () => {
-		it("leaves other channels unread until opened", async () => {
-			const { app, recv, sent, sentRaw, reply, replyTargets } = await withBacklog({
-				lazyBacklog: true,
-			});
-			recv(":me!u@h JOIN #c");
-			expect(await replyTargets()).toBeUndefined();
-			expect(buf(app, "#c")!.unread).toBe(Unread.MESSAGE);
-			expect(
-				app.bufferStore.get({ name: "#c", server: { url: "wss://irc.test/socket" } })?.unread,
-			).toBe(Unread.MESSAGE);
+	it("doesn't mark a channel read up to its latest message unread", async () => {
+		const { app, recv, replyTargets } = await withBacklog();
+		recv(":me!u@h JOIN #c", ":srv MARKREAD #c timestamp=2030-01-02T00:00:00.000Z");
+		await replyTargets();
+		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
+	});
 
-			// Opening it loads the latest missed messages, like on connect
-			app.setBufferState({ name: "#c" }, { hasInitialWho: true });
-			app.switchBuffer(buf(app, "#c")!.id);
-			await flush();
-			const between = sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
-			expect(between).toMatch(/BETWEEN #c timestamp=\S+ timestamp=2030-01-01T00:00:00.000Z 100$/);
-			sent();
-			reply(between, "chathistory #c", "time=2030-01-01T00:00:01.000Z :bob!u@h PRIVMSG #c :hi me");
-			await flush();
-			expect(buf(app, "#c")!.messages.map((m) => m.params[1])).toEqual(["hi me"]);
+	it("shows private conversations with missed messages as mentions", async () => {
+		const { app, reply, targets } = await withBacklog();
+		reply(targets, "draft/chathistory-targets", ":srv CHATHISTORY TARGETS bob 2030-01-02T00:00:00.000Z");
+		await flush();
+		expect(buf(app, "bob")!.unread).toBe(Unread.HIGHLIGHT);
+		expect(buf(app, "bob")!.messages).toEqual([]);
+	});
 
-			// Only once
-			sent();
-			app.switchBuffer(buf(app, "#c")!.id);
+	describe("with soju.im/unread", () => {
+		it("lists every target, and shows the server's unread state without loading history", async () => {
+			const { app, recv, sentRaw, reply, targets } = await withBacklog({ unreadCap: true });
+			expect(targets).toMatch(/TARGETS timestamp=\S+ timestamp=1970-01-01T00:00:00.000Z 1000$/);
+			recv(":me!u@h JOIN #quiet", ":me!u@h JOIN #mention", ":me!u@h JOIN #read", ":me!u@h JOIN #muted");
+			recv(":srv METADATA #muted soju.im/muted * :1");
+			reply(
+				targets,
+				"draft/chathistory-targets",
+				"soju.im/unread :srv CHATHISTORY TARGETS #quiet 2030-01-02T00:00:00.000Z",
+				"soju.im/unread;soju.im/mention :srv CHATHISTORY TARGETS #mention 2030-01-02T00:00:00.000Z",
+				":srv CHATHISTORY TARGETS #read 2030-01-02T00:00:00.000Z",
+				"soju.im/unread;soju.im/mention :srv CHATHISTORY TARGETS #muted 2030-01-02T00:00:00.000Z",
+				"soju.im/unread;soju.im/mention :srv CHATHISTORY TARGETS alice 2030-01-02T00:00:00.000Z",
+			);
 			await flush();
-			expect(sentRaw().filter((l) => l.includes("CHATHISTORY"))).toEqual([]);
+			expect(buf(app, "#quiet")!.unread).toBe(Unread.MESSAGE);
+			expect(buf(app, "#mention")!.unread).toBe(Unread.HIGHLIGHT);
+			expect(buf(app, "#read")!.unread).toBe(Unread.NONE);
+			expect(buf(app, "#muted")!.unread).toBe(Unread.MESSAGE);
+			expect(buf(app, "alice")!.unread).toBe(Unread.HIGHLIGHT);
+			expect(sentRaw().filter((l) => l.includes("CHATHISTORY BETWEEN"))).toEqual([]);
 		});
 
-		it("loads the active channel on connect", async () => {
-			const { app, recv, replyTargets } = await withBacklog({ lazyBacklog: true });
-			recv(":me!u@h JOIN #c");
-			app.setBufferState({ name: "#c" }, { hasInitialWho: true });
-			app.switchBuffer(buf(app, "#c")!.id);
-			expect(await replyTargets()).toMatch(/CHATHISTORY BETWEEN #c /);
+		it("asks without a delivery receipt", async () => {
+			const { targets } = await withBacklog({ unreadCap: true, stored: false });
+			expect(targets).toMatch(/CHATHISTORY TARGETS /);
 		});
+	});
 
-		it("doesn't mark a channel read up to its latest message unread", async () => {
-			const t = "2030-01-02T00:00:00.000Z";
-			const { app, recv, replyTargets } = await withBacklog({ lazyBacklog: true });
-			recv(":me!u@h JOIN #c", `:srv MARKREAD #c timestamp=${t}`);
-			await replyTargets();
-			expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
-		});
+	it("loads the active channel on connect", async () => {
+		const { recv, replyTargets, open } = await withBacklog();
+		recv(":me!u@h JOIN #c");
+		open("#c");
+		expect(await replyTargets()).toMatch(/CHATHISTORY BETWEEN #c /);
 	});
 
 	/** A page of n chat messages, one per second from 00:01:00 */
@@ -1648,8 +1671,9 @@ describe("AppController chat history", () => {
 	});
 
 	it("keeps a gap to retry when loading missed messages fails", async () => {
-		const { app, recv, sentRaw, reply, replyTargets } = await withBacklog();
+		const { app, recv, sentRaw, reply, replyTargets, open } = await withBacklog();
 		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		open("#c");
 		reply(await replyTargets(), "chathistory #c", ...page(100));
 		await flush();
 
@@ -1663,21 +1687,22 @@ describe("AppController chat history", () => {
 	});
 
 	it("doesn't mark a gap without loaded messages", async () => {
-		const { app, recv, reply, replyTargets } = await withBacklog();
+		const { app, recv, reply, replyTargets, open } = await withBacklog();
 		recv(":me!u@h JOIN #c");
+		open("#c");
 		reply(await replyTargets(), "chathistory #c", ...page(100));
 		await flush();
 		expect(buf(app, "#c")!.messages).toHaveLength(100);
 		expect(buf(app, "#c")!.gap).toBeNull();
-		expect(buf(app, "#c")!.unread).toBe(Unread.MESSAGE);
 	});
 
 	it("loads 200 missed messages by default, in pages of the server's limit", async () => {
-		const { app, recv, sentRaw, reply, replyTargets } = await withBacklog({
+		const { app, recv, sentRaw, reply, replyTargets, open } = await withBacklog({
 			backlogSize: null,
 		});
 		expect(app.state.settings.backlogSize).toBe(200);
 		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		open("#c");
 		const first = await replyTargets();
 		expect(first).toMatch(/BETWEEN #c timestamp=\S+ timestamp=2030-01-01T00:00:00.500Z 100$/);
 		// The newest page, then the one before it
@@ -1702,7 +1727,9 @@ describe("AppController chat history", () => {
 	});
 
 	it("asks for the backlogSize setting when the server allows it", async () => {
-		const { app, replyTargets } = await withBacklog({ backlogSize: 250, chathistory: 1000 });
+		const { app, recv, replyTargets, open } = await withBacklog({ backlogSize: 250, chathistory: 1000 });
+		recv(":me!u@h JOIN #c");
+		open("#c");
 		expect(await replyTargets()).toMatch(/BETWEEN #c timestamp=\S+ timestamp=\S+ 250$/);
 		app.handleSettingsChange({ backlogSize: 150 });
 		expect(app.state.settings.backlogSize).toBe(150);
@@ -1720,8 +1747,9 @@ describe("AppController chat history", () => {
 	});
 
 	it("keeps a gap to load once reconnected when loading is interrupted", async () => {
-		const { app, ws, recv, sentRaw, reply, replyTargets } = await withBacklog();
+		const { app, ws, recv, sentRaw, reply, replyTargets, open } = await withBacklog();
 		recv(":me!u@h JOIN #c", "@time=2030-01-01T00:00:00.500Z;msgid=old :bob!u@h PRIVMSG #c :old");
+		open("#c");
 		reply(await replyTargets(), "chathistory #c", ...page(100));
 		await flush();
 
