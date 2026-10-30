@@ -1574,12 +1574,33 @@ describe("AppController chat history", () => {
 		expect(buf(app, "#c")!.unread).toBe(Unread.NONE);
 	});
 
-	it("shows private conversations with missed messages as mentions", async () => {
-		const { app, reply, targets } = await withBacklog();
+	it("shows open private conversations with missed messages as mentions", async () => {
+		const { app, serverID, reply, targets, sentRaw } = await withBacklog();
+		app.createBuffer(serverID, "bob");
 		reply(targets, "draft/chathistory-targets", ":srv CHATHISTORY TARGETS bob 2030-01-02T00:00:00.000Z");
 		await flush();
 		expect(buf(app, "bob")!.unread).toBe(Unread.HIGHLIGHT);
-		expect(buf(app, "bob")!.messages).toEqual([]);
+		expect(sentRaw().filter((l) => l.includes("CHATHISTORY BETWEEN"))).toEqual([]);
+	});
+
+	it("loads private targets without a buffer, to route their messages", async () => {
+		const { app, reply, targets, sentRaw } = await withBacklog();
+		reply(
+			targets,
+			"draft/chathistory-targets",
+			":srv CHATHISTORY TARGETS ChanServ 2030-01-02T00:00:00.000Z",
+		);
+		await flush();
+		const between = sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
+		expect(between).toMatch(/BETWEEN ChanServ /);
+		reply(
+			between,
+			"chathistory ChanServ",
+			"time=2030-01-01T00:00:01.000Z :ChanServ!u@h NOTICE me :You are now identified",
+		);
+		await flush();
+		// Notices go to the server buffer
+		expect(buf(app, "ChanServ")).toBeUndefined();
 	});
 
 	describe("with soju.im/unread", () => {
@@ -1596,6 +1617,7 @@ describe("AppController chat history", () => {
 				":srv CHATHISTORY TARGETS #read 2030-01-02T00:00:00.000Z",
 				"soju.im/unread;soju.im/mention :srv CHATHISTORY TARGETS #muted 2030-01-02T00:00:00.000Z",
 				"soju.im/unread;soju.im/mention :srv CHATHISTORY TARGETS alice 2030-01-02T00:00:00.000Z",
+				"soju.im/unread :srv CHATHISTORY TARGETS ChanServ 2030-01-02T00:00:00.000Z",
 			);
 			await flush();
 			expect(buf(app, "#quiet")!.unread).toBe(Unread.MESSAGE);
@@ -1603,6 +1625,8 @@ describe("AppController chat history", () => {
 			expect(buf(app, "#read")!.unread).toBe(Unread.NONE);
 			expect(buf(app, "#muted")!.unread).toBe(Unread.MESSAGE);
 			expect(buf(app, "alice")!.unread).toBe(Unread.HIGHLIGHT);
+			// Without a mention, it's notices: no conversation
+			expect(buf(app, "ChanServ")).toBeUndefined();
 			expect(sentRaw().filter((l) => l.includes("CHATHISTORY BETWEEN"))).toEqual([]);
 		});
 

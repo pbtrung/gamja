@@ -103,7 +103,8 @@ export const backlogMethods = {
 	 * them: only the active buffer's are loaded, the others' once opened.
 	 * With soju.im/unread, the server tells which targets have unread
 	 * messages and mentions after their read marker; otherwise targets with
-	 * messages after ours are unread, and private ones mention us.
+	 * messages after ours are unread, and private ones mention us. Without
+	 * it, private targets without a buffer are loaded, to route them.
 	 */
 	async fetchBacklog(this: AppController, serverID: number): Promise<void> {
 		const client = this.clients.get(serverID)!;
@@ -140,9 +141,22 @@ export const backlogMethods = {
 
 				const unread = this.targetUnread(serverID, client, target, serverState);
 				let buf = S.getBuffer(this.state, { server: serverID, name: target.name });
-				if (!buf && unread !== Unread.NONE && !client.isChannel(target.name)) {
-					this.createBuffer(serverID, target.name);
-					buf = S.getBuffer(this.state, { server: serverID, name: target.name });
+				if (!buf && !client.isChannel(target.name)) {
+					if (!serverState) {
+						// Only the messages tell whether it's a conversation:
+						// notices (e.g. from services) go to the server buffer
+						const from = backlogStart(this, serverID, client, target.name, lastReceipt!);
+						await this.fetchTargetBacklog(serverID, client, target.name, {
+							from,
+							to: { time: bound },
+						});
+						return;
+					}
+					// The server only counts private PRIVMSGs as mentions
+					if (target.mention) {
+						this.createBuffer(serverID, target.name);
+						buf = S.getBuffer(this.state, { server: serverID, name: target.name });
+					}
 				}
 				if (!buf) {
 					return;
