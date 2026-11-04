@@ -249,6 +249,66 @@
 	--link: #8be9fd;
 }
 
+:root[data-theme="monokai-pro"] {
+	color-scheme: dark;
+	--bg: #2d2a2e;
+	--bg-sidebar: #221f22;
+	--bg-elevated: #221f22;
+	--bg-subtle: #403e41;
+	--bg-hover: color-mix(in srgb, #fcfcfa 8%, transparent);
+	--bg-active: #403e41;
+	--fg: #fcfcfa;
+	--fg-emphasis: #fcfcfa;
+	--fg-muted: #ababab;
+	--fg-subtle: #ababab;
+	--fg-active: #fcfcfa;
+	--border: #403e41;
+	--border-strong: #403e41;
+	--accent: #a9dc76;
+	--accent-hover: #98c66a;
+	--accent-fg: #221f22;
+	--accent-soft: color-mix(in srgb, #a9dc76 16%, transparent);
+	--focus-ring: color-mix(in srgb, #a9dc76 35%, transparent);
+	--danger: #ff6188;
+	--danger-fg: #ff9cb5;
+	--danger-soft: color-mix(in srgb, #ff6188 14%, transparent);
+	--warning: #ffd866;
+	--warning-fg: #ffd866;
+	--success: #a9dc76;
+	--info-fg: #78dce8;
+	--info-soft: color-mix(in srgb, #78dce8 13%, transparent);
+	--highlight-bg: color-mix(in srgb, #ffd866 10%, transparent);
+	--highlight-border: #ff6188;
+	--mention-bg: color-mix(in srgb, #ffd866 24%, transparent);
+	--mention-fg: #fcfcfa;
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+	--shadow-lg: 0 0.5rem 2rem rgba(0, 0, 0, 0.35);
+	--backdrop: color-mix(in srgb, #2d2a2e 60%, transparent);
+	--avatar-fg: #221f22;
+	--scrollbar: #727072;
+	--nick-1: #fca276;
+	--nick-2: #ff9cb5;
+	--nick-3: #ffd866;
+	--nick-4: #a9dc76;
+	--nick-5: #78dce8;
+	--nick-6: #bcb1f5;
+	--nick-7: #ff9db4;
+	--nick-8: #fcb18d;
+	--nick-9: #ffe28c;
+	--nick-10: #bfe59c;
+	--nick-11: #9ae5ee;
+	--nick-12: #c0b6f5;
+	--nick-13: #ff9cb5;
+	--nick-14: #fca276;
+	--nick-15: #a9dc76;
+	--nick-16: #bcb1f5;
+	--chrome-fg: #fcfcfa;
+	--input-bg: #2d2a2e;
+	--line-hover: color-mix(in srgb, #fcfcfa 4%, transparent);
+	--highlight-fg: #ffd866;
+	--link: #78dce8;
+}
+
 :root[data-theme="catppuccin-latte"] {
 	color-scheme: light;
 	--bg: #eff1f5;

@@ -154,6 +154,16 @@
 	padding-right: 2rem;
 }
 
+/* Restoring browser focus should not draw a border around network names. */
+.buffer-items li.type-server a:focus {
+	outline: none;
+}
+
+.buffer-items li.type-server a:focus-visible {
+	background-color: var(--bg-hover);
+	color: var(--fg-emphasis);
+}
+
 .buffer-items li.type-server .buffer-name {
 	font-size: 0.8rem;
 	font-weight: 700;

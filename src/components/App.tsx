@@ -153,6 +153,7 @@ function Chat({ state }: { state: AppState }) {
 
 			<Composer
 				ref={composer}
+				nick={myNick}
 				edgeToEdgeInput={state.settings.edgeToEdgeInput}
 				draftKey={activeID}
 				status={state.settings.showTyping ? <TypingIndicator buffer={activeBuffer} /> : null}

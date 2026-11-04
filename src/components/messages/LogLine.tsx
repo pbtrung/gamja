@@ -13,6 +13,7 @@ import type { Context, MessageActionHandlers } from "./context";
 import { describeLine } from "./lineContent";
 import { makeNick } from "./nicks";
 import Timestamp from "./Timestamp";
+import ColumnPrefix from "./ColumnPrefix";
 
 interface LogLineProps {
 	message: Message;
@@ -268,7 +269,7 @@ const LogLine = memo(
 					{...lineAttrs}
 				>
 					<Timestamp date={date} url={url} showSeconds={showSeconds} />
-					<span className={`logline-prefix ${prefixKind}`}>{prefix}</span>
+					<ColumnPrefix kind={prefixKind}>{prefix}</ColumnPrefix>
 					<div className="logline-main">
 						{quote}
 						<span className="logline-content">{body}</span>

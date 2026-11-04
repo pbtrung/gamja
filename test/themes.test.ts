@@ -66,6 +66,7 @@ describe("themes", () => {
 		const names = THEMES.map((t) => t.name);
 		for (const name of [
 			"Dracula",
+			"Monokai Pro",
 			"Catppuccin Latte",
 			"Catppuccin Mocha",
 			"Solarized Light",

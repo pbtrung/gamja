@@ -30,6 +30,8 @@ interface ComposerProps {
 	draftKey?: unknown;
 	readOnly: boolean;
 	commandOnly: boolean;
+	/** Current nickname on the active network */
+	nick?: string | null;
 	/** Extend the input to the chat pane's edges, with square corners */
 	edgeToEdgeInput?: boolean;
 	maxLen?: number;
@@ -51,6 +53,7 @@ export default function Composer({
 	draftKey,
 	readOnly,
 	commandOnly,
+	nick,
 	edgeToEdgeInput = true,
 	maxLen,
 	multiline,
@@ -221,6 +224,11 @@ export default function Composer({
 				</div>
 			)}
 			<div className={"composer-box" + (tooLong ? " too-long" : "")}>
+				{nick && (
+					<span className="composer-nick" title={`Your nickname: ${nick}`}>
+						{nick}
+					</span>
+				)}
 				<textarea
 					name="text"
 					className="composer-input"

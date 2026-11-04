@@ -195,6 +195,8 @@
 }
 
 #buffer .logline.columns .logline-prefix {
+	position: relative;
+	min-width: 0;
 	align-self: stretch;
 	overflow: hidden;
 	padding-right: 0.625rem;
@@ -202,8 +204,28 @@
 	font-style: normal;
 	font-weight: 400;
 	text-align: right;
-	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+#buffer .logline.columns .logline-prefix-text {
+	display: block;
+	overflow: hidden;
+}
+
+#buffer .logline.columns .logline-prefix-content {
+	display: block;
+	width: max-content;
+	min-width: 100%;
+}
+
+#buffer .logline.columns .logline-prefix[data-truncated] .logline-prefix-overflow::after {
+	content: "+";
+	position: absolute;
+	right: 0;
+	top: var(--row-pad);
+	width: 0.625rem;
+	color: var(--fg-muted);
+	text-align: center;
 }
 
 #buffer .nick-align-left .logline.columns .logline-prefix {

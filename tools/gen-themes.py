@@ -152,6 +152,24 @@ dracula = theme(
 )
 
 
+# Monokai Pro, matching Glowing Bear's public/css/themes/monokai-pro.css.
+# https://monokai.pro
+m = dict(bg="#2d2a2e", sidebar="#221f22", selection="#403e41", comment="#727072",
+         muted="#939293", fg="#fcfcfa", red="#ff6188", orange="#fc9867", yellow="#ffd866",
+         green="#a9dc76", cyan="#78dce8", purple="#ab9df2")
+monokai_pro = theme(
+    "dark", bg=m["bg"], sidebar=m["sidebar"], elevated=m["sidebar"], subtle=m["selection"],
+    fg=m["fg"], emphasis=m["fg"], muted=m["muted"], faint=m["comment"],
+    border=m["selection"], border_strong=m["selection"],
+    accent=m["green"], accent_hover=m["green"], accent_fg=m["sidebar"],
+    danger=m["red"], warning=m["yellow"], success=m["green"], info=m["cyan"],
+    nicks=[m["orange"], m["red"], m["yellow"], m["green"], m["cyan"], m["purple"],
+           "#ff8fa9", "#fcb18d", "#ffe28c", "#bfe59c", "#9ae5ee", "#c0b6f5",
+           m["red"], m["orange"], m["green"], m["purple"]],
+    avatar_fg=m["sidebar"],
+)
+
+
 def catppuccin(scheme, p):
     if scheme == "dark":
         return theme(
@@ -243,6 +261,7 @@ zenburn = theme(
 
 THEMES = {
     "dracula": dracula,
+    "monokai-pro": monokai_pro,
     "catppuccin-latte": catppuccin("light", latte),
     "catppuccin-frappe": catppuccin("dark", frappe),
     "catppuccin-macchiato": catppuccin("dark", macchiato),
@@ -256,6 +275,33 @@ THEMES = {
 # UI palettes from Glowing Bear's public/css/themes. These values are kept
 # here so the app can be built independently of the reference checkout.
 GLOWING_BEAR_PALETTES = {
+    "monokai-pro": {
+        "--bg": m["bg"],
+        "--fg": m["fg"],
+        "--fg-muted": m["muted"],
+        "--fg-subtle": m["muted"],
+        "--bg-sidebar": m["sidebar"],
+        "--bg-elevated": m["sidebar"],
+        "--chrome-fg": m["fg"],
+        "--border": m["selection"],
+        "--border-strong": m["selection"],
+        "--bg-hover": mix(m["fg"], 8),
+        "--bg-active": m["selection"],
+        "--fg-active": m["fg"],
+        "--fg-emphasis": m["fg"],
+        "--accent": m["green"],
+        "--accent-fg": m["sidebar"],
+        "--input-bg": m["bg"],
+        "--line-hover": mix(m["fg"], 4),
+        "--highlight-bg": mix(m["yellow"], 10),
+        "--highlight-fg": m["yellow"],
+        "--highlight-border": m["red"],
+        "--link": m["cyan"],
+        "--scrollbar": m["comment"],
+        "--shadow-lg": "0 0.5rem 2rem rgba(0, 0, 0, 0.35)",
+        "--backdrop": mix(m["bg"], 60),
+        "--bg-subtle": m["selection"],
+    },
     "light": {
         "--bg": "#fdfdfd",
         "--fg": "#181818",

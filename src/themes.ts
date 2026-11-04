@@ -13,6 +13,12 @@ export const THEMES: Theme[] = [
 	{ id: "dark", name: "Dark", scheme: "dark", swatch: ["#181818", "#dddddd", "#4f8fd6"] },
 	{ id: "dracula", name: "Dracula", scheme: "dark", swatch: ["#282a36", "#f8f8f2", "#bd93f9"] },
 	{
+		id: "monokai-pro",
+		name: "Monokai Pro",
+		scheme: "dark",
+		swatch: ["#2d2a2e", "#fcfcfa", "#a9dc76"],
+	},
+	{
 		id: "catppuccin-latte",
 		name: "Catppuccin Latte",
 		scheme: "light",
