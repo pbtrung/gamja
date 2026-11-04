@@ -33,6 +33,12 @@
 	border-color: var(--danger);
 }
 
+.composer-nick,
+textarea.composer-input {
+	font-family: var(--messages-font);
+	font-size: var(--chat-font-size);
+}
+
 .composer-nick {
 	align-self: center;
 	flex: 0 1 auto;
@@ -40,9 +46,7 @@
 	max-width: min(12ch, 25%);
 	padding: 0 0.25rem 0 0.5rem;
 	overflow: hidden;
-	color: var(--fg-muted);
-	font-family: var(--messages-font);
-	font-size: 0.85rem;
+	color: var(--nick-color, var(--fg-emphasis));
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -64,9 +68,6 @@ textarea.composer-input {
 	background: none;
 	box-shadow: none;
 	color: var(--fg);
-	font-family: var(--messages-font);
-	/* 16px with the default 15px messages */
-	font-size: calc(var(--chat-font-size) * 16 / 15);
 	line-height: 1.4;
 	resize: none;
 }

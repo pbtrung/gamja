@@ -10,6 +10,7 @@ import {
 } from "react";
 import { AtSign, CornerUpRight, SendHorizontal, X } from "lucide-react";
 import type { ReplyTo } from "../app/store";
+import { getNickColorIndex } from "../format";
 import IconButton from "./IconButton";
 import useMediaQuery from "./useMediaQuery";
 import useDrafts from "./composer/useDrafts";
@@ -32,6 +33,7 @@ interface ComposerProps {
 	commandOnly: boolean;
 	/** Current nickname on the active network */
 	nick?: string | null;
+	nickColors?: boolean;
 	/** Extend the input to the chat pane's edges, with square corners */
 	edgeToEdgeInput?: boolean;
 	maxLen?: number;
@@ -54,6 +56,7 @@ export default function Composer({
 	readOnly,
 	commandOnly,
 	nick,
+	nickColors = true,
 	edgeToEdgeInput = true,
 	maxLen,
 	multiline,
@@ -225,7 +228,10 @@ export default function Composer({
 			)}
 			<div className={"composer-box" + (tooLong ? " too-long" : "")}>
 				{nick && (
-					<span className="composer-nick" title={`Your nickname: ${nick}`}>
+					<span
+						className={"composer-nick" + (nickColors ? ` nick-${getNickColorIndex(nick)}` : "")}
+						title={`Your nickname: ${nick}`}
+					>
 						{nick}
 					</span>
 				)}

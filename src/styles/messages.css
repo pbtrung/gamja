@@ -224,7 +224,7 @@
 	right: 0;
 	top: var(--row-pad);
 	width: 0.625rem;
-	color: var(--fg-muted);
+	color: var(--accent);
 	text-align: center;
 }
 
