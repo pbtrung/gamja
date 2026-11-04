@@ -131,7 +131,7 @@ const LogLine = memo(
 		group,
 	}: LogLineProps) {
 		const { buffer: buf, server, bouncerNetwork } = ctx;
-		const createNick = makeNick(ctx);
+		const createNick = makeNick(ctx, msg.prefix);
 		const from = msg.prefix?.name ?? "*";
 		// The sender, with its channel membership prefix (e.g. "@") if enabled
 		const senderModes = senderMembership({ message: msg, redacted, ctx });
@@ -225,6 +225,12 @@ const LogLine = memo(
 		}
 
 		if (ctx.settings.layout === "columns") {
+			const columnSender = (
+				<>
+					<Membership value={senderModes?.slice(0, 1)} />
+					{createNick(from, undefined, ctx.settings.nickColumnWidth)}
+				</>
+			);
 			let prefix: ReactNode;
 			let prefixKind = "nick";
 			let body: ReactNode = content;
@@ -244,7 +250,7 @@ const LogLine = memo(
 				prefix = null;
 				body = chatBody;
 			} else if (msg.command === "NOTICE") {
-				prefix = <>-{sender}-</>;
+				prefix = <>-{columnSender}-</>;
 				body = chatBody;
 			} else if (ctx.settings.nickBrackets) {
 				prefix = (
@@ -252,7 +258,7 @@ const LogLine = memo(
 						<span className="nick-caret" aria-hidden="true">
 							&lt;
 						</span>
-						{sender}
+						{columnSender}
 						<span className="nick-caret" aria-hidden="true">
 							&gt;
 						</span>
@@ -260,7 +266,7 @@ const LogLine = memo(
 				);
 				body = chatBody;
 			} else {
-				prefix = sender;
+				prefix = columnSender;
 				body = chatBody;
 			}
 			return (
@@ -269,7 +275,16 @@ const LogLine = memo(
 					{...lineAttrs}
 				>
 					<Timestamp date={date} url={url} showSeconds={showSeconds} />
-					<ColumnPrefix kind={prefixKind}>{prefix}</ColumnPrefix>
+					<ColumnPrefix
+						kind={prefixKind}
+						truncated={
+							prefixKind === "nick" &&
+							prefix !== null &&
+							Array.from(from).length > ctx.settings.nickColumnWidth
+						}
+					>
+						{prefix}
+					</ColumnPrefix>
 					<div className="logline-main">
 						{quote}
 						<span className="logline-content">{body}</span>

@@ -1,13 +1,20 @@
 import type { ReactNode } from "react";
 import Nick from "../Nick";
+import type { Message } from "../../lib/irc";
 import type { Context } from "./context";
 
-export function makeNick(ctx: Context) {
-	return function createNick(nick: string, key?: string | number) {
+export function makeNick(ctx: Context, prefix?: Message["prefix"]) {
+	return function createNick(nick: string, key?: string | number, maxLength?: number) {
 		return (
 			<Nick
 				key={key}
 				nick={nick}
+				maxLength={maxLength}
+				host={
+					nick === prefix?.name && prefix.user && prefix.host
+						? `${prefix.user}@${prefix.host}`
+						: undefined
+				}
 				serverID={ctx.buffer.server}
 				bouncerNetwork={ctx.bouncerNetwork}
 				onClick={ctx.onNickClick}

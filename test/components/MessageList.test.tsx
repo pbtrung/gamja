@@ -603,6 +603,27 @@ describe("missed messages gap", () => {
 	});
 });
 
+describe("nickname tooltips", () => {
+	it.each([79, 80, 81])("limits a %i-character tooltip to 80 characters", (length) => {
+		const host = "h".repeat(length - 6);
+		renderList([msg(`:bob!u@${host} PRIVMSG #c :hello`)]);
+		const title = screen.getByRole("link", { name: "bob" }).getAttribute("title")!;
+		const full = `bob\nu@${host}`;
+		expect(title).toBe(length > 80 ? full.slice(0, 79) + "…" : full);
+		expect(Array.from(title)).toHaveLength(Math.min(length, 80));
+	});
+
+	it("falls back to the nickname, then uses known user and host details", () => {
+		renderList([msg(":bob PRIVMSG #c :hello")]);
+		const nick = screen.getByRole("link", { name: "bob" });
+		expect(nick).toHaveAttribute("title", "bob");
+		const users = new irc.CaseMapMap<User>(null, irc.CaseMapping.RFC1459);
+		users.set("bob", { nick: "bob", username: "user", hostname: "host", realname: "Bob" });
+		act(() => appStore.setState({ servers: new Map([[1, server({ users })]]) }));
+		expect(nick).toHaveAttribute("title", "bob\nuser@host");
+	});
+});
+
 describe("blocked users", () => {
 	it("hides messages from users blocked through soju", () => {
 		const metadata = new irc.CaseMapMap<TargetMetadata>(null, irc.CaseMapping.RFC1459);
@@ -844,13 +865,13 @@ describe("comfortable layout", () => {
 			settings: { layout: "comfortable" },
 		});
 		const nick = screen.getByRole("link", { name: "bob" });
-		expect(nick).not.toHaveAttribute("title");
+		expect(nick).toHaveAttribute("title", "bob\nu@h");
 		expect(container.querySelector(".tag-badge")).toBeNull();
 
 		const users = new irc.CaseMapMap<User>(null, irc.CaseMapping.RFC1459);
 		users.set("bob", { nick: "bob", realname: "Bob Bot", bot: true });
 		act(() => appStore.setState({ servers: new Map([[1, server({ users })]]) }));
-		expect(nick).toHaveAttribute("title", "Bob Bot");
+		expect(nick).toHaveAttribute("title", "bob\nu@h");
 		expect(container.querySelector(".tag-badge")).toHaveTextContent("bot");
 	});
 

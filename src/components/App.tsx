@@ -153,6 +153,7 @@ function Chat({ state }: { state: AppState }) {
 
 			<Composer
 				ref={composer}
+				target={activeBuffer?.name}
 				nick={myNick}
 				nickColors={state.settings.nickColors}
 				edgeToEdgeInput={state.settings.edgeToEdgeInput}

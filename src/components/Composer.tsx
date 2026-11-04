@@ -31,6 +31,8 @@ interface ComposerProps {
 	draftKey?: unknown;
 	readOnly: boolean;
 	commandOnly: boolean;
+	/** Active channel or conversation shown when the input is empty */
+	target?: string;
 	/** Current nickname on the active network */
 	nick?: string | null;
 	nickColors?: boolean;
@@ -55,6 +57,7 @@ export default function Composer({
 	draftKey,
 	readOnly,
 	commandOnly,
+	target,
 	nick,
 	nickColors = true,
 	edgeToEdgeInput = true,
@@ -242,7 +245,7 @@ export default function Composer({
 					value={text}
 					rows={1}
 					autoComplete="off"
-					placeholder={label}
+					placeholder={commandOnly ? label : target || label}
 					aria-label={label}
 					aria-invalid={tooLong || undefined}
 					enterKeyHint="send"

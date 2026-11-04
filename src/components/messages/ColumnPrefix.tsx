@@ -1,7 +1,15 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 
 /** Keep the truncation marker in the gap before the column divider. */
-export default function ColumnPrefix({ kind, children }: { kind: string; children: ReactNode }) {
+export default function ColumnPrefix({
+	kind,
+	children,
+	truncated = false,
+}: {
+	kind: string;
+	children: ReactNode;
+	truncated?: boolean;
+}) {
 	const ref = useRef<HTMLSpanElement>(null);
 
 	useLayoutEffect(() => {
@@ -9,7 +17,7 @@ export default function ColumnPrefix({ kind, children }: { kind: string; childre
 		const text = prefix.querySelector<HTMLElement>(".logline-prefix-text")!;
 		const content = text.firstElementChild!;
 		const update = () => {
-			prefix.toggleAttribute("data-truncated", text.scrollWidth > text.clientWidth);
+			prefix.toggleAttribute("data-truncated", truncated || text.scrollWidth > text.clientWidth);
 		};
 		update();
 		if (typeof ResizeObserver === "undefined") {
@@ -20,7 +28,7 @@ export default function ColumnPrefix({ kind, children }: { kind: string; childre
 		// Font changes can change the content width without resizing the column.
 		observer.observe(content);
 		return () => observer.disconnect();
-	}, [children]);
+	}, [children, truncated]);
 
 	return (
 		<span ref={ref} className={`logline-prefix ${kind}`}>
