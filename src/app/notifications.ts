@@ -66,7 +66,11 @@ export const notificationsMethods = {
 			return Unread.MESSAGE;
 		}
 		const isPrivate = bufName !== SERVER_BUFFER && !client.isChannel(bufName);
-		if (msg.isHighlight || isPrivate || client.isMyNick(msg.params[0])) {
+		const ctcp = irc.parseCTCP(msg);
+		const isMention = isPrivate
+			? msg.command === "PRIVMSG" && (!ctcp || ctcp.command === "ACTION")
+			: msg.isHighlight || client.isMyNick(msg.params[0]);
+		if (isMention) {
 			return Unread.HIGHLIGHT;
 		}
 		return Unread.MESSAGE;

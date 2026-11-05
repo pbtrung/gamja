@@ -642,6 +642,7 @@ describe("AppController messaging", () => {
 		const { app, serverID } = await connectedApp();
 		app.disconnect(serverID);
 		expect(app.state.servers.get(serverID)!.status).toBe("disconnected");
+		expect(app.state.servers.get(serverID)!.reconnecting).toBe(false);
 		app.reconnect(serverID);
 		expect(app.state.servers.get(serverID)!.status).toBe("connecting");
 		// Reconnecting resumes reconnecting after drops
@@ -705,8 +706,27 @@ describe("AppController messaging", () => {
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		ws.serverClose(1006);
 		expect(app.state.servers.get(serverID)!.status).toBe("disconnected");
+		expect(app.state.servers.get(serverID)!.reconnecting).toBe(true);
 		expect(buf(app, "#c")!.joined).toBe(false);
 		expect(app.state.error).toBe("Connection error (abnormal closure)");
+		app.destroy();
+	});
+
+	it("shows reconnecting while offline, and clears it when deliberately disconnected", async () => {
+		const { app, ws, serverID } = await connectedApp();
+		vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+		ws.serverClose(1000);
+		expect(app.state.servers.get(serverID)!.reconnecting).toBe(true);
+		expect(app.state.servers.get(serverID)!.reconnectAt).toBeFalsy();
+		app.disconnect(serverID);
+		expect(app.state.servers.get(serverID)!.reconnecting).toBe(false);
+		app.destroy();
+	});
+
+	it("doesn't describe an initial connection failure as a lost connection", async () => {
+		const { app, ws, serverID } = await connectedApp({ register: false });
+		ws.serverClose(1000);
+		expect(app.state.servers.get(serverID)!.reconnecting).toBe(false);
 		app.destroy();
 	});
 });

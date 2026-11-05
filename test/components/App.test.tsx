@@ -198,4 +198,37 @@ describe("App", () => {
 		await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
 		expect(screen.getByRole("heading", { name: "Connect to IRC" })).toBeInTheDocument();
 	});
+
+	it("shows reconnection status across the retry and restores the unsent draft", async () => {
+		const app = await renderApp();
+		const ws = await login(app);
+		serverSays(ws, ":me!u@h JOIN #c");
+		await userEvent.click(screen.getByRole("tab", { name: "#c" }));
+		const input = screen.getByRole("textbox", { name: "Type a message" });
+		await userEvent.type(input, "unsent draft");
+		vi.useFakeTimers();
+		act(() => ws.serverClose(1000));
+		expect(screen.getByRole("status")).toHaveTextContent("Connection to TestNet lost. Reconnecting…");
+		expect(input).not.toBeVisible();
+		expect(screen.queryByRole("button", { name: "Reconnect now" })).toBeNull();
+		act(() => vi.advanceTimersByTime(10_000));
+		const retry = FakeWebSocket.last();
+		expect(retry).not.toBe(ws);
+		expect(screen.getByRole("status")).toHaveTextContent("Reconnecting…");
+		expect(input).not.toBeVisible();
+		act(() => retry.open());
+		expect(screen.getByRole("status")).toHaveTextContent("Reconnecting…");
+		serverSays(
+			retry,
+			":srv CAP * LS :batch server-time echo-message",
+			":srv CAP me ACK :batch server-time echo-message",
+			":srv 001 me :Welcome",
+			":srv 005 me CHANTYPES=# NETWORK=TestNet PREFIX=(ov)@+ :ok",
+			":srv 376 me :End",
+		);
+		expect(screen.queryByText(/Connection to TestNet lost/)).toBeNull();
+		expect(input).toBeVisible();
+		expect(input).toHaveValue("unsent draft");
+		act(() => app.destroy());
+	});
 });

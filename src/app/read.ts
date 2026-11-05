@@ -18,7 +18,7 @@ function parseMarkReadBound(bound: string | undefined): Receipt | null {
 }
 
 /** Re-compute the unread status of a buffer from its messages after a read marker. */
-function unreadAfterReceipt(
+export function loadedUnreadAfterReceipt(
 	app: AppController,
 	serverID: number,
 	client: Client,
@@ -82,6 +82,17 @@ export const readMethods = {
 		if (!this.bufferStore.put(update)) {
 			return;
 		}
+		const read = update.receipts?.[ReceiptType.READ];
+		if (read) {
+			const serverID = [...this.clients].find(([, c]) => c === client)?.[0];
+			const buf =
+				serverID === undefined
+					? null
+					: S.getBuffer(this.state, { server: serverID, name: update.name });
+			if (buf?.unreadSnapshot && read.time >= buf.unreadSnapshot.latestMessage) {
+				this.setBufferState(buf.id, { unreadSnapshot: null });
+			}
+		}
 		if (!batch) {
 			this.sendReadReceipt(client, update);
 		} else if (update.receipts?.[ReceiptType.READ]) {
@@ -135,8 +146,13 @@ export const readMethods = {
 		const buf = S.getBuffer(this.state, { server: serverID, name: target });
 		let unread: Unread = Unread.NONE;
 		if (buf) {
-			unread = unreadAfterReceipt(this, serverID, client, buf, readReceipt);
-			this.setBufferState(buf.id, { unread });
+			unread = loadedUnreadAfterReceipt(this, serverID, client, buf, readReceipt);
+			const snapshot = buf.unreadSnapshot;
+			const unreadSnapshot = snapshot && readReceipt.time < snapshot.latestMessage ? snapshot : null;
+			if (unreadSnapshot) {
+				unread = S.unionUnread(unread, unreadSnapshot.level);
+			}
+			this.setBufferState(buf.id, { unread, unreadSnapshot });
 		}
 
 		this.bufferStore.put({

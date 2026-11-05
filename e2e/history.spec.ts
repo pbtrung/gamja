@@ -21,7 +21,7 @@ test("loads the latest missed messages on reconnect, the rest on demand", async 
 			c.ws.terminate();
 		}
 	}
-	const reconnect = page.getByRole("button", { name: "Reconnect" });
+	const reconnect = page.getByRole("button", { name: "Reconnect", exact: true });
 	await expect(reconnect).toBeVisible();
 	for (let i = 0; i < 150; i++) {
 		ircd.recordMissedMessage("bob", "tester", `missed ${i}`);

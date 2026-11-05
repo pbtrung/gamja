@@ -20,4 +20,8 @@
 	.toast {
 		animation: none;
 	}
+
+	.reconnect-spinner {
+		animation: none;
+	}
 }

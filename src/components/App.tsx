@@ -16,6 +16,7 @@ import TypingIndicator from "./TypingIndicator";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import BufferSidebar from "./app/BufferSidebar";
 import MemberSidebar from "./app/MemberSidebar";
+import ReconnectBanners from "./app/ReconnectBanners";
 import { getComposerLimits, getUnreadElsewhere } from "./app/chatState";
 import useSidePanels from "./app/useSidePanels";
 import ConnectForm from "./forms/ConnectForm";
@@ -163,6 +164,7 @@ function Chat({ state }: { state: AppState }) {
 				onCancelReply={handleCancelReply}
 				onTextChange={handleTextChange}
 				readOnly={composerReadOnly}
+				hidden={composerReadOnly}
 				onSubmit={handleComposerSubmit}
 				autocomplete={autocomplete}
 				commandOnly={commandOnly}
@@ -220,6 +222,7 @@ function Root() {
 	return (
 		<>
 			<Chat state={state} />
+			<ReconnectBanners state={state} />
 			{/* A new dialog, not an update of the previous one: it takes the focus */}
 			<Dialogs key={state.dialog?.kind} state={state} />
 			{state.error && <ErrorToast error={state.error} onDismiss={() => app.dismissError()} />}

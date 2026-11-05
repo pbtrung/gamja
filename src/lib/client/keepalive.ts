@@ -19,6 +19,11 @@ const REGISTRATION_TIMEOUT_MSEC = 60 * 1000;
  */
 export function scheduleLagCheck(client: ClientConnection, delay: number): void {
 	clearTimeout(client.lagTimeoutID);
+	// Virtual networks share the parent's transport and keepalive.
+	if (client.params.multiplexer) {
+		client.setLag(client.params.multiplexer.parent.lag);
+		return;
+	}
 	client.lagTimeoutID = setTimeout(() => {
 		const ws = client.ws;
 		if (client.status !== ClientStatus.REGISTERED || !ws) {

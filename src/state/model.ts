@@ -107,6 +107,8 @@ export interface Server {
 	lag?: number | null;
 	/** When the next reconnection attempt happens, in ms since the epoch */
 	reconnectAt?: number | null;
+	/** Restoring a previously registered connection after a drop. */
+	reconnecting?: boolean;
 }
 
 /** soju's metadata keys: https://soju.im/ext/metadata */
@@ -183,6 +185,8 @@ export interface Buffer {
 	/** Missed messages not fetched yet, if any */
 	gap: HistoryGap | null;
 	unread: Unread;
+	/** Unloaded unread messages reported by soju.im/unread. */
+	unreadSnapshot?: { latestMessage: string; level: Unread } | null;
 	prevReadReceipt: Receipt | null;
 }
 

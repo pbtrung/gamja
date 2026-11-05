@@ -35,7 +35,7 @@ test("fetches messages missed while disconnected from a server whose clock is ah
 			c.ws.terminate();
 		}
 	}
-	const reconnect = page.getByRole("button", { name: "Reconnect" });
+	const reconnect = page.getByRole("button", { name: "Reconnect", exact: true });
 	await expect(reconnect).toBeVisible();
 	ircd.recordMissedMessage("bob", "tester", "said while you were away");
 

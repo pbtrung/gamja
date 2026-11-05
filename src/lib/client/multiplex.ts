@@ -130,6 +130,13 @@ export class Multiplexer {
 		parent.addEventListener("message", (event) => {
 			this.handleParentMessage((event as CustomEvent<MessageEventDetail>).detail.message);
 		});
+		parent.addEventListener("lag", () => {
+			for (const client of this.clients.values()) {
+				if (client.params.multiplexer === this && client.status === ClientStatus.REGISTERED) {
+					client.setLag(parent.lag);
+				}
+			}
+		});
 	}
 
 	isReady(): boolean {
@@ -243,6 +250,19 @@ export class Multiplexer {
 
 	handleParentMessage(msg: Message): void {
 		if (msg.command !== "FAIL" || msg.params[0] !== "BOUNCER" || msg.params[2] !== "ATTACH") {
+			return;
+		}
+		if (msg.params[1] === "INVALID_CONNECTION" || msg.params[1] === "UNKNOWN_COMMAND") {
+			// These errors have no network ID and apply to the transport, not
+			// one network. Restore ordinary BIND connections instead of retrying
+			// an ATTACH the server cannot accept.
+			this.parent.caps.enabled.delete(MULTIPLEX_CAP);
+			for (const [id, client] of this.clients) {
+				if (this.sockets.has(id)) {
+					client.dispatchError(new IRCError(msg));
+				}
+			}
+			this.handleRegistered();
 			return;
 		}
 		const netID = msg.params[3];

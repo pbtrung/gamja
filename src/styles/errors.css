@@ -1,3 +1,41 @@
+/* Reconnection notices, visible over every buffer on desktop and mobile. */
+.reconnect-banners {
+	position: fixed;
+	top: calc(env(safe-area-inset-top, 0px) + var(--header-height) + 0.5rem);
+	left: 50%;
+	z-index: 999;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	width: min(92vw, 36rem);
+	max-height: 50dvh;
+	overflow-y: auto;
+	transform: translateX(-50%);
+}
+
+.reconnect-banner {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	border: 1px solid var(--warning);
+	border-radius: var(--radius);
+	background-color: var(--bg-elevated);
+	color: var(--warning-fg);
+	box-shadow: var(--shadow-lg);
+	font-size: 0.9rem;
+}
+
+.reconnect-banner > span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.reconnect-spinner {
+	flex-shrink: 0;
+	animation: spin 1s linear infinite;
+}
+
 /* Error toast */
 
 .toast {

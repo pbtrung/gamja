@@ -30,6 +30,8 @@ interface ComposerProps {
 	/** Identifies the buffer: each one keeps its own unsent text */
 	draftKey?: unknown;
 	readOnly: boolean;
+	/** Hide without unmounting, so unsent drafts survive a connection loss. */
+	hidden?: boolean;
 	commandOnly: boolean;
 	/** Active channel or conversation shown when the input is empty */
 	target?: string;
@@ -56,6 +58,7 @@ export default function Composer({
 	ref,
 	draftKey,
 	readOnly,
+	hidden = false,
 	commandOnly,
 	target,
 	nick,
@@ -218,7 +221,7 @@ export default function Composer({
 	const label = commandOnly ? "Type a command (see /help)" : "Type a message";
 
 	return (
-		<form id="composer" className={classes.join(" ")} onSubmit={handleSubmit}>
+		<form id="composer" className={classes.join(" ")} onSubmit={handleSubmit} hidden={hidden}>
 			{status}
 			{replyTo && (
 				<div className="composer-reply">

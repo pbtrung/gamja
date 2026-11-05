@@ -82,7 +82,7 @@ export const windowMethods = {
 		this.lastFocusPingDate = now;
 
 		for (const client of this.clients.values()) {
-			if (client.status === ClientStatus.REGISTERED) {
+			if (client.status === ClientStatus.REGISTERED && !client.params.multiplexer) {
 				client.send({ command: "PING", params: ["gamja"] });
 			}
 		}

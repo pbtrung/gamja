@@ -46,9 +46,15 @@ function leaveServerChannels(state: AppState, serverID: number): Partial<AppStat
 /** Reflect the events of a client in the state of its server. */
 function listenClient(app: AppController, serverID: number, client: Client): void {
 	let errorID: number | null = null;
+	let wasRegistered = false;
+	const isReconnecting = () =>
+		wasRegistered && client.autoReconnect && client.status !== ClientStatus.REGISTERED;
 
 	client.addEventListener("status", () => {
-		app.setServerState(serverID, { status: client.status });
+		if (client.status === ClientStatus.REGISTERED) {
+			wasRegistered = true;
+		}
+		app.setServerState(serverID, { status: client.status, reconnecting: isReconnecting() });
 		switch (client.status) {
 			case ClientStatus.DISCONNECTED:
 				// Features come back with the caps once registered again
@@ -69,7 +75,10 @@ function listenClient(app: AppController, serverID: number, client: Client): voi
 	});
 
 	client.addEventListener("reconnect", () => {
-		app.setServerState(serverID, { reconnectAt: client.reconnectAt });
+		app.setServerState(serverID, {
+			reconnectAt: client.reconnectAt,
+			reconnecting: isReconnecting(),
+		});
 	});
 
 	client.addEventListener("lag", () => {
@@ -151,6 +160,8 @@ export const connectionMethods = {
 
 		// Keep the client around, so that the server can be reconnected
 		this.clients.get(serverID)?.disconnect();
+		// An offline connection may have no socket or retry timer to emit an update.
+		this.setServerState(serverID, { reconnecting: false });
 	},
 
 	reconnect(this: AppController, serverID?: number | null): void {
