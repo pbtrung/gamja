@@ -18,12 +18,14 @@ for (const width of [1280, 393]) {
 		await page.clock.install();
 		for (const conn of ircd.conns) {
 			if (conn.nick === "tester") {
-				conn.ws.close(1000);
+				conn.ws.terminate();
 			}
 		}
 		const banner = page.locator(".reconnect-banner");
 		await expect(banner).toBeVisible();
-		await expect(banner).toHaveText("Connection to FakeNet lost. Reconnecting…");
+		await expect(banner).toContainText("Connection to FakeNet lost. Reconnecting…");
+		await expect(banner).toContainText("Connection error (abnormal closure)");
+		await expect(page.getByRole("alert")).toHaveCount(0);
 		await expect(banner.getByRole("button")).toHaveCount(0);
 		await expect(input).toBeHidden();
 		await expect(page.locator("#buffer-header h1")).toHaveText("#reconnect");
@@ -34,11 +36,22 @@ for (const width of [1280, 393]) {
 		const box = (await banner.boundingBox())!;
 		expect(box.x).toBeGreaterThanOrEqual(0);
 		expect(box.x + box.width).toBeLessThanOrEqual(width);
+		expect(box.y).toBeLessThan(100);
 		const audit = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
 		expect(audit.violations.map((v) => `${v.id}: ${v.description}`)).toEqual([]);
 		await page.clock.fastForward(10_000);
 		await expect(banner).toHaveCount(0);
 		await expect(input).toBeVisible();
 		await expect(input).toHaveValue("keep this draft");
+		// General errors use the same top stack after the connection recovers.
+		await input.fill("/frobnicate");
+		await input.press("Enter");
+		const error = page.locator(".app-banners").getByRole("alert");
+		await expect(error).toContainText('Unknown command "frobnicate"');
+		const errorBox = (await error.boundingBox())!;
+		expect(errorBox.y).toBeLessThan(100);
+		expect(errorBox.x + errorBox.width).toBeLessThanOrEqual(width);
+		await error.getByRole("button", { name: "Dismiss" }).click();
+		await expect(page.locator(".app-banners")).toHaveCount(0);
 	});
 }

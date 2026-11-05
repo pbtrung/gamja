@@ -187,8 +187,32 @@ describe("App", () => {
 		await login(app);
 		act(() => app.showError(new Error("outer", { cause: new Error("inner") })));
 		expect(screen.getByRole("alert")).toHaveTextContent("outer: inner");
+		expect(screen.getByRole("alert").closest(".app-banners")).not.toBeNull();
 		await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 		expect(screen.queryByRole("alert")).toBeNull();
+	});
+
+	it("keeps unrelated errors visible during reconnection without duplicating connection errors", async () => {
+		const app = await renderApp();
+		const ws = await login(app);
+		act(() => ws.serverClose(1006));
+		expect(screen.getByRole("status")).toHaveTextContent("Connection error (abnormal closure)");
+		expect(screen.queryByRole("alert")).toBeNull();
+		act(() => app.showError("A different error"));
+		expect(screen.getByRole("alert")).toHaveTextContent("A different error");
+		expect(screen.getByRole("status")).toHaveTextContent("Reconnecting…");
+		expect(screen.getByRole("alert").parentElement).toBe(screen.getByRole("status").parentElement);
+		await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(screen.getByRole("status")).toHaveTextContent("Reconnecting…");
+		act(() => app.destroy());
+	});
+
+	it("uses the same error stack before connecting", async () => {
+		const app = await renderApp();
+		act(() => app.showError("Could not connect"));
+		expect(screen.getByRole("alert").closest(".app-banners")).not.toBeNull();
+		expect(screen.getAllByRole("alert")).toHaveLength(1);
 	});
 
 	it("goes back to the connect form after disconnecting", async () => {

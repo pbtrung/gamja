@@ -1,9 +1,9 @@
-/* Reconnection notices, visible over every buffer on desktop and mobile. */
-.reconnect-banners {
+/* All app notices share one top stack on desktop and mobile. */
+.app-banners {
 	position: fixed;
 	top: calc(env(safe-area-inset-top, 0px) + var(--header-height) + 0.5rem);
 	left: 50%;
-	z-index: 999;
+	z-index: 1080;
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
@@ -13,22 +13,34 @@
 	transform: translateX(-50%);
 }
 
-.reconnect-banner {
+.status-banner {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 	padding: 0.75rem;
-	border: 1px solid var(--warning);
+	border: 1px solid var(--border);
 	border-radius: var(--radius);
 	background-color: var(--bg-elevated);
-	color: var(--warning-fg);
 	box-shadow: var(--shadow-lg);
 	font-size: 0.9rem;
 }
 
-.reconnect-banner > span {
+.banner-text,
+.status-banner .alert-text {
+	flex: 1;
 	min-width: 0;
 	overflow-wrap: anywhere;
+}
+
+.banner-detail {
+	display: block;
+	margin-top: 0.25rem;
+	font-size: 0.8125rem;
+}
+
+.reconnect-banner {
+	border-color: var(--warning);
+	color: var(--warning-fg);
 }
 
 .reconnect-spinner {
@@ -36,31 +48,21 @@
 	animation: spin 1s linear infinite;
 }
 
-/* Error toast */
-
-.toast {
-	position: fixed;
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: 5rem;
-	z-index: 1080;
-	max-width: min(28rem, calc(100vw - 2rem));
+.error-banner {
 	margin: 0;
 	border-color: var(--danger);
-	background-color: var(--bg-sidebar);
-	box-shadow: var(--shadow-lg);
-	animation: pop-in 0.14s ease-out;
+	color: var(--danger-fg);
 }
 
-.toast .alert-text {
-	flex: 1;
-	align-self: center;
+.status-banner > svg {
+	flex-shrink: 0;
+	margin-top: 0;
 }
 
-.toast .icon-btn {
+.error-banner .icon-btn {
+	flex-shrink: 0;
 	width: 1.75rem;
 	height: 1.75rem;
-	margin: -0.25rem -0.5rem -0.25rem 0;
 }
 
 /* Error boundary */

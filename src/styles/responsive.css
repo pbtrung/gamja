@@ -76,10 +76,6 @@
 	textarea.composer-input {
 		font-size: max(15px, var(--chat-font-size));
 	}
-
-	.toast {
-		width: min(92vw, 24rem);
-	}
 }
 
 @keyframes drawer-in {

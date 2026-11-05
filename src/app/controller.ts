@@ -128,7 +128,7 @@ export default class AppController {
 		await this.handleConfig(config ?? (await fetchConfig()));
 	}
 
-	showError(err: unknown): number {
+	showError(err: unknown, serverID?: number): number {
 		console.error("App error: ", err);
 
 		let text;
@@ -143,7 +143,7 @@ export default class AppController {
 		} else {
 			text = String(err);
 		}
-		this.update({ error: text });
+		this.update({ error: text, errorServer: serverID ?? null });
 		lastErrorID++;
 		return lastErrorID;
 	}
@@ -152,7 +152,7 @@ export default class AppController {
 		if (id && id !== lastErrorID) {
 			return;
 		}
-		this.update({ error: null });
+		this.update({ error: null, errorServer: null });
 	}
 
 	setServerState(id: number, updater: Updater<Server>): void {

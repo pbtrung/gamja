@@ -16,8 +16,7 @@
 	.typing-dots span,
 	#buffer .logline.flash,
 	.dialog-backdrop,
-	.dialog,
-	.toast {
+	.dialog {
 		animation: none;
 	}
 

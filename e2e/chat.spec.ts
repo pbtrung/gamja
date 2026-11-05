@@ -91,11 +91,12 @@ test("shows errors for unknown commands", async ({ page, connect }) => {
 	await page.keyboard.type("/frobnicate");
 	await page.keyboard.press("Enter");
 	await expect(page.getByRole("alert")).toContainText('Unknown command "frobnicate"');
+	await expect(page.locator(".app-banners").getByRole("alert")).toBeVisible();
 	await page.getByRole("button", { name: "Dismiss" }).click();
 	await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("doesn't animate error toasts with reduced motion", async ({ page, connect }) => {
+test("doesn't animate error banners with reduced motion", async ({ page, connect }) => {
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	await connect(page);
 	await page.keyboard.type("/frobnicate");

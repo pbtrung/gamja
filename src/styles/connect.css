@@ -12,10 +12,6 @@
 	background: var(--bg);
 }
 
-.loading-error {
-	max-width: 28rem;
-}
-
 .connect-shell {
 	width: 100%;
 	max-width: 34rem;

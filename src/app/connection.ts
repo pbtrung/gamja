@@ -87,7 +87,7 @@ function listenClient(app: AppController, serverID: number, client: Client): voi
 
 	client.addEventListener("error", (event) => {
 		const err = (event as CustomEvent).detail;
-		errorID = app.showError(err);
+		errorID = app.showError(err, serverID);
 		const { saslPlain, saslExternal, saslOauthBearer } = client.params;
 		if (
 			saslOauthBearer &&

@@ -1,33 +1,22 @@
 import { useCallback, useEffect, useRef, type MouseEvent } from "react";
-import { X } from "lucide-react";
 import { BufferType, ServerStatus } from "../state";
 import { setup as setupKeybindings } from "../keybindings";
 import { ControllerContext, useAppState, useController } from "../app/context";
 import type AppController from "../app/controller";
 import type { AppState } from "../app/store";
-import Alert from "./Alert";
 import BufferHeader from "./BufferHeader";
 import ChatMessages from "./ChatMessages";
 import Composer, { type ComposerHandle } from "./Composer";
 import Dialogs from "./Dialogs";
 import ErrorBoundary from "./ErrorBoundary";
-import IconButton from "./IconButton";
 import TypingIndicator from "./TypingIndicator";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import BufferSidebar from "./app/BufferSidebar";
 import MemberSidebar from "./app/MemberSidebar";
-import ReconnectBanners from "./app/ReconnectBanners";
+import Banners from "./app/Banners";
 import { getComposerLimits, getUnreadElsewhere } from "./app/chatState";
 import useSidePanels from "./app/useSidePanels";
 import ConnectForm from "./forms/ConnectForm";
-
-function ErrorToast({ error, onDismiss }: { error: string; onDismiss: () => void }) {
-	return (
-		<Alert className="toast" action={<IconButton icon={X} label="Dismiss" onClick={onDismiss} />}>
-			{error}
-		</Alert>
-	);
-}
 
 function Chat({ state }: { state: AppState }) {
 	const app = useController();
@@ -190,13 +179,14 @@ function Root() {
 
 	if (state.loading) {
 		return (
-			<main id="connect">
-				{state.error ? (
-					<Alert className="loading-error">{state.error}</Alert>
-				) : (
-					<div className="spinner spinner-lg" role="status" aria-label="Loading" />
-				)}
-			</main>
+			<>
+				<main id="connect">
+					{!state.error && (
+						<div className="spinner spinner-lg" role="status" aria-label="Loading" />
+					)}
+				</main>
+				<Banners state={state} />
+			</>
 		);
 	}
 
@@ -207,25 +197,27 @@ function Root() {
 			: ServerStatus.DISCONNECTED;
 		const connecting = status === ServerStatus.CONNECTING || status === ServerStatus.REGISTERING;
 		return (
-			<main id="connect">
-				<ConnectForm
-					error={state.error}
-					params={state.connectParams}
-					auth={app.config.server.auth}
-					connecting={connecting}
-					onSubmit={(params) => app.handleConnectSubmit(params)}
-				/>
-			</main>
+			<>
+				<main id="connect">
+					<ConnectForm
+						error={null}
+						params={state.connectParams}
+						auth={app.config.server.auth}
+						connecting={connecting}
+						onSubmit={(params) => app.handleConnectSubmit(params)}
+					/>
+				</main>
+				<Banners state={state} />
+			</>
 		);
 	}
 
 	return (
 		<>
 			<Chat state={state} />
-			<ReconnectBanners state={state} />
+			<Banners state={state} />
 			{/* A new dialog, not an update of the previous one: it takes the focus */}
 			<Dialogs key={state.dialog?.kind} state={state} />
-			{state.error && <ErrorToast error={state.error} onDismiss={() => app.dismissError()} />}
 		</>
 	);
 }

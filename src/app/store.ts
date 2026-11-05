@@ -76,6 +76,8 @@ export interface AppState extends State {
 	loading: boolean;
 	dialog: Dialog | null;
 	error: string | null;
+	/** Connection which produced the current error, null for general errors. */
+	errorServer: number | null;
 	/** Away message set by the user, applied to all connections */
 	awayMessage: string | null;
 	/** Networks collapsed in the buffer list, see getServerKey() */
@@ -102,6 +104,7 @@ export function createAppStore(): AppStore {
 		loading: true,
 		dialog: null,
 		error: null,
+		errorServer: null,
 		awayMessage: null,
 		collapsedNetworks: new Set(),
 		bufferListHidden: false,
