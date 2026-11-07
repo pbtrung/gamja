@@ -47,11 +47,21 @@ function storeOlderReceipts(app: AppController, client: Client, buf: Buffer, msg
 		receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
 	}
 	app.storeReceipts(client, { name: buf.name, server: storeServer(client), receipts });
-	app.setBufferState(buf.id, ({ prevReadReceipt }) => {
-		if (!S.isMessageBeforeReceipt(msg, prevReadReceipt)) {
-			prevReadReceipt = S.receiptFromMessage(msg);
+	// Older history must not move the separator captured when the buffer
+	// was opened. The first history request can finish after missed messages
+	// have arrived, which would otherwise make their banner disappear.
+	// With no read marker or server unread state, treat the initial history
+	// as already seen rather than labelling the whole page as new.
+	app.setBufferState(buf.id, (b) => {
+		const unread = S.unreadSince(b.messages, null);
+		if (
+			!b.prevReadReceipt &&
+			!buf.unreadSnapshot &&
+			!b.unreadSnapshot &&
+			(!unread || new Date(msg.tags.time!).getTime() < unread.first.getTime())
+		) {
+			return { prevReadReceipt: S.receiptFromMessage(msg) };
 		}
-		return { prevReadReceipt };
 	});
 }
 
