@@ -8,7 +8,7 @@ export interface UnreadMarkerState {
 }
 
 /**
- * Watch whether the unread marker is above the view, it can come and go.
+ * Keep the jump button available for the lifetime of the unread marker.
  * unreadKey identifies the marker: the jump button is dismissed per key.
  */
 export default function useUnreadMarker(
@@ -16,47 +16,29 @@ export default function useUnreadMarker(
 	unreadMarker: string | undefined,
 	unreadKey: string,
 ): UnreadMarkerState {
-	const [unreadAbove, setUnreadAbove] = useState(false);
-	// The jump button was closed, or the user scrolled down to the end: by
-	// scroll key and marker, so that another marker shows it again
+	const [hasMarker, setHasMarker] = useState(false);
+	// The jump button was closed: by scroll key and marker, so that
+	// another marker shows it again
 	const [unreadDismissed, setUnreadDismissed] = useState<string | null>(null);
 
 	useEffect(() => {
 		const el = ref.current;
-		if (!el || !unreadMarker || typeof IntersectionObserver === "undefined") {
+		if (!el || !unreadMarker) {
 			return;
 		}
-		let marker: Element | null = null;
-		const observer = new IntersectionObserver(([entry]) => {
-			const rootTop = entry.rootBounds?.top ?? el.getBoundingClientRect().top;
-			setUnreadAbove(!entry.isIntersecting && entry.boundingClientRect.bottom <= rootTop);
-		});
 		const update = () => {
-			const next = el.querySelector(unreadMarker);
-			if (next === marker) {
-				return;
-			}
-			if (marker) {
-				observer.unobserve(marker);
-			}
-			marker = next;
-			if (marker) {
-				observer.observe(marker);
-			} else {
-				setUnreadAbove(false);
-			}
+			setHasMarker(el.querySelector(unreadMarker) !== null);
 		};
 		update();
 		const mutationObserver = new MutationObserver(update);
 		mutationObserver.observe(el, { childList: true, subtree: true });
 		return () => {
-			observer.disconnect();
 			mutationObserver.disconnect();
 		};
 	}, [ref, unreadMarker]);
 
 	return {
-		shown: unreadAbove && unreadDismissed !== unreadKey,
+		shown: hasMarker && unreadDismissed !== unreadKey,
 		dismiss: () => setUnreadDismissed(unreadKey),
 	};
 }

@@ -1,4 +1,4 @@
-/* Offer to jump to the unread marker when it's scrolled out of view */
+/* Offer to jump to the unread marker until it expires or is dismissed */
 .jump-unread {
 	position: sticky;
 	top: 0.5rem;

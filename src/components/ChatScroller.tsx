@@ -22,7 +22,7 @@ interface ChatScrollerProps {
 	/** data-msgid of a message to scroll to */
 	jumpTo?: string | null;
 	onJumped?: () => void;
-	/** Selector for the unread marker: offers to jump to it when scrolled past */
+	/** Selector for the unread marker: offers to jump to it until it expires */
 	unreadMarker?: string;
 	/** Text of the button jumping to the unread marker */
 	unreadLabel?: string;
@@ -73,13 +73,8 @@ export default function ChatScroller({
 	}, [awayFromBottom]);
 
 	function save(el: HTMLElement) {
-		const wasAtBottom = stickToBottom.current;
 		stickToBottom.current = savePosition(el, scrollKey, stickTo);
 		setAwayFromBottom(!stickToBottom.current);
-		if (stickToBottom.current && !wasAtBottom) {
-			// Read down to the end
-			unread.dismiss();
-		}
 		updateNewCount(el);
 	}
 

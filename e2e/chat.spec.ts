@@ -138,6 +138,25 @@ test("switches the comfortable layout to the compact style on small screens", as
 	await expect(line).toHaveClass(/comfortable/);
 });
 
+test("keeps the unread banner for eight seconds at the bottom", async ({ page, connect, bot }) => {
+	const bob = await bot("bob");
+	await bob.join("#unread");
+	await connect(page, "tester", { channels: ["#unread", "#quiet"] });
+	await page.getByRole("tab", { name: "#quiet" }).click();
+	bob.privmsg("#unread", "while away");
+	await expect(page.getByRole("tab", { name: "#unread" })).toHaveAttribute("aria-description", /Unread/);
+	await page.clock.install();
+	await page.getByRole("tab", { name: "#unread" }).click();
+	const banner = page.getByRole("button", { name: /^1 new message since / });
+	await expect(banner).toBeVisible();
+	await page.clock.runFor(4000);
+	await expect(banner).toBeVisible();
+	await expect(page.locator(".unread-separator")).toBeVisible();
+	await page.clock.runFor(4000);
+	await expect(banner).toBeHidden();
+	await expect(page.locator(".unread-separator")).toHaveCount(0);
+});
+
 test("jumps to the unread marker when scrolled past it", async ({ page, connect, bot }) => {
 	const bob = await bot("bob");
 	await bob.join("#busy");

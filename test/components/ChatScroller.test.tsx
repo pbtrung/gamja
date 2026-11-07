@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChatScroller from "../../src/components/ChatScroller";
@@ -36,6 +36,57 @@ function setup() {
 const latestButton = () => screen.queryByRole("button", { name: "Scroll to latest messages" });
 
 describe("ChatScroller", () => {
+	it("keeps the unread banner until the separator expires, including at the bottom", async () => {
+		const props = {
+			scrollKey: `unread-${++key}`,
+			stickTo: ".msg",
+			onScrollTop: vi.fn(),
+			unreadMarker: ".unread-separator",
+			unreadLabel: "2 new messages since 12:00",
+		};
+		const { rerender } = render(
+			<ChatScroller {...props}>
+				<div className="unread-separator">New messages</div>
+				<div className="msg" data-key="1">
+					hello
+				</div>
+			</ChatScroller>,
+		);
+		const banner = () => screen.queryByRole("button", { name: props.unreadLabel });
+		expect(banner()).toBeInTheDocument();
+		const log = screen.getByRole("log");
+		log.scrollTop = 200;
+		fireEvent.scroll(log);
+		log.scrollTop = SCROLL_HEIGHT;
+		fireEvent.scroll(log);
+		expect(banner()).toBeInTheDocument();
+
+		rerender(
+			<ChatScroller {...props}>
+				<div className="msg" data-key="1">
+					hello
+				</div>
+			</ChatScroller>,
+		);
+		await act(async () => {});
+		expect(banner()).toBeNull();
+	});
+
+	it("lets the user dismiss the unread banner", async () => {
+		render(
+			<ChatScroller
+				scrollKey={`dismiss-${++key}`}
+				stickTo=".msg"
+				onScrollTop={vi.fn()}
+				unreadMarker=".unread-separator"
+			>
+				<div className="unread-separator">New messages</div>
+			</ChatScroller>,
+		);
+		await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+		expect(screen.queryByRole("group", { name: "New messages" })).toBeNull();
+	});
+
 	it("offers to scroll to the latest messages only when scrolled up", async () => {
 		const log = setup();
 		expect(log.scrollTop).toBe(SCROLL_HEIGHT - CLIENT_HEIGHT);
