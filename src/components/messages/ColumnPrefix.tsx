@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, type ReactNode } from "react";
 export default function ColumnPrefix({
 	kind,
 	children,
-	truncated = false,
+	truncated,
 }: {
 	kind: string;
 	children: ReactNode;
@@ -17,7 +17,9 @@ export default function ColumnPrefix({
 		const text = prefix.querySelector<HTMLElement>(".logline-prefix-text")!;
 		const content = text.firstElementChild!;
 		const update = () => {
-			prefix.toggleAttribute("data-truncated", truncated || text.scrollWidth > text.clientWidth);
+			// An explicit character-limit result takes precedence over pixel
+			// overflow from wide glyphs, membership prefixes or brackets.
+			prefix.toggleAttribute("data-truncated", truncated ?? text.scrollWidth > text.clientWidth);
 		};
 		update();
 		if (typeof ResizeObserver === "undefined") {

@@ -278,9 +278,9 @@ const LogLine = memo(
 					<ColumnPrefix
 						kind={prefixKind}
 						truncated={
-							prefixKind === "nick" &&
-							prefix !== null &&
-							Array.from(from).length > ctx.settings.nickColumnWidth
+							prefixKind === "nick"
+								? prefix !== null && Array.from(from).length > ctx.settings.nickColumnWidth
+								: undefined
 						}
 					>
 						{prefix}

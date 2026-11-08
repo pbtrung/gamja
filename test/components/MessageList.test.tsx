@@ -684,6 +684,24 @@ describe("layout options", () => {
 		return m;
 	};
 
+	it.each([7, 8, 9])("marks a %i-character nickname only when it exceeds the limit", (length) => {
+		// Wide letters or decorations can overflow the column even when the
+		// nickname hasn't lost any characters.
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(140);
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(100);
+		const nick = "W".repeat(length);
+		const { container } = renderList([msg(`:${nick}!u@h PRIVMSG #c :hello`)], {
+			settings: { layout: "columns", nickColumnWidth: 8, nickBrackets: true },
+		});
+		const prefix = container.querySelector(".logline-prefix")!;
+		expect(prefix.querySelector("a.nick")).toHaveTextContent(nick.slice(0, 8));
+		if (length > 8) {
+			expect(prefix).toHaveAttribute("data-truncated");
+		} else {
+			expect(prefix).not.toHaveAttribute("data-truncated");
+		}
+	});
+
 	it("customizes the sender column like WeeChat", () => {
 		const { container } = renderList(
 			[
