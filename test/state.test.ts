@@ -216,6 +216,8 @@ describe("buffers", () => {
 		expect(S.insertMessage(list, m("2020-01-01", "a"))).toBe(list);
 		// The newest message again, e.g. from overlapping history
 		expect(S.insertMessage(list, m("2020-01-04", "d"))).toBe(list);
+		// Message IDs identify a delivery even if a replay changes its time.
+		expect(S.insertMessage(list, m("2020-01-05", "b"))).toBe(list);
 		// Same time, different message
 		expect(S.insertMessage(list, m("2020-01-04", "e")).map((x) => x.tags.msgid)).toEqual([
 			"a",
@@ -264,8 +266,38 @@ describe("buffers", () => {
 			"d2",
 			"f",
 		]);
-		// Messages without msgid are never duplicates
+		// Repeated messages within a page stay distinct without message IDs.
 		expect(S.mergeMessages(list, [m("2020-01-03"), m("2020-01-03")])).toHaveLength(4);
+	});
+
+	it("matches history without message IDs against existing deliveries one for one", () => {
+		const m = (tags = "", text = "reaches next level") =>
+			irc.parseMessage(`@time=2026-11-07T23:02:29.000Z${tags} :RizonIRPG!bot@host PRIVMSG #c :${text}`);
+		const live = m();
+		const list = [live];
+		expect(S.mergeMessages(list, [m(";batch=history;label=1")])).toBe(list);
+		expect(S.mergeMessages(list, [m(";msgid=replayed;batch=history")])).toBe(list);
+		expect(S.mergeMessages([m(";msgid=live")], [m(";batch=history")])).toHaveLength(1);
+		// Repeated messages in one delivery are legitimate, including at the same time.
+		expect(S.mergeMessages([], [m(), m()])).toHaveLength(2);
+		expect(S.mergeMessages(list, [m(), m()])).toHaveLength(2);
+		expect(S.mergeMessages([m(), m()], [m(), m()])).toHaveLength(2);
+		expect(S.mergeMessages([m(";msgid=a")], [m(";msgid=a"), m()])).toHaveLength(2);
+		expect(S.mergeMessages([m(";msgid=a")], [m(), m(";msgid=a")])).toHaveLength(2);
+		expect(S.mergeMessages([m(), m(";msgid=a")], [m(";msgid=a"), m()])).toHaveLength(2);
+		expect(S.mergeMessages([m(), m(";msgid=a")], [m(), m(";msgid=a")])).toHaveLength(2);
+		expect(S.insertMessage(list, m())).toHaveLength(2);
+		// Different IDs, text, senders, commands, times or client tags stay distinct.
+		expect(S.mergeMessages([m(";msgid=a")], [m(";msgid=b")])).toHaveLength(2);
+		for (const different of [
+			m("", "another message"),
+			{ ...m(), prefix: { name: "other", user: "bot", host: "host" } },
+			{ ...m(), command: "NOTICE" },
+			{ ...m(), tags: { time: "2026-11-07T23:02:30.000Z" } },
+			m(";+draft/reply=parent"),
+		]) {
+			expect(S.mergeMessages(list, [different])).toHaveLength(2);
+		}
 	});
 
 	it("adds pages of messages in one update", () => {

@@ -6,6 +6,42 @@ import { parseMessage } from "../../src/lib/irc";
 import { getBuffer, Unread } from "../../src/state";
 import { connectedApp } from "../helpers/app";
 
+it.each(["", ";msgid=history"])(
+	"shows IdleRPG messages once when opening a channel loads overlapping history (%s)",
+	async (historyID) => {
+		const { app, serverID, recv } = await connectedApp();
+		recv("@time=2024-01-01T00:00:00.000Z :me!u@h JOIN #idlerpg");
+		const id = getBuffer(app.state, { name: "#idlerpg" })!.id;
+		app.setBufferState(id, { hasInitialWho: true });
+		app.switchBuffer(id);
+		const client = app.clients.get(serverID)!;
+		const history = Promise.withResolvers<Awaited<ReturnType<typeof client.fetchHistoryBefore>>>();
+		vi.spyOn(client, "fetchHistoryBefore").mockReturnValue(history.promise);
+		const text = "DiamantThomy reaches next level in 9 days, 10:23:54.";
+		const message = (tags: string) =>
+			parseMessage(
+				`@time=2026-11-07T23:02:29.000Z${tags} :RizonIRPG!bot@host PRIVMSG #idlerpg :${text}`,
+			);
+		const { unmount } = render(
+			<ControllerContext.Provider value={app}>
+				<ChatMessages onChannelClick={vi.fn()} />
+			</ControllerContext.Provider>,
+		);
+		try {
+			await act(async () => app.applyHistory(serverID, [message("")], { live: true }));
+			await act(async () =>
+				history.resolve({ messages: [message(`${historyID};batch=older`)], more: false }),
+			);
+			expect(app.state.buffers.get(id)!.history).toBe("end");
+			expect(app.state.buffers.get(id)!.messages).toHaveLength(1);
+			expect(screen.getAllByText(text)).toHaveLength(1);
+		} finally {
+			unmount();
+			app.destroy();
+		}
+	},
+);
+
 it.each(["read marker", "unread snapshot", "live messages"])(
 	"keeps the first-open banner when initial history finishes after missed messages (%s)",
 	async (source) => {

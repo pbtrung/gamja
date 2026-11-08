@@ -54,18 +54,13 @@ function upperBound(list: Message[], time: string): number {
 
 /* Insert a message in an immutable list of sorted messages. */
 export function insertMessage(list: Message[], msg: Message): Message[] {
-	const time = msg.tags.time!;
-	const insertBefore = upperBound(list, time);
-
-	// Skip duplicates, e.g. when history overlaps with live messages. Only
-	// messages with the same time can be duplicates.
+	// IDs identify messages independently of replay timestamps.
 	const msgid = msg.tags.msgid;
-	for (let i = insertBefore - 1; msgid && i >= 0 && list[i].tags.time === time; i--) {
-		if (list[i].tags.msgid === msgid) {
-			return list;
-		}
+	if (msgid && list.some((m) => m.tags.msgid === msgid)) {
+		return list;
 	}
 
+	const insertBefore = upperBound(list, msg.tags.time!);
 	if (insertBefore === list.length) {
 		return list.concat(msg);
 	}
@@ -80,15 +75,55 @@ function compareMessageTime(a: Message, b: Message): number {
 	return ta < tb ? -1 : ta > tb ? 1 : 0;
 }
 
+/** Exact delivery contents, excluding tags which change during history playback. */
+function replayKey(msg: Message): string {
+	const tags = Object.entries(msg.tags)
+		.filter(([key]) => key !== "batch" && key !== "label" && key !== "msgid")
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+	return JSON.stringify([
+		msg.prefix?.name,
+		msg.prefix?.user ?? null,
+		msg.prefix?.host ?? null,
+		msg.command,
+		msg.params,
+		tags,
+	]);
+}
+
 /**
  * Merge messages, e.g. a page of history, into an immutable list of sorted
  * messages, skipping duplicates.
  */
 export function mergeMessages(list: Message[], msgs: Message[]): Message[] {
+	if (msgs.length === 0) {
+		return list;
+	}
 	const seen = new Set<string>();
+	// Only match against the existing list: identical messages in a single
+	// page may be intentional. Consume each existing delivery at most once.
+	type Delivery = { message: Message; matched: boolean };
+	const byContents = new Map<string, Delivery[]>();
+	const byID = new Map<string, Delivery>();
 	for (const msg of list) {
+		const delivery = { message: msg, matched: false };
+		const key = replayKey(msg);
+		const deliveries = byContents.get(key);
+		if (deliveries) {
+			deliveries.push(delivery);
+		} else {
+			byContents.set(key, [delivery]);
+		}
 		if (msg.tags.msgid) {
 			seen.add(msg.tags.msgid);
+			byID.set(msg.tags.msgid, delivery);
+		}
+	}
+	// Reserve exact ID matches before matching messages without IDs, so a
+	// missing-ID delivery can't consume another message's known match.
+	for (const msg of msgs) {
+		const delivery = msg.tags.msgid ? byID.get(msg.tags.msgid) : undefined;
+		if (delivery) {
+			delivery.matched = true;
 		}
 	}
 	const added: Message[] = [];
@@ -99,6 +134,13 @@ export function mergeMessages(list: Message[], msgs: Message[]): Message[] {
 				continue;
 			}
 			seen.add(msgid);
+		}
+		const replay = byContents
+			.get(replayKey(msg))
+			?.find((delivery) => !delivery.matched && (!msgid || !delivery.message.tags.msgid));
+		if (replay) {
+			replay.matched = true;
+			continue;
 		}
 		added.push(msg);
 	}
