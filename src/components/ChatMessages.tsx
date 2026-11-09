@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { BufferType, ServerStatus, unreadSince, unreadProgress } from "../state";
-import { formatTime } from "../format";
+import { formatReadBoundary } from "../format";
 import { useAppState, useController } from "../app/context";
 import type AppController from "../app/controller";
 import type { Message } from "../lib/irc";
@@ -66,7 +66,10 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 		? new Date(buffer.prevReadReceipt.time)
 		: (savedPill?.first ?? unread?.first);
 	const unreadLabel = unread
-		? `${pillCount!.toLocaleString()}${unread.complete ? "" : "+"} new since ${formatTime(since!, false, settings.clock12h)}`
+		? `${pillCount!.toLocaleString()}${unread.complete ? "" : "+"} new since ${formatReadBoundary(since!, settings.clock12h)}`
+		: undefined;
+	const unreadCompactLabel = unread
+		? `${pillCount}${unread.complete ? "" : "+"} new · ${formatReadBoundary(since!, settings.clock12h)}`
 		: undefined;
 
 	const myNick = server?.nick ?? null;
@@ -142,6 +145,7 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 			stickTo=".logline"
 			unreadMarker=".unread-separator"
 			unreadLabel={unreadLabel}
+			unreadCompactLabel={unreadCompactLabel}
 			unreadKey={String(activeID)}
 			unreadPending={
 				buffer?.history === "unknown" ||

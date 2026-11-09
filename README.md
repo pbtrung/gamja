@@ -73,11 +73,16 @@ counts stay relative to the read marker captured when the conversation was
 opened. Live read markers continue to advance while reading at the bottom,
 and hold while scrolled up; they don't reset the opening counts. The pill appears only when
 opening a buffer and hides after eight seconds, or when clicked or dismissed.
-The divider hides after eight seconds fully in view; loading another history
-page gives the updated progress a fresh eight seconds. Its timer pauses while
-it is off screen or clipped. Both timers pause while the browser page is hidden.
+The divider hides after eight continuous seconds fully in view. Scrolling it
+off screen or clipping it restarts that reading time when it comes fully back
+into view, as does returning from a hidden browser tab. Loading another history
+page gives the updated progress a fresh eight seconds. The pill's timer pauses
+while the browser page is hidden.
 On mobile, the divider uses `200 loaded · more` with `since 10:30` on a
 smaller second line; the full wording stays on one line on desktop.
+When the opening read marker is more than 24 hours old, both indicators add
+the date in DD/MM/YY format, e.g. `08/11/26 10:30`. The mobile pill stays on
+one line with a compact label such as `200+ new · 08/11/26 10:30`.
 History loading stops at 2,000 buffered messages, or one configured page if
 that is larger, and shows when that limit or the end of history is reached.
 

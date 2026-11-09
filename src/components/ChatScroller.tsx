@@ -26,6 +26,8 @@ interface ChatScrollerProps {
 	unreadMarker?: string;
 	/** Text of the button jumping to the unread marker */
 	unreadLabel?: string;
+	/** A shorter single-line label for narrow screens */
+	unreadCompactLabel?: string;
 	/** Identity of the saved read marker, independent of the button's text */
 	unreadKey?: string;
 	/** The opening history request may still supply an unread marker. */
@@ -52,6 +54,7 @@ export default function ChatScroller({
 	onJumped,
 	unreadMarker,
 	unreadLabel = "Jump to new messages",
+	unreadCompactLabel,
 	unreadKey = `${String(scrollKey)}:${unreadLabel}`,
 	unreadPending = false,
 	historyGap,
@@ -177,7 +180,12 @@ export default function ChatScroller({
 			}}
 		>
 			{unread.shown && (
-				<JumpToUnread label={unreadLabel} onJump={jumpToUnread} onDismiss={unread.dismiss} />
+				<JumpToUnread
+					label={unreadLabel}
+					compactLabel={unreadCompactLabel}
+					onJump={jumpToUnread}
+					onDismiss={unread.dismiss}
+				/>
 			)}
 			{children}
 			{awayFromBottom && <ScrollToLatest newCount={newCount} onClick={scrollToLatest} />}

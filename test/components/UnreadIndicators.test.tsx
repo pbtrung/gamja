@@ -52,7 +52,7 @@ it("gives updated history progress a fresh eight seconds in view", () => {
 	expect(disconnect).toHaveBeenCalledTimes(2);
 });
 
-it("doesn't count time while the browser page is hidden", () => {
+it("gives the divider a continuous eight seconds after returning to a hidden browser page", () => {
 	vi.useFakeTimers();
 	let notify: IntersectionObserverCallback;
 	vi.stubGlobal(
@@ -85,7 +85,7 @@ it("doesn't count time while the browser page is hidden", () => {
 		hidden = false;
 		document.dispatchEvent(new Event("visibilitychange"));
 	});
-	act(() => vi.advanceTimersByTime(4999));
+	act(() => vi.advanceTimersByTime(7999));
 	expect(screen.getByRole("separator")).toBeInTheDocument();
 	act(() => vi.advanceTimersByTime(1));
 	expect(screen.queryByRole("separator")).toBeNull();
@@ -230,5 +230,42 @@ it("doesn't restart or reopen the divider for live messages on the same history 
 	act(() => vi.advanceTimersByTime(1));
 	expect(screen.queryByRole("separator")).toBeNull();
 	rerender(<UnreadSeparator label="202 loaded · more available" refreshKey="page-1" />);
+	expect(screen.queryByRole("separator")).toBeNull();
+});
+
+it("gives the same loaded page a full eight seconds when scrolling away and back", () => {
+	vi.useFakeTimers();
+	let notify: IntersectionObserverCallback;
+	vi.stubGlobal(
+		"IntersectionObserver",
+		class {
+			constructor(callback: IntersectionObserverCallback) {
+				notify = callback;
+			}
+			observe = vi.fn();
+			disconnect = vi.fn();
+		},
+	);
+	const show = (visible: boolean) =>
+		act(() =>
+			notify(
+				[
+					{
+						isIntersecting: visible,
+						intersectionRatio: visible ? 1 : 0,
+					} as IntersectionObserverEntry,
+				],
+				{} as IntersectionObserver,
+			),
+		);
+	render(<UnreadSeparator label="400 loaded · more available" refreshKey="page-2" />);
+	show(true);
+	act(() => vi.advanceTimersByTime(7000));
+	show(false);
+	act(() => vi.advanceTimersByTime(1000));
+	show(true);
+	act(() => vi.advanceTimersByTime(7999));
+	expect(screen.getByRole("separator")).toHaveAccessibleName("400 loaded · more available");
+	act(() => vi.advanceTimersByTime(1));
 	expect(screen.queryByRole("separator")).toBeNull();
 });

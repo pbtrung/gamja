@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
-/** A timer that pauses while its content or the browser page is hidden. */
-export default function useVisibleTimer(key: string, visible: boolean, duration: number): boolean {
+/** Pause while hidden, or require a continuous visible interval when requested. */
+export default function useVisibleTimer(
+	key: string,
+	visible: boolean,
+	duration: number,
+	continuous = false,
+): boolean {
 	const remaining = useRef({ key, ms: duration });
 	const [expiredKey, setExpiredKey] = useState<string | null>(null);
 	useEffect(() => {
@@ -24,6 +29,9 @@ export default function useVisibleTimer(key: string, visible: boolean, duration:
 		const resume = () => {
 			pause();
 			if (document.visibilityState !== "hidden") {
+				if (continuous) {
+					remaining.current.ms = duration;
+				}
 				started = Date.now();
 				timer = setTimeout(() => setExpiredKey(key), remaining.current.ms);
 			}
@@ -34,6 +42,6 @@ export default function useVisibleTimer(key: string, visible: boolean, duration:
 			pause();
 			document.removeEventListener("visibilitychange", resume);
 		};
-	}, [key, visible, duration]);
+	}, [key, visible, duration, continuous]);
 	return expiredKey === key;
 }

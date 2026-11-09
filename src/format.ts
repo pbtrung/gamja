@@ -312,3 +312,15 @@ export function formatTime(date: Date, showSeconds: boolean, clock12h = false): 
 	}
 	return timestamp;
 }
+
+/** Read-boundary labels add DD/MM/YY once the marker is more than 24 hours old. */
+export function formatReadBoundary(date: Date, clock12h = false, now = new Date()): string {
+	const time = formatTime(date, false, clock12h);
+	if (now.getTime() - date.getTime() <= 24 * 60 * 60 * 1000) {
+		return time;
+	}
+	const day = String(date.getDate()).padStart(2, "0");
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const year = String(date.getFullYear() % 100).padStart(2, "0");
+	return `${day}/${month}/${year} ${time}`;
+}

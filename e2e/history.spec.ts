@@ -129,6 +129,8 @@ test("shows a loaded count, fills missed history in configured pages, and reveal
 	);
 	await expect(page.getByRole("group", { name: "New messages" })).toHaveCount(0);
 	expect(ircd.readMarkers.get("tester\0bob")).toBe(latestRead);
+	await page.clock.install();
+	await page.clock.pauseAt(new Date());
 	await buffer.evaluate((el) => {
 		el.scrollTop = 100;
 	});
@@ -137,4 +139,75 @@ test("shows a loaded count, fills missed history in configured pages, and reveal
 	});
 	await expect(missed).toHaveCount(451);
 	await expect(buffer.locator(".unread-separator")).toHaveAccessibleName(/^451 new · all loaded · since /);
+	const divider = buffer.locator(".unread-separator");
+	await expect(divider).toBeInViewport();
+	await page.clock.runFor(7000);
+	await expect(divider).toBeInViewport();
+	await buffer.evaluate((el) => {
+		el.scrollTop = el.scrollHeight;
+	});
+	await page.clock.runFor(1000);
+	await buffer.evaluate((el) => {
+		el.scrollTop = 0;
+	});
+	await expect(divider).toBeInViewport();
+	await page.clock.runFor(7000);
+	await expect(divider).toBeInViewport();
+	await page.clock.runFor(1500);
+	await expect(divider).toHaveCount(0);
+});
+
+test("adds DD/MM/YY for old read markers while keeping the mobile pill on one line at 320px", async ({
+	page,
+	connect,
+	ircd,
+	settings,
+}) => {
+	await settings({ backlogSize: 200, bufferEvents: "hide", clock12h: true });
+	const old = new Date(2024, 0, 1, 12, 30).toISOString();
+	ircd.readMarkers.set("tester\0bob", old);
+	for (let i = 0; i < 200; i++) {
+		ircd.recordMissedMessage("bob", "tester", `old backlog ${i}`);
+	}
+	await page.addInitScript(
+		({ url, time }) => {
+			localStorage.setItem(
+				"gamja_buffers",
+				JSON.stringify({
+					saved: {
+						name: "bob",
+						unread: "",
+						closed: false,
+						server: { url, bouncerNetwork: null },
+						receipts: { read: { time }, delivered: { time } },
+					},
+				}),
+			);
+		},
+		{ url: `ws://localhost:${ircd.port}`, time: old },
+	);
+	await connect(page, "tester");
+	await page.getByRole("tab", { name: "bob" }).click();
+	const pill = page.getByRole("button", { name: /^200\+ new since 01\/01\/24 / });
+	await expect(pill).toBeVisible();
+	await page.setViewportSize({ width: 320, height: 720 });
+	const compact = page.locator(".jump-label-compact");
+	await expect(compact).toBeVisible();
+	await expect(compact).toHaveText(/^200\+ new · 01\/01\/24 \d{2}:\d{2} [AP]M$/);
+	await expect(page.locator(".jump-label-wide")).toBeHidden();
+	const metrics = await compact.evaluate((el) => {
+		const style = getComputedStyle(el);
+		const pill = el.closest(".jump-pill")!.getBoundingClientRect();
+		return {
+			whiteSpace: style.whiteSpace,
+			fits: el.scrollWidth <= el.clientWidth,
+			oneLine: el.getBoundingClientRect().height <= parseFloat(style.lineHeight) + 1,
+			insideScreen: pill.left >= 0 && pill.right <= window.innerWidth,
+		};
+	});
+	expect(metrics).toEqual({ whiteSpace: "nowrap", fits: true, oneLine: true, insideScreen: true });
+	await expect(page.locator(".unread-separator")).toHaveAccessibleName(
+		/^200 loaded · more available · since 01\/01\/24 /,
+	);
+	await expect(page.locator(".unread-since")).toHaveText(/^since 01\/01\/24 /);
 });

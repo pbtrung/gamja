@@ -14,6 +14,7 @@
 /* The jump button and its dismiss button, joined in one pill */
 .jump-pill {
 	display: flex;
+	max-width: calc(100% - 1rem);
 	border-radius: 999px;
 	box-shadow: var(--shadow-lg);
 }
@@ -28,9 +29,35 @@
 }
 
 .jump-unread .jump-dismiss {
+	flex-shrink: 0;
 	padding: 0.4rem 0.6rem;
 	border-left-color: color-mix(in srgb, var(--accent-fg) 30%, var(--accent));
 	border-radius: 0 999px 999px 0;
+}
+
+.jump-label-compact {
+	display: none;
+}
+
+@media (max-width: 600px) {
+	.jump-unread .has-compact-label {
+		min-width: 0;
+		padding-inline: 0.5rem;
+		font-size: 0.75rem;
+	}
+	.jump-unread .has-compact-label svg {
+		flex-shrink: 0;
+	}
+	.has-compact-label .jump-label-wide {
+		display: none;
+	}
+	.jump-label-compact {
+		display: block;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 }
 
 .jump-unread .btn:hover {

@@ -13,7 +13,7 @@ import {
 	type Server,
 	type Settings,
 } from "../state";
-import { canFoldMessage, simplifyFoldGroup, formatTime } from "../format";
+import { canFoldMessage, simplifyFoldGroup, formatReadBoundary } from "../format";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import { Clock12hContext, type Context, type MessageListHandlers } from "./messages/context";
 import FoldGroup from "./messages/FoldGroup";
@@ -72,7 +72,7 @@ function MessageList(props: MessageListProps) {
 	const children: ReactNode[] = [];
 	const unread = unreadProgress(buf);
 	const since = buf.prevReadReceipt
-		? formatTime(new Date(buf.prevReadReceipt.time), false, settings.clock12h)
+		? formatReadBoundary(new Date(buf.prevReadReceipt.time), settings.clock12h)
 		: undefined;
 	const progress = unread?.label;
 	if (buf.history === "loading") {

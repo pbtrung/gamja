@@ -2,17 +2,28 @@ import { ArrowDown, ArrowUp, X } from "lucide-react";
 
 interface JumpToUnreadProps {
 	label: string;
+	compactLabel?: string;
 	onJump: () => void;
 	onDismiss: () => void;
 }
 
 /** Offers to jump up to the unread marker */
-export function JumpToUnread({ label, onJump, onDismiss }: JumpToUnreadProps) {
+export function JumpToUnread({ label, compactLabel, onJump, onDismiss }: JumpToUnreadProps) {
 	return (
 		<div className="jump-unread">
 			<div className="jump-pill" role="group" aria-label="New messages">
-				<button type="button" className="btn btn-sm" onClick={onJump}>
-					<ArrowUp aria-hidden="true" /> {label}
+				<button
+					type="button"
+					className={`btn btn-sm${compactLabel ? " has-compact-label" : ""}`}
+					aria-label={label}
+					onClick={onJump}
+				>
+					<ArrowUp aria-hidden="true" /> <span className="jump-label-wide">{label}</span>
+					{compactLabel && (
+						<span className="jump-label-compact" aria-hidden="true">
+							{compactLabel}
+						</span>
+					)}
 				</button>
 				<button
 					type="button"

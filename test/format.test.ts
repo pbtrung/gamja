@@ -6,10 +6,29 @@ import {
 	matchBuffers,
 	simplifyFoldGroup,
 	sortMembers,
+	formatReadBoundary,
 } from "../src/format";
 import { BufferType, type Buffer, type Server } from "../src/state";
 
 const m = (line: string) => irc.parseMessage(line);
+
+describe("read boundary dates", () => {
+	const now = new Date(2026, 10, 9, 10, 30);
+	it.each([0, 23, 24])("shows only the time for a marker %i hours old", (hours) => {
+		const date = new Date(now.getTime() - hours * 60 * 60 * 1000);
+		expect(formatReadBoundary(date, false, now)).toMatch(/^\d{2}:\d{2}$/);
+	});
+	it("adds a zero-padded DD/MM/YY date after 24 hours, retaining the selected clock format", () => {
+		const date = new Date(2026, 10, 8, 9, 30);
+		expect(formatReadBoundary(date, false, now)).toBe("08/11/26 09:30");
+		expect(formatReadBoundary(date, true, now)).toBe("08/11/26 09:30 AM");
+		expect(formatReadBoundary(new Date(now.getTime() - 86400001), false, now)).toMatch(/^08\/11\/26 /);
+	});
+	it("includes the year for older years and pads single-digit years", () => {
+		expect(formatReadBoundary(new Date(2024, 0, 1, 12, 30), false, now)).toBe("01/01/24 12:30");
+		expect(formatReadBoundary(new Date(2006, 1, 3, 12, 30), false, now)).toBe("03/02/06 12:30");
+	});
+});
 
 describe("fold groups", () => {
 	it("knows which messages fold", () => {

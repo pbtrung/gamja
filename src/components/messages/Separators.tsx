@@ -33,7 +33,7 @@ interface UnreadSeparatorProps {
 function TimedUnreadSeparator({ label, compactLabel, since, dateTime }: UnreadSeparatorProps) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [visible, setVisible] = useState(false);
-	const expired = useVisibleTimer("unread-divider", visible, 8000);
+	const expired = useVisibleTimer("unread-divider", visible, 8000, true);
 	useEffect(() => {
 		const el = ref.current;
 		if (!el) {
