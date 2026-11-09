@@ -249,6 +249,7 @@ function MessageList(props: MessageListProps) {
 				<UnreadSeparator
 					key={`unread-${buf.id}-${buf.prevReadReceipt?.time ?? ""}`}
 					label={progress}
+					refreshKey={`${buf.history}:${buf.gap?.before.time ?? ""}:${buf.messages[0]?.tags.time ?? ""}`}
 					compactLabel={
 						unread && !unread.complete && buf.history !== "limited"
 							? `${unread.count.toLocaleString()} loaded · more`

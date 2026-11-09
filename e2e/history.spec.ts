@@ -38,7 +38,11 @@ test("loads the latest missed messages on reconnect, the rest on demand", async 
 	const load = page.getByRole("button", { name: "Load missed messages" });
 	await expect(load).toBeVisible();
 
-	await load.click();
+	// Scrolling up to the gap loads it automatically. Clicking the button
+	// can race that load when the browser first scrolls it into view.
+	await buffer.evaluate((el) => {
+		el.scrollTop = 0;
+	});
 	await expect(load).toHaveCount(0);
 	const texts = await buffer.locator(".logline", { hasText: /missed \d+$/ }).allInnerTexts();
 	const order = texts.map((t) => Number(/missed (\d+)$/.exec(t.trim())![1]));

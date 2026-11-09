@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 import ChatScroller from "../../src/components/ChatScroller";
 import { UnreadSeparator } from "../../src/components/messages/Separators";
 
-it("counts only the divider's visible time, including after its label changes", () => {
+it("gives updated history progress a fresh eight seconds in view", () => {
 	vi.useFakeTimers();
 	let notify: IntersectionObserverCallback;
 	const disconnect = vi.fn();
@@ -19,7 +19,15 @@ it("counts only the divider's visible time, including after its label changes", 
 	);
 	const show = (visible: boolean) =>
 		act(() =>
-			notify([{ isIntersecting: visible } as IntersectionObserverEntry], {} as IntersectionObserver),
+			notify(
+				[
+					{
+						isIntersecting: visible,
+						intersectionRatio: visible ? 1 : 0,
+					} as IntersectionObserverEntry,
+				],
+				{} as IntersectionObserver,
+			),
 		);
 	const view = (label: string) => (
 		<section role="log">
@@ -36,12 +44,12 @@ it("counts only the divider's visible time, including after its label changes", 
 	act(() => vi.advanceTimersByTime(30000));
 	expect(screen.getByRole("separator")).toHaveTextContent("400 loaded");
 	show(true);
-	act(() => vi.advanceTimersByTime(3999));
+	act(() => vi.advanceTimersByTime(7999));
 	expect(screen.getByRole("separator")).toBeInTheDocument();
 	act(() => vi.advanceTimersByTime(1));
 	expect(screen.queryByRole("separator")).toBeNull();
 	unmount();
-	expect(disconnect).toHaveBeenCalledOnce();
+	expect(disconnect).toHaveBeenCalledTimes(2);
 });
 
 it("doesn't count time while the browser page is hidden", () => {
@@ -60,7 +68,12 @@ it("doesn't count time while the browser page is hidden", () => {
 	let hidden = false;
 	vi.spyOn(document, "visibilityState", "get").mockImplementation(() => (hidden ? "hidden" : "visible"));
 	render(<UnreadSeparator label="200 loaded · more available" />);
-	act(() => notify([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver));
+	act(() =>
+		notify(
+			[{ isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry],
+			{} as IntersectionObserver,
+		),
+	);
 	act(() => vi.advanceTimersByTime(3000));
 	act(() => {
 		hidden = true;
@@ -127,4 +140,95 @@ it("doesn't introduce a pill for new messages in an already open buffer", async 
 	);
 	await act(async () => {});
 	expect(screen.queryByRole("group", { name: "New messages" })).toBeNull();
+});
+
+it("doesn't start the divider timer while only part of it is on screen", () => {
+	vi.useFakeTimers();
+	let notify: IntersectionObserverCallback;
+	vi.stubGlobal(
+		"IntersectionObserver",
+		class {
+			constructor(callback: IntersectionObserverCallback) {
+				notify = callback;
+			}
+			observe = vi.fn();
+			disconnect = vi.fn();
+		},
+	);
+	const show = (ratio: number) =>
+		act(() =>
+			notify(
+				[{ isIntersecting: ratio > 0, intersectionRatio: ratio } as IntersectionObserverEntry],
+				{} as IntersectionObserver,
+			),
+		);
+	render(<UnreadSeparator label="200 loaded · more available" />);
+	show(0.1);
+	act(() => vi.advanceTimersByTime(30000));
+	expect(screen.getByRole("separator")).toBeInTheDocument();
+	show(1);
+	act(() => vi.advanceTimersByTime(7999));
+	expect(screen.getByRole("separator")).toBeInTheDocument();
+	act(() => vi.advanceTimersByTime(1));
+	expect(screen.queryByRole("separator")).toBeNull();
+});
+
+it("shows new history progress for eight seconds even if the previous divider expired", () => {
+	vi.useFakeTimers();
+	let notify: IntersectionObserverCallback;
+	vi.stubGlobal(
+		"IntersectionObserver",
+		class {
+			constructor(callback: IntersectionObserverCallback) {
+				notify = callback;
+			}
+			observe = vi.fn();
+			disconnect = vi.fn();
+		},
+	);
+	const show = () =>
+		act(() =>
+			notify(
+				[{ isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry],
+				{} as IntersectionObserver,
+			),
+		);
+	const { rerender } = render(<UnreadSeparator label="200 loaded · more available" refreshKey="page-1" />);
+	show();
+	act(() => vi.advanceTimersByTime(8000));
+	expect(screen.queryByRole("separator")).toBeNull();
+	rerender(<UnreadSeparator label="400 loaded · more available" refreshKey="page-2" />);
+	show();
+	act(() => vi.advanceTimersByTime(7999));
+	expect(screen.getByRole("separator")).toHaveAccessibleName("400 loaded · more available");
+	act(() => vi.advanceTimersByTime(1));
+	expect(screen.queryByRole("separator")).toBeNull();
+});
+
+it("doesn't restart or reopen the divider for live messages on the same history page", () => {
+	vi.useFakeTimers();
+	let notify: IntersectionObserverCallback;
+	vi.stubGlobal(
+		"IntersectionObserver",
+		class {
+			constructor(callback: IntersectionObserverCallback) {
+				notify = callback;
+			}
+			observe = vi.fn();
+			disconnect = vi.fn();
+		},
+	);
+	const { rerender } = render(<UnreadSeparator label="200 loaded · more available" refreshKey="page-1" />);
+	act(() =>
+		notify(
+			[{ isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry],
+			{} as IntersectionObserver,
+		),
+	);
+	act(() => vi.advanceTimersByTime(7999));
+	rerender(<UnreadSeparator label="201 loaded · more available" refreshKey="page-1" />);
+	act(() => vi.advanceTimersByTime(1));
+	expect(screen.queryByRole("separator")).toBeNull();
+	rerender(<UnreadSeparator label="202 loaded · more available" refreshKey="page-1" />);
+	expect(screen.queryByRole("separator")).toBeNull();
 });

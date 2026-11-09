@@ -16,17 +16,21 @@ export function DateSeparator({ date }: { date: Date }) {
 	);
 }
 
-export function UnreadSeparator({
-	label,
-	compactLabel,
-	since,
-	dateTime,
-}: {
+export function UnreadSeparator({ refreshKey, ...props }: UnreadSeparatorProps) {
+	// A new history page gets its own reading time, including when the
+	// previous progress text already expired.
+	return <TimedUnreadSeparator key={refreshKey ?? props.label} {...props} />;
+}
+
+interface UnreadSeparatorProps {
 	label: string;
 	compactLabel?: string;
 	since?: string;
 	dateTime?: string;
-}) {
+	refreshKey?: string;
+}
+
+function TimedUnreadSeparator({ label, compactLabel, since, dateTime }: UnreadSeparatorProps) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [visible, setVisible] = useState(false);
 	const expired = useVisibleTimer("unread-divider", visible, 8000);
@@ -37,9 +41,10 @@ export function UnreadSeparator({
 		}
 		const root = el.closest("[role=log]");
 		if (typeof IntersectionObserver !== "undefined") {
-			const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), {
-				root,
-			});
+			const observer = new IntersectionObserver(
+				([entry]) => setVisible(entry.isIntersecting && entry.intersectionRatio >= 1),
+				{ root, threshold: 1 },
+			);
 			observer.observe(el);
 			return () => observer.disconnect();
 		}
@@ -48,8 +53,8 @@ export function UnreadSeparator({
 			const viewport = root?.getBoundingClientRect();
 			setVisible(
 				bounds.height > 0 &&
-					bounds.bottom > (viewport?.top ?? 0) &&
-					bounds.top < (viewport?.bottom ?? window.innerHeight),
+					bounds.top >= (viewport?.top ?? 0) &&
+					bounds.bottom <= (viewport?.bottom ?? window.innerHeight),
 			);
 		};
 		update();
