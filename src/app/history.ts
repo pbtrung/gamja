@@ -41,10 +41,14 @@ function canFetchHistory(client: Client | undefined): client is Client {
 }
 
 /** Store the receipts of the latest message of a page of older messages. */
-function storeOlderReceipts(app: AppController, client: Client, buf: Buffer, msg: Message): void {
+function storeOlderReceipts(app: AppController, client: Client, buf: Buffer, msgs: Message[]): void {
+	const msg = msgs[msgs.length - 1];
 	const receipts: store.Receipts = { [ReceiptType.DELIVERED]: S.receiptFromMessage(msg) };
-	if (app.state.activeBuffer === buf.id) {
-		receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
+	if (app.state.activeBuffer === buf.id && app.scrolledToLatest) {
+		const latest = buf.messages.at(-1);
+		receipts[ReceiptType.READ] = S.receiptFromMessage(
+			latest && latest.tags.time! > msg.tags.time! ? latest : msg,
+		);
 	}
 	app.storeReceipts(client, { name: buf.name, server: storeServer(client), receipts });
 	// Older history must not move the separator captured when the buffer
@@ -105,7 +109,9 @@ export const historyMethods = {
 			client?.caps.enabled.has("draft/chathistory") &&
 			client.caps.enabled.has("server-time") &&
 			client.isupport.chatHistory() > 0;
-		this.setBufferState(buf.id, (b) => S.trimMessages(b, Boolean(refetchable)));
+		this.setBufferState(buf.id, (b) =>
+			S.trimMessages(b, Boolean(refetchable), S.historyLimit(this.state.settings)),
+		);
 	},
 
 	/**
@@ -164,6 +170,15 @@ export const historyMethods = {
 		if (!canFetchHistory(client)) {
 			return;
 		}
+		if (this.loadingBacklogs.has(buf.id)) {
+			return;
+		}
+		if (buf.gap) {
+			if (buf.gap.status !== "error" || retry) {
+				await this.fetchMissedMessages(buf.id);
+			}
+			return;
+		}
 		if (client.isupport.chatHistory() === 0) {
 			// soju doesn't advertise CHATHISTORY on the bouncer connection (e.g.
 			// for BouncerServ), there is no history to load there. Elsewhere,
@@ -178,9 +193,16 @@ export const historyMethods = {
 		if (buf.history === "loading" || buf.history === "end" || (buf.history === "error" && !retry)) {
 			return;
 		}
+		const capacity = S.historyLimit(this.state.settings) - buf.messages.length;
+		if (capacity <= 0) {
+			if (buf.history !== "limited") {
+				this.setBufferState(buf.id, { history: "limited" });
+			}
+			return;
+		}
 
 		const first = buf.messages[0];
-		const before = {
+		let before: S.HistoryBound = {
 			time: first?.tags.time ?? latestHistoryBound(),
 			msgid: first?.tags.msgid ?? undefined,
 		};
@@ -189,14 +211,26 @@ export const historyMethods = {
 		this.setBufferState(buf.id, { history: "loading" });
 		const isClosed = () => this.clients.get(buf.server) !== client || !S.getBuffer(this.state, buf.id);
 
-		let limit = 100;
-		if (client.caps.enabled.has("draft/event-playback")) {
-			limit = 200;
-		}
-
-		let result;
+		const limit = Math.min(S.backlogSize(this.state.settings), capacity);
+		const messages: Message[] = [];
+		let more = true;
 		try {
-			result = await client.fetchHistoryBefore(buf.name, before, limit);
+			while (messages.length < limit) {
+				const page = await client.fetchHistoryBefore(buf.name, before, limit - messages.length);
+				if (isClosed()) {
+					return;
+				}
+				messages.unshift(...page.messages);
+				more = page.more;
+				if (!more || page.messages.length === 0 || messages.length >= limit) {
+					break;
+				}
+				const next = S.boundFromMessage(page.messages[0]);
+				if (next.time === before.time && next.msgid === before.msgid) {
+					throw new Error("History pagination did not advance");
+				}
+				before = next;
+			}
 		} catch (err) {
 			if (isClosed()) {
 				return;
@@ -214,13 +248,15 @@ export const historyMethods = {
 		if (isClosed()) {
 			return;
 		}
-		this.setBufferState(buf.id, { history: result.more ? "more" : "end" });
-
-		if (result.messages.length > 0) {
-			storeOlderReceipts(this, client, buf, result.messages[result.messages.length - 1]);
+		if (messages.length > 0) {
+			storeOlderReceipts(this, client, S.getBuffer(this.state, buf.id)!, messages);
 		}
-
-		this.applyHistory(buf.server, result.messages);
+		this.applyHistory(buf.server, messages);
+		const loaded = S.getBuffer(this.state, buf.id)!.messages.length;
+		this.setBufferState(buf.id, {
+			history: !more ? "end" : loaded >= S.historyLimit(this.state.settings) ? "limited" : "more",
+		});
+		this.fetchDeferredBacklog(buf.id);
 	},
 };
 

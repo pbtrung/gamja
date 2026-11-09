@@ -261,7 +261,7 @@ describe("MessageList", () => {
 		);
 		const seps = [...container.querySelectorAll("[role=separator]")].map((el) => el.className);
 		expect(seps.filter((c) => c.includes("date-separator"))).toHaveLength(2);
-		expect(screen.getByText("New messages")).toBeInTheDocument();
+		expect(screen.getByRole("separator", { name: /^1 new · all loaded · since / })).toBeInTheDocument();
 	});
 
 	it("hides date separators when turned off", () => {

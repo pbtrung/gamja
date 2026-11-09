@@ -144,27 +144,21 @@ function updateBufferForMessage(
 	msgUnread: Unread,
 	batch?: HistoryBatch,
 ): void {
-	const from = msg.prefix?.name ?? "*";
 	let unread = buf.unread;
-	let prevReadReceipt = buf.prevReadReceipt;
 	const receipts: store.Receipts = { [ReceiptType.DELIVERED]: S.receiptFromMessage(msg) };
 
 	// Scrolled up, the user is reading older messages, not this one
 	if (!app.isBufferVisible(buf.id) || !app.scrolledToLatest) {
 		unread = S.unionUnread(unread, msgUnread);
-	} else if (!buf.gap) {
-		// With missed messages not fetched yet, the user hasn't read them
+	} else {
+		// Reading the latest messages advances the live marker independently
+		// of the opening boundary used by the pill and divider.
 		receipts[ReceiptType.READ] = S.receiptFromMessage(msg);
 	}
 
-	// Don't show unread marker for my own messages
-	if (client.isMyNick(from) && !S.isMessageBeforeReceipt(msg, prevReadReceipt)) {
-		prevReadReceipt = S.receiptFromMessage(msg);
-	}
-
 	app.storeReceipts(client, { name: buf.name, server: storeServer(client), unread, receipts }, batch);
-	if (unread !== buf.unread || prevReadReceipt !== buf.prevReadReceipt) {
-		app.setBufferState(buf.id, { unread, prevReadReceipt });
+	if (unread !== buf.unread) {
+		app.setBufferState(buf.id, { unread });
 	}
 }
 

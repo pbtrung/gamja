@@ -58,6 +58,8 @@ export default class AppController {
 	/** Missed channel messages to fetch once their buffer is opened, by
 	 * buffer ID, see deferBacklog() */
 	deferredBacklogs = new Map<number, DeferredBacklog>();
+	/** Buffers whose latest missed messages are already being fetched. */
+	loadingBacklogs = new Set<number>();
 	/** The buffer active before the current one, see keybindings.ts */
 	previousBuffer: number | null = null;
 	/** Whether the latest messages of the active buffer are in view */

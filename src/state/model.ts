@@ -180,13 +180,15 @@ export interface Buffer {
 	reactions: Map<string, Map<string, string[]>>;
 	/** Users currently typing, by nick */
 	typing: Map<string, TypingState>;
-	/** Chat history status: unknown before the first fetch, end once all fetched */
-	history: "unknown" | "loading" | "more" | "end" | "error";
+	/** unknown before the first fetch, end once exhausted, limited at the browser buffer cap */
+	history: "unknown" | "loading" | "more" | "end" | "error" | "limited";
 	/** Missed messages not fetched yet, if any */
 	gap: HistoryGap | null;
 	unread: Unread;
 	/** Unloaded unread messages reported by soju.im/unread. */
 	unreadSnapshot?: { latestMessage: string; level: Unread } | null;
+	/** A completed backlog query proves all messages after this time were loaded. */
+	unreadLoadedSince?: string;
 	prevReadReceipt: Receipt | null;
 }
 

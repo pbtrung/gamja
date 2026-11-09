@@ -60,9 +60,25 @@ soju-rs, the bouncer tells it (`soju.im/unread`), even for conversations
 read on another device. With other servers, buffers with messages after
 their read marker are unread, and private ones count as mentions; a mention
 in a channel then only shows once opened. If more were missed, a "Load missed messages"
-button where they're missing loads the others, and the read marker doesn't
-move past them until then. The server's CHATHISTORY limit (e.g. soju-rs's
+button where they're missing loads the others. The server's CHATHISTORY limit (e.g. soju-rs's
 `chathistory-limit`) only changes how many requests that takes.
+
+Opening a buffer and scrolling back load the configured number of messages
+(200 by default), paginating within the server's limit. The new-message pill
+shows e.g. `200+ new since 10:30`: `+` means older unread messages may remain.
+Its initial count stays steady while older pages load; the divider shows
+`400 loaded · more available · since 10:30`, and switches to an exact count once
+the opening read boundary or the end of stored history is reached. These
+counts stay relative to the read marker captured when the conversation was
+opened. Live read markers continue to advance while reading at the bottom,
+and hold while scrolled up; they don't reset the opening counts. The pill appears only when
+opening a buffer and hides after eight seconds, or when clicked or dismissed.
+The divider hides after eight seconds in view; its timer pauses while it is
+off screen. Both timers pause while the browser page is hidden.
+On mobile, the divider uses `200 loaded · more` with `since 10:30` on a
+smaller second line; the full wording stays on one line on desktop.
+History loading stops at 2,000 buffered messages, or one configured page if
+that is larger, and shows when that limit or the end of history is reached.
 
 ### Settings
 

@@ -1,7 +1,7 @@
 /** Sorted message lists, receipts and history bounds. */
 
 import type { Message } from "../lib/irc";
-import type { HistoryBound, Receipt } from "./model";
+import type { Buffer, HistoryBound, Receipt } from "./model";
 
 export function boundFromMessage(msg: Message): HistoryBound {
 	return { time: receiptFromMessage(msg).time, msgid: msg.tags.msgid ?? undefined };
@@ -201,4 +201,32 @@ export function unreadSince(
 		}
 	}
 	return count > 0 && first ? { count, first: new Date(first) } : null;
+}
+
+/** Describe loaded unread messages without presenting a partial page as a total. */
+export function unreadProgress(
+	buf: Buffer,
+): { count: number; first: Date; complete: boolean; label: string } | undefined {
+	const unread = unreadSince(buf.messages, buf.prevReadReceipt);
+	if (!unread) {
+		return;
+	}
+	const receipt = buf.prevReadReceipt;
+	const missingUnread = buf.gap && (!receipt || buf.gap.before.time > receipt.time);
+	const reachedRead = receipt && buf.messages[0] && isMessageBeforeReceipt(buf.messages[0], receipt);
+	const fetchedUnread = receipt && buf.unreadLoadedSince && buf.unreadLoadedSince <= receipt.time;
+	const complete = !missingUnread && (reachedRead || fetchedUnread || buf.history === "end");
+	const count = unread.count.toLocaleString();
+	if (complete) {
+		return {
+			...unread,
+			complete: true,
+			label: `${count} new · all loaded`,
+		};
+	}
+	return {
+		...unread,
+		complete: false,
+		label: `${count} loaded · ${buf.history === "limited" ? "buffer limit reached" : "more available"}`,
+	};
 }

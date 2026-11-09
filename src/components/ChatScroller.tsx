@@ -26,6 +26,12 @@ interface ChatScrollerProps {
 	unreadMarker?: string;
 	/** Text of the button jumping to the unread marker */
 	unreadLabel?: string;
+	/** Identity of the saved read marker, independent of the button's text */
+	unreadKey?: string;
+	/** The opening history request may still supply an unread marker. */
+	unreadPending?: boolean;
+	/** A gap to fill when scrolling up to missing history */
+	historyGap?: string;
 	/** Called when scrolling to the bottom, or away from it */
 	onBottomChange?: (atBottom: boolean) => void;
 }
@@ -46,14 +52,17 @@ export default function ChatScroller({
 	onJumped,
 	unreadMarker,
 	unreadLabel = "Jump to new messages",
+	unreadKey = `${String(scrollKey)}:${unreadLabel}`,
+	unreadPending = false,
+	historyGap,
 	onBottomChange,
 }: ChatScrollerProps) {
 	const ref = useRef<HTMLElement>(null);
-	const unreadKey = `${String(scrollKey)}:${unreadLabel}`;
-	const unread = useUnreadMarker(ref, unreadMarker, unreadKey);
+	const unread = useUnreadMarker(ref, unreadMarker, unreadKey, unreadPending);
 	// Offers to scroll back to the latest messages when scrolled up
 	const [awayFromBottom, setAwayFromBottom] = useState(false);
 	const stickToBottom = useRef(true);
+	const lastScrollTop = useRef(0);
 	const {
 		count: newCount,
 		update: updateNewCount,
@@ -73,6 +82,7 @@ export default function ChatScroller({
 	}, [awayFromBottom]);
 
 	function save(el: HTMLElement) {
+		lastScrollTop.current = el.scrollTop;
 		stickToBottom.current = savePosition(el, scrollKey, stickTo);
 		setAwayFromBottom(!stickToBottom.current);
 		updateNewCount(el);
@@ -89,6 +99,7 @@ export default function ChatScroller({
 		if (jumpTo && scrollToMessage(el, jumpTo)) {
 			stickToBottom.current = savePosition(el, scrollKey, stickTo);
 			setAwayFromBottom(!stickToBottom.current);
+			lastScrollTop.current = el.scrollTop;
 			updateNewCount(el);
 			onJumped?.();
 			return;
@@ -98,9 +109,10 @@ export default function ChatScroller({
 		// don't change the messages above it mustn't move the view
 		stickToBottom.current = restorePosition(el, scrollKey);
 		setAwayFromBottom(!stickToBottom.current);
+		lastScrollTop.current = el.scrollTop;
 		updateNewCount(el);
 
-		if (el.scrollTop === 0) {
+		if (el.scrollTop === 0 && stickToBottom.current) {
 			onScrollTopRef.current();
 		}
 	}, [scrollKey, jumpTo, onJumped, stickTo, children, updateNewCount]);
@@ -152,8 +164,14 @@ export default function ChatScroller({
 			aria-label={label}
 			onScroll={(event) => {
 				const el = event.currentTarget;
+				const movingUp = el.scrollTop < lastScrollTop.current;
+				const gap = historyGap ? el.querySelector(historyGap) : null;
+				const bounds = el.getBoundingClientRect();
+				const gapBounds = gap?.getBoundingClientRect();
+				const atGap =
+					movingUp && gapBounds && gapBounds.bottom >= bounds.top && gapBounds.top <= bounds.bottom;
 				save(el);
-				if (el.scrollTop === 0) {
+				if (el.scrollTop === 0 || atGap) {
 					onScrollTopRef.current();
 				}
 			}}

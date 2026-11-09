@@ -43,7 +43,7 @@ it.each(["", ";msgid=history"])(
 );
 
 it.each(["read marker", "unread snapshot", "live messages"])(
-	"keeps the first-open banner when initial history finishes after missed messages (%s)",
+	"keeps the opening pill for eight seconds while off-screen history arrives (%s)",
 	async (source) => {
 		const { app, serverID, recv } = await connectedApp();
 		recv("@time=2024-01-01T00:00:00.000Z :me!u@h JOIN #c");
@@ -73,7 +73,7 @@ it.each(["read marker", "unread snapshot", "live messages"])(
 				"@time=2025-01-01T12:00:00.000Z;msgid=missed :bob!u@h PRIVMSG #c :missed message",
 			);
 			await act(async () => app.applyHistory(serverID, [message], { live: true }));
-			const banner = () => screen.queryByRole("button", { name: /^1 new message since / });
+			const banner = () => screen.queryByRole("button", { name: /^1\+? new since / });
 			expect(banner()).toBeInTheDocument();
 			act(() => vi.advanceTimersByTime(4000));
 			await act(async () => history.resolve({ messages: [message], more: false }));
@@ -85,6 +85,7 @@ it.each(["read marker", "unread snapshot", "live messages"])(
 			act(() => vi.advanceTimersByTime(1));
 			await act(async () => {});
 			expect(banner()).toBeNull();
+			expect(document.querySelector(".unread-separator")).toBeInTheDocument();
 		} finally {
 			unmount();
 			app.destroy();

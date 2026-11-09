@@ -1,4 +1,6 @@
 import type { HistoryGap } from "../../state";
+import { useEffect, useRef, useState } from "react";
+import useVisibleTimer from "../useVisibleTimer";
 
 export function DateSeparator({ date }: { date: Date }) {
 	const text = date.toLocaleDateString([], {
@@ -14,16 +16,83 @@ export function DateSeparator({ date }: { date: Date }) {
 	);
 }
 
-export function UnreadSeparator() {
+export function UnreadSeparator({
+	label,
+	compactLabel,
+	since,
+	dateTime,
+}: {
+	label: string;
+	compactLabel?: string;
+	since?: string;
+	dateTime?: string;
+}) {
+	const ref = useRef<HTMLDivElement>(null);
+	const [visible, setVisible] = useState(false);
+	const expired = useVisibleTimer("unread-divider", visible, 8000);
+	useEffect(() => {
+		const el = ref.current;
+		if (!el) {
+			return;
+		}
+		const root = el.closest("[role=log]");
+		if (typeof IntersectionObserver !== "undefined") {
+			const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), {
+				root,
+			});
+			observer.observe(el);
+			return () => observer.disconnect();
+		}
+		const update = () => {
+			const bounds = el.getBoundingClientRect();
+			const viewport = root?.getBoundingClientRect();
+			setVisible(
+				bounds.height > 0 &&
+					bounds.bottom > (viewport?.top ?? 0) &&
+					bounds.top < (viewport?.bottom ?? window.innerHeight),
+			);
+		};
+		update();
+		root?.addEventListener("scroll", update);
+		window.addEventListener("resize", update);
+		return () => {
+			root?.removeEventListener("scroll", update);
+			window.removeEventListener("resize", update);
+		};
+	}, []);
+	if (expired) {
+		return null;
+	}
 	return (
-		<div className="separator unread-separator" role="separator">
-			New messages
+		<div
+			ref={ref}
+			className="separator unread-separator"
+			role="separator"
+			aria-label={label + (since ? ` · since ${since}` : "")}
+		>
+			<span className={`unread-summary${compactLabel ? " has-compact" : ""}`} aria-hidden="true">
+				<span className="unread-detail">{label}</span>
+				{compactLabel && <span className="unread-compact">{compactLabel}</span>}
+				{since && (
+					<time className="unread-since" dateTime={dateTime}>
+						since {since}
+					</time>
+				)}
+			</span>
 		</div>
 	);
 }
 
 /** Where missed messages weren't fetched, with a button to fetch them. */
-export function GapMarker({ gap, onLoad }: { gap: HistoryGap; onLoad?: () => void }) {
+export function GapMarker({
+	gap,
+	onLoad,
+	limited = false,
+}: {
+	gap: HistoryGap;
+	onLoad?: () => void;
+	limited?: boolean;
+}) {
 	if (gap.status === "loading") {
 		return (
 			<div className="history-status history-gap" role="status">
@@ -35,10 +104,14 @@ export function GapMarker({ gap, onLoad }: { gap: HistoryGap; onLoad?: () => voi
 		<div className="history-status history-gap" role={gap.status === "error" ? "alert" : undefined}>
 			{gap.status === "error"
 				? "Failed to load missed messages."
-				: "Some missed messages aren't shown."}
-			<button type="button" className="btn btn-sm" onClick={onLoad}>
-				{gap.status === "error" ? "Retry" : "Load missed messages"}
-			</button>
+				: limited
+					? "Buffer limit reached. Older messages may be available."
+					: "Some missed messages aren't shown."}
+			{!limited && (
+				<button type="button" className="btn btn-sm" onClick={onLoad}>
+					{gap.status === "error" ? "Retry" : "Load missed messages"}
+				</button>
+			)}
 		</div>
 	);
 }

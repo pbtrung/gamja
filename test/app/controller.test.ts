@@ -1557,7 +1557,7 @@ describe("AppController chat history", () => {
 		unsubscribe();
 
 		expect(buf(app, "#c")!.messages.map((m) => m.params[1])).toEqual(["msg 1", "msg 2", "msg 3"]);
-		expect(updates).toHaveBeenCalledTimes(1);
+		expect(updates).toHaveBeenCalledTimes(2);
 		expect(sent()).toEqual(["MARKREAD #c timestamp=2030-01-01T00:00:03.000Z"]);
 	});
 
@@ -1689,15 +1689,18 @@ describe("AppController chat history", () => {
 			before: { time: "2030-01-01T00:01:00.000Z", msgid: "p0" },
 			status: "idle",
 		});
-		// The missed messages before the page weren't read
-		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
+		// The live marker advances while reading at the bottom; the opening
+		// boundary and history gap remain independent of it.
+		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([
+			"MARKREAD #c timestamp=2030-01-01T00:02:39.000Z",
+		]);
 
 		const loading = app.fetchMissedMessages(buf(app, "#c")!.id);
 		await flush();
 		expect(buf(app, "#c")!.gap!.status).toBe("loading");
 		const req = sentRaw().find((l) => l.includes("CHATHISTORY BETWEEN"))!;
 		expect(req).toMatch(
-			/BETWEEN #c timestamp=2030-01-01T00:00:00.500Z timestamp=2030-01-01T00:01:00.000Z 100$/,
+			/BETWEEN #c timestamp=2030-01-01T00:01:00.000Z timestamp=2030-01-01T00:00:00.500Z 100$/,
 		);
 		reply(
 			req,
@@ -1711,7 +1714,8 @@ describe("AppController chat history", () => {
 		expect(texts.slice(0, 4)).toEqual(["old", "gap 1", "gap 2", "page 0"]);
 		expect(texts).toHaveLength(103);
 		expect(buf(app, "#c")!.gap).toBeNull();
-		expect(sent()).toEqual(["MARKREAD #c timestamp=2030-01-01T00:02:39.000Z"]);
+		// Filling older history doesn't send another read marker.
+		expect(sent().filter((l) => l.startsWith("MARKREAD"))).toEqual([]);
 	});
 
 	it("keeps a gap to retry when loading missed messages fails", async () => {

@@ -1161,6 +1161,9 @@ export class FakeServer {
 
 		const target = msg.params[1];
 		let entries = this.historyFor(conn, target);
+		if (!conn.caps.has("draft/event-playback")) {
+			entries = entries.filter((e) => e.command === "PRIVMSG" || e.command === "NOTICE");
+		}
 		const limit = parseInt(msg.params[msg.params.length - 1], 10) || 50;
 		const bound = parseBound(msg.params[2]);
 		const resolve = (b: string) => {
@@ -1204,10 +1207,6 @@ export class FakeServer {
 				});
 				return;
 		}
-		if (!conn.caps.has("draft/event-playback")) {
-			entries = entries.filter((e) => e.command === "PRIVMSG" || e.command === "NOTICE");
-		}
-
 		conn.send({ tags: batchTags, command: "BATCH", params: ["+" + ref, "chathistory", target] });
 		for (const e of entries) {
 			conn.send({

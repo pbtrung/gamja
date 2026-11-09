@@ -11,8 +11,6 @@ import type AppController from "./controller";
 import { getReceipt, latestHistoryBound, storeServer } from "./history";
 import { loadedUnreadAfterReceipt } from "./read";
 
-const CHATHISTORY_MAX_SIZE = 4000;
-
 /**
  * Fetch up to limit of the latest messages between two bounds, newest page
  * first: the server may send fewer messages per reply than asked for (its
@@ -35,7 +33,11 @@ async function fetchLatestBetween(
 		if (!page.more || page.messages.length === 0 || messages.length >= limit) {
 			return { messages, more: page.more };
 		}
-		before = S.boundFromMessage(page.messages[0]);
+		const next = S.boundFromMessage(page.messages[0]);
+		if (next.time === before.time && next.msgid === before.msgid) {
+			throw new Error("History pagination did not advance");
+		}
+		before = next;
 	}
 }
 
@@ -269,10 +271,39 @@ export const backlogMethods = {
 		// A disconnection fails the pending requests: not worth an error, the
 		// backlog is fetched again once reconnected
 		const isInterrupted = () => isClosed() || client.status !== ClientStatus.REGISTERED;
+		const buf = S.getBuffer(this.state, { server: serverID, name: target });
+		if (buf && this.loadingBacklogs.has(buf.id)) {
+			return;
+		}
+		// An initial BEFORE query already loads the latest messages. If it is
+		// loading older history instead, retain this backlog until it finishes.
+		if (buf?.history === "loading") {
+			if (buf.messages.length > 0) {
+				this.deferredBacklogs.set(buf.id, { from, to });
+			}
+			return;
+		}
+		const capacity = buf
+			? S.historyLimit(this.state.settings) - buf.messages.length
+			: S.backlogSize(this.state.settings);
+		if (capacity <= 0 && buf) {
+			this.deferredBacklogs.set(buf.id, { from, to });
+			this.setBufferState(buf.id, { history: "limited" });
+			return;
+		}
+		if (buf) {
+			this.loadingBacklogs.add(buf.id);
+		}
 
 		let result;
 		try {
-			result = await fetchLatestBetween(client, target, from, to, S.backlogSize(this.state.settings));
+			result = await fetchLatestBetween(
+				client,
+				target,
+				from,
+				to,
+				Math.min(S.backlogSize(this.state.settings), capacity),
+			);
 		} catch (err) {
 			if (isInterrupted()) {
 				return;
@@ -280,6 +311,10 @@ export const backlogMethods = {
 			console.error("Failed to fetch backlog for '" + target + "': ", err);
 			this.showError("Failed to fetch backlog for '" + target + "'");
 			return;
+		} finally {
+			if (buf) {
+				this.loadingBacklogs.delete(buf.id);
+			}
 		}
 		if (isClosed()) {
 			return;
@@ -287,6 +322,11 @@ export const backlogMethods = {
 
 		if (result.more && result.messages.length > 0) {
 			this.markMissedMessages(serverID, target, from, result.messages);
+		} else if (!result.more && buf) {
+			this.setBufferState(buf.id, (b) => ({
+				unreadLoadedSince:
+					b.unreadLoadedSince && b.unreadLoadedSince < from.time ? b.unreadLoadedSince : from.time,
+			}));
 		}
 		this.applyHistory(serverID, result.messages, { live: true });
 	},
@@ -351,22 +391,25 @@ export const backlogMethods = {
 		) {
 			return;
 		}
-		const { before } = buf.gap;
-		let { after } = buf.gap;
+		let { before } = buf.gap;
+		const { after } = buf.gap;
 		const setGap = (gap: S.HistoryGap | null) => this.setBufferState(buf.id, { gap });
 		const isClosed = () => this.clients.get(buf.server) !== client || !S.getBuffer(this.state, buf.id);
 
+		const capacity = S.historyLimit(this.state.settings) - buf.messages.length;
+		if (capacity <= 0) {
+			if (buf.history !== "limited") {
+				this.setBufferState(buf.id, { history: "limited" });
+			}
+			return;
+		}
+		const limit = Math.min(S.backlogSize(this.state.settings), capacity);
 		setGap({ after, before, status: "loading" });
 		let total = 0;
 		for (;;) {
 			let result;
 			try {
-				result = await client.fetchHistoryPageBetween(
-					buf.name,
-					after,
-					before,
-					CHATHISTORY_MAX_SIZE - total,
-				);
+				result = await client.fetchHistoryPageBetween(buf.name, before, after, limit - total);
 			} catch (err) {
 				if (isClosed()) {
 					return;
@@ -386,13 +429,21 @@ export const backlogMethods = {
 			// Already marked delivered: no notifications
 			this.applyHistory(buf.server, result.messages);
 			total += result.messages.length;
-			if (!result.more) {
+			if (!result.more || result.messages.length === 0) {
 				break;
 			}
-			after = S.boundFromMessage(result.messages[result.messages.length - 1]);
-			if (total >= CHATHISTORY_MAX_SIZE) {
+			const next = S.boundFromMessage(result.messages[0]);
+			if (next.time === before.time && next.msgid === before.msgid) {
+				setGap({ after, before, status: "error" });
+				throw new Error("History pagination did not advance");
+			}
+			before = next;
+			if (total >= limit) {
 				// Let the user ask for more
 				setGap({ after, before, status: "idle" });
+				if (S.getBuffer(this.state, buf.id)!.messages.length >= S.historyLimit(this.state.settings)) {
+					this.setBufferState(buf.id, { history: "limited" });
+				}
 				return;
 			}
 			setGap({ after, before, status: "loading" });

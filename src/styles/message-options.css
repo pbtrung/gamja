@@ -118,11 +118,47 @@ a.nick:hover {
 
 #buffer .unread-separator {
 	color: var(--danger-fg);
+	text-transform: none;
+	letter-spacing: normal;
 }
 
 #buffer .unread-separator::before,
 #buffer .unread-separator::after {
 	border-color: var(--danger);
+}
+
+.unread-summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.unread-compact {
+	display: none;
+}
+
+.unread-since::before {
+	content: "· ";
+}
+
+@media (max-width: 600px) {
+	.unread-summary {
+		flex-direction: column;
+		gap: 0.125rem;
+	}
+	.unread-summary.has-compact .unread-detail {
+		display: none;
+	}
+	.unread-compact {
+		display: inline;
+	}
+	.unread-since {
+		font-size: 0.6875rem;
+		font-weight: 400;
+	}
+	.unread-since::before {
+		content: none;
+	}
 }
 
 .history-status {
@@ -142,10 +178,15 @@ a.nick:hover {
 }
 
 .history-start {
+	flex-direction: column;
 	margin: 0.5rem 1rem 0.75rem;
 	padding: 1rem;
 	border-bottom: 1px solid var(--border);
 	font-size: 0.9375rem;
+}
+
+.history-summary {
+	font-size: 0.75rem;
 }
 
 .inline-error {

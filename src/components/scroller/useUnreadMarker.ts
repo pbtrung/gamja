@@ -1,33 +1,39 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useEffectEvent, useState, type RefObject } from "react";
+import useVisibleTimer from "../useVisibleTimer";
 
 export interface UnreadMarkerState {
 	/** Whether to offer to jump to the unread marker */
 	shown: boolean;
-	/** Hide the jump button, until another marker comes */
+	/** Hide the jump button for this opening of the buffer */
 	dismiss: () => void;
 }
 
 /**
- * Keep the jump button available for the lifetime of the unread marker.
- * unreadKey identifies the marker: the jump button is dismissed per key.
+ * Offer the unread jump button for eight seconds on opening a buffer.
+ * unreadKey identifies that opening; later messages don't reopen the pill.
  */
 export default function useUnreadMarker(
 	ref: RefObject<HTMLElement | null>,
 	unreadMarker: string | undefined,
 	unreadKey: string,
+	pendingHistory = false,
 ): UnreadMarkerState {
 	const [hasMarker, setHasMarker] = useState(false);
-	// The jump button was closed: by scroll key and marker, so that
-	// another marker shows it again
+	// Dismissal is independent of the changing loaded-message count.
 	const [unreadDismissed, setUnreadDismissed] = useState<string | null>(null);
+	const expired = useVisibleTimer(unreadKey, true, 8000);
+	const isPending = useEffectEvent(() => pendingHistory);
 
 	useEffect(() => {
 		const el = ref.current;
 		if (!el || !unreadMarker) {
 			return;
 		}
+		// Allow the initial history load to supply the marker, but never
+		// introduce a pill for messages arriving in an already open buffer.
+		const eligible = el.querySelector(unreadMarker) !== null || isPending();
 		const update = () => {
-			setHasMarker(el.querySelector(unreadMarker) !== null);
+			setHasMarker(eligible && el.querySelector(unreadMarker) !== null);
 		};
 		update();
 		const mutationObserver = new MutationObserver(update);
@@ -35,10 +41,10 @@ export default function useUnreadMarker(
 		return () => {
 			mutationObserver.disconnect();
 		};
-	}, [ref, unreadMarker]);
+	}, [ref, unreadMarker, unreadKey]);
 
 	return {
-		shown: hasMarker && unreadDismissed !== unreadKey,
+		shown: hasMarker && unreadDismissed !== unreadKey && !expired,
 		dismiss: () => setUnreadDismissed(unreadKey),
 	};
 }

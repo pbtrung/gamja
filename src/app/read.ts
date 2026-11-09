@@ -121,9 +121,9 @@ export const readMethods = {
 			server: storeServer(client),
 			unread: Unread.NONE,
 		};
-		const lastMsg = buf.messages.at(-1);
-		// Missed messages not fetched yet haven't been read
-		if (lastMsg && !buf.gap) {
+		const lastMsg = buf.messages.findLast((m) => m.command === "PRIVMSG" || m.command === "NOTICE");
+		// The opening boundary remains unchanged for the history indicators.
+		if (lastMsg) {
 			update.receipts = { [ReceiptType.READ]: S.receiptFromMessage(lastMsg) };
 		}
 		this.storeReceipts(client, update);

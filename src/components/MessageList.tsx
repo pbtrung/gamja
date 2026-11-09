@@ -7,12 +7,13 @@ import {
 	BufferEventsDisplayMode,
 	getTargetMetadata,
 	isMessageBeforeReceipt,
+	unreadProgress,
 	type Buffer,
 	type BouncerNetwork,
 	type Server,
 	type Settings,
 } from "../state";
-import { canFoldMessage, simplifyFoldGroup } from "../format";
+import { canFoldMessage, simplifyFoldGroup, formatTime } from "../format";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import { Clock12hContext, type Context, type MessageListHandlers } from "./messages/context";
 import FoldGroup from "./messages/FoldGroup";
@@ -69,6 +70,11 @@ function MessageList(props: MessageListProps) {
 	}, [buf.messages]);
 
 	const children: ReactNode[] = [];
+	const unread = unreadProgress(buf);
+	const since = buf.prevReadReceipt
+		? formatTime(new Date(buf.prevReadReceipt.time), false, settings.clock12h)
+		: undefined;
+	const progress = unread?.label;
 	if (buf.history === "loading") {
 		children.push(
 			<div key="history-loading" className="history-status" role="status">
@@ -84,7 +90,14 @@ function MessageList(props: MessageListProps) {
 				</button>
 			</div>,
 		);
-	} else if (buf.history === "end" && buf.type !== BufferType.SERVER) {
+	} else if (buf.history === "limited") {
+		children.push(
+			<div key="history-limit" className="history-status" role="status">
+				{buf.messages.length.toLocaleString()} messages loaded · Buffer limit reached. Older messages
+				may be available.
+			</div>,
+		);
+	} else if (buf.history === "end" && !buf.gap && buf.type !== BufferType.SERVER) {
 		children.push(
 			<div key="history-end" className="history-status history-start">
 				<span>
@@ -97,6 +110,9 @@ function MessageList(props: MessageListProps) {
 							This is the beginning of your conversation with <strong>{buf.name}</strong>
 						</>
 					)}
+				</span>
+				<span className="history-summary">
+					{buf.messages.length.toLocaleString()} loaded · No more history
 				</span>
 			</div>,
 		);
@@ -186,7 +202,14 @@ function MessageList(props: MessageListProps) {
 		children.push(createFoldGroup(foldMessages));
 		foldMessages = [];
 		lastChat = null;
-		children.push(<GapMarker key="gap" gap={buf.gap!} onLoad={props.onLoadGap} />);
+		children.push(
+			<GapMarker
+				key="gap"
+				gap={buf.gap!}
+				onLoad={props.onLoadGap}
+				limited={buf.history === "limited"}
+			/>,
+		);
 		gapShown = true;
 	};
 	for (const msg of buf.messages) {
@@ -216,12 +239,25 @@ function MessageList(props: MessageListProps) {
 		}
 
 		if (
+			progress &&
 			!hasUnreadSeparator &&
 			!props.hideUnreadSeparator &&
 			buf.type !== BufferType.SERVER &&
 			!isMessageBeforeReceipt(msg, buf.prevReadReceipt)
 		) {
-			sep.push(<UnreadSeparator key="unread" />);
+			sep.push(
+				<UnreadSeparator
+					key={`unread-${buf.id}-${buf.prevReadReceipt?.time ?? ""}`}
+					label={progress}
+					compactLabel={
+						unread && !unread.complete && buf.history !== "limited"
+							? `${unread.count.toLocaleString()} loaded · more`
+							: undefined
+					}
+					since={since}
+					dateTime={buf.prevReadReceipt?.time}
+				/>,
+			);
 			hasUnreadSeparator = true;
 		}
 

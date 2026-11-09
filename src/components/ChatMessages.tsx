@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { BufferType, ServerStatus, unreadSince } from "../state";
+import { BufferType, ServerStatus, unreadSince, unreadProgress } from "../state";
 import { formatTime } from "../format";
 import { useAppState, useController } from "../app/context";
 import type AppController from "../app/controller";
@@ -9,9 +9,6 @@ import ChatScroller from "./ChatScroller";
 import ErrorBoundary from "./ErrorBoundary";
 import MessageList, { type MessageActionHandlers } from "./MessageList";
 import type { LinkClickHandler } from "./RichText";
-
-/** How long the "New messages" separator stays in the visible active buffer */
-const UNREAD_SEPARATOR_DELAY = 8000;
 
 /**
  * The messages of the active buffer. Only subscribes to the state they
@@ -31,39 +28,45 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 
 	const activeID = buffer?.id ?? null;
 
-	// The separator and its jump button go away after a while in the
-	// visible buffer, wherever it's scrolled. New messages don't bring it
-	// back: it only shows again for another read receipt or buffer.
+	// History pages only tell us how many messages are loaded, not the total.
+	// Keep the jump label tied to the saved read marker as older pages arrive.
 	const unread = useMemo(
-		() =>
-			buffer && buffer.type !== BufferType.SERVER
-				? unreadSince(buffer.messages, buffer.prevReadReceipt)
-				: null,
+		() => (buffer && buffer.type !== BufferType.SERVER ? unreadProgress(buffer) : null),
 		[buffer],
 	);
 	const markerKey = `${activeID}:${buffer?.prevReadReceipt?.time ?? ""}`;
-	const [seenMarker, setSeenMarker] = useState<string | null>(null);
-	const hasUnread = unread !== null;
+	const [pill, setPill] = useState<{ key: string; count: number; through: string; first: Date } | null>(
+		null,
+	);
 	useEffect(() => {
-		if (!hasUnread) {
+		if (
+			!unread ||
+			!buffer ||
+			app.state.buffers.get(buffer.id)?.history === "loading" ||
+			app.loadingBacklogs.has(buffer.id)
+		) {
 			return;
 		}
-		let timer: ReturnType<typeof setTimeout> | undefined;
-		const restart = () => {
-			clearTimeout(timer);
-			if (document.visibilityState !== "hidden") {
-				timer = setTimeout(() => setSeenMarker(markerKey), UNREAD_SEPARATOR_DELAY);
-			}
-		};
-		restart();
-		document.addEventListener("visibilitychange", restart);
-		return () => {
-			clearTimeout(timer);
-			document.removeEventListener("visibilitychange", restart);
-		};
-	}, [hasUnread, markerKey]);
+		setPill((prev) =>
+			prev?.key === markerKey
+				? prev
+				: {
+						key: markerKey,
+						count: unread.count,
+						through: buffer.messages.at(-1)!.tags.time!,
+						first: unread.first,
+					},
+		);
+	}, [app, buffer, markerKey, unread]);
+	const savedPill = pill?.key === markerKey ? pill : null;
+	const received =
+		savedPill && buffer ? (unreadSince(buffer.messages, { time: savedPill.through })?.count ?? 0) : 0;
+	const pillCount = unread?.complete || !savedPill ? unread?.count : savedPill.count + received;
+	const since = buffer?.prevReadReceipt
+		? new Date(buffer.prevReadReceipt.time)
+		: (savedPill?.first ?? unread?.first);
 	const unreadLabel = unread
-		? `${unread.count} new ${unread.count === 1 ? "message" : "messages"} since ${formatTime(unread.first, false, settings.clock12h)}`
+		? `${pillCount!.toLocaleString()}${unread.complete ? "" : "+"} new since ${formatTime(since!, false, settings.clock12h)}`
 		: undefined;
 
 	const myNick = server?.nick ?? null;
@@ -131,6 +134,7 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 
 	return (
 		<ChatScroller
+			key={activeID}
 			id="buffer"
 			scrollKey={activeID}
 			jumpTo={jumpTo}
@@ -138,6 +142,13 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 			stickTo=".logline"
 			unreadMarker=".unread-separator"
 			unreadLabel={unreadLabel}
+			unreadKey={String(activeID)}
+			unreadPending={
+				buffer?.history === "unknown" ||
+				buffer?.history === "loading" ||
+				(activeID !== null && app.loadingBacklogs.has(activeID))
+			}
+			historyGap=".history-gap"
 			onScrollTop={handleScrollTop}
 			onBottomChange={handleBottomChange}
 			label={buffer ? `Messages in ${buffer.name}` : "Messages"}
@@ -160,7 +171,6 @@ const ChatMessages = memo(function ChatMessages({ onChannelClick }: { onChannelC
 						server={server}
 						bouncerNetwork={bouncerNetwork}
 						settings={settings}
-						hideUnreadSeparator={seenMarker === markerKey}
 						actions={actions}
 						onChannelClick={onChannelClick}
 						onNickClick={handleNickClick}
