@@ -9,7 +9,7 @@ import ChatMessages from "./ChatMessages";
 import Composer, { type ComposerHandle } from "./Composer";
 import Dialogs from "./Dialogs";
 import ErrorBoundary from "./ErrorBoundary";
-import TypingIndicator from "./TypingIndicator";
+import ComposerStatus from "./ComposerStatus";
 import useMediaQuery, { SMALL_SCREEN } from "./useMediaQuery";
 import BufferSidebar from "./app/BufferSidebar";
 import MemberSidebar from "./app/MemberSidebar";
@@ -148,7 +148,16 @@ function Chat({ state }: { state: AppState }) {
 				nickColors={state.settings.nickColors}
 				edgeToEdgeInput={state.settings.edgeToEdgeInput}
 				draftKey={activeID}
-				status={state.settings.showTyping ? <TypingIndicator buffer={activeBuffer} /> : null}
+				status={
+					activeBuffer && activeServer ? (
+						<ComposerStatus
+							buffer={activeBuffer}
+							server={activeServer}
+							bouncerNetwork={activeBouncerNetwork}
+							showTyping={state.settings.showTyping}
+						/>
+					) : null
+				}
 				replyTo={state.replyTo?.buffer === activeBuffer?.id ? state.replyTo : null}
 				onCancelReply={handleCancelReply}
 				onTextChange={handleTextChange}
