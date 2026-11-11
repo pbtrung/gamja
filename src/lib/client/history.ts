@@ -134,7 +134,22 @@ export abstract class HistoryClient extends QueryClient {
 			}
 		}
 		const msg = { command: "SEARCH", params: [irc.formatTags(attrs)] };
-		const batch = await this.fetchBatch(msg, ["soju.im/search", "search"]);
-		return batch.messages;
+		const ws = this.ws;
+		const run = async () => {
+			if (!ws || this.ws !== ws) {
+				throw new Error("Connection closed");
+			}
+			const batch = await this.fetchBatch(msg, ["soju.im/search", "search"]);
+			return batch.messages;
+		};
+		const promise = this.pendingSearch ? this.pendingSearch.then(run, run) : run();
+		this.pendingSearch = promise;
+		const clear = () => {
+			if (this.pendingSearch === promise) {
+				this.pendingSearch = null;
+			}
+		};
+		void promise.then(clear, clear);
+		return promise;
 	}
 }

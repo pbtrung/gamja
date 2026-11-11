@@ -147,7 +147,7 @@ test("keeps the unread banner for eight seconds at the bottom", async ({ page, c
 	await expect(page.getByRole("tab", { name: "#unread" })).toHaveAttribute("aria-description", /Unread/);
 	await page.clock.install();
 	await page.getByRole("tab", { name: "#unread" }).click();
-	const banner = page.getByRole("button", { name: /^1 new message since / });
+	const banner = page.getByRole("button", { name: /^1 new since / });
 	await expect(banner).toBeVisible();
 	await page.clock.runFor(4000);
 	await expect(banner).toBeVisible();
@@ -174,7 +174,7 @@ test("jumps to the unread marker when scrolled past it", async ({ page, connect,
 	await page.getByRole("tab", { name: "#busy" }).click();
 	await expect(page.locator("#buffer .talk").last()).toContainText("unread 39");
 
-	const jump = page.getByRole("button", { name: /^40 new messages since \d\d:\d\d$/ });
+	const jump = page.getByRole("button", { name: /^40 new since \d\d:\d\d$/ });
 	await expect(jump).toBeVisible();
 	await jump.click();
 	await expect(page.locator(".unread-separator")).toBeInViewport();

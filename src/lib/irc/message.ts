@@ -69,7 +69,7 @@ function unescapeTag(s: string): string {
 }
 
 export function parseTags(s: string): Tags {
-	const tags: Tags = {};
+	const tags: Tags = Object.create(null) as Tags;
 	for (const item of s.split(";")) {
 		if (!item) {
 			continue;
@@ -86,8 +86,9 @@ export function parseTags(s: string): Tags {
 
 export function formatTags(tags: Tags): string {
 	const l: string[] = [];
-	for (let k in tags) {
-		const v = tags[k]?.replace(/\0/g, "");
+	for (const [key, value] of Object.entries(tags)) {
+		let k = key;
+		const v = value?.replace(/\0/g, "");
 		// Escaping can't help in keys
 		k = k.replace(/[\0\r\n]/g, "");
 		if (/[= ;]/.test(k)) {
@@ -173,13 +174,13 @@ export function parseMessage(s: string): Message {
 
 	let i = s.indexOf(" ");
 	if (i < 0) {
-		msg.command = s;
+		msg.command = s.toUpperCase();
 		if (!msg.command) {
 			throw new Error("missing command");
 		}
 		return msg;
 	}
-	msg.command = s.slice(0, i);
+	msg.command = s.slice(0, i).toUpperCase();
 	s = s.slice(i + 1);
 
 	while (s.length > 0) {
@@ -210,6 +211,15 @@ export function formatMessage(msg: OutgoingMessage): string {
 	// Refuse rather than let a crafted value inject another command
 	if (unsafeLineChars.test(msg.command) || msg.params?.some((p) => unsafeLineChars.test(String(p)))) {
 		throw new Error("IRC message contains a line break or NUL character");
+	}
+	if (!/^(?:[A-Za-z]+|[0-9]{3})$/.test(msg.command)) {
+		throw new Error("Invalid IRC command");
+	}
+	if (
+		msg.prefix &&
+		Object.values(msg.prefix).some((v) => v !== null && v !== undefined && /[ \r\n\0]/.test(v))
+	) {
+		throw new Error("Invalid IRC message prefix");
 	}
 	let s = "";
 	if (msg.tags && Object.keys(msg.tags).length > 0) {

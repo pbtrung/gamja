@@ -169,7 +169,7 @@ export abstract class QueryClient extends RegistrationClient {
 		lastPing++;
 		const token = "gamja-" + String(lastPing);
 		await this.roundtrip({ command: "PING", params: [token] }, (msg) => {
-			return msg.command === "PONG" && msg.params[1] === token;
+			return msg.command === "PONG" && msg.params.at(-1) === token;
 		});
 	}
 }

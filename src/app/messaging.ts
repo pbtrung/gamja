@@ -229,9 +229,16 @@ export const messagingMethods = {
 			if (this.canSendClientTag(client, "draft/reply")) {
 				msg.tags["+draft/reply"] = replyTo.msgid;
 			}
+		}
+		try {
+			client.send(msg);
+		} catch (err) {
+			this.showError(err);
+			return false;
+		}
+		if (replyTo && buf && replyTo.buffer === buf.id) {
 			this.update({ replyTo: null });
 		}
-		client.send(msg);
 		if (this.typingState.buffer === buf?.id) {
 			// Sending a message implicitly ends typing
 			this.typingState = { buffer: null, lastSent: 0, status: "done" };

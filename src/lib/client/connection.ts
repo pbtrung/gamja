@@ -77,6 +77,8 @@ export abstract class ClientConnection extends EventTarget {
 		WHO: Promise.resolve(null),
 		CHATHISTORY: Promise.resolve(null),
 	};
+	/** SEARCH batches cannot be correlated without labeled-response. */
+	pendingSearch: Promise<Message[]> | null = null;
 	cm: irc.CaseMapFn = irc.CaseMapping.RFC1459;
 	/** Monitored targets, true once sent to the server, false while pending */
 	monitored = new irc.CaseMapMap<boolean>(null, irc.CaseMapping.RFC1459);
@@ -165,6 +167,7 @@ export abstract class ClientConnection extends EventTarget {
 		Object.keys(this.pendingCmds).forEach((k) => {
 			this.pendingCmds[k] = Promise.resolve(null);
 		});
+		this.pendingSearch = null;
 		this.isupport = new irc.Isupport();
 		this.cm = irc.CaseMapping.RFC1459;
 		this.monitored = new irc.CaseMapMap(null, this.cm);

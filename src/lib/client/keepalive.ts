@@ -47,7 +47,7 @@ export function handlePongTimeout(client: ClientConnection, ws: Socket): void {
 
 /** Measure the lag if the PONG replies to one of our lag checks. */
 export function handlePong(client: ClientConnection, msg: Message): void {
-	const token = msg.params[1] ?? "";
+	const token = msg.params.at(-1) ?? "";
 	if (!token.startsWith(LAG_TOKEN_PREFIX)) {
 		return;
 	}

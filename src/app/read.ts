@@ -14,7 +14,8 @@ function parseMarkReadBound(bound: string | undefined): Receipt | null {
 	if (!bound || bound === "*" || !bound.startsWith("timestamp=")) {
 		return null;
 	}
-	return { time: bound.replace("timestamp=", "") };
+	const time = bound.slice("timestamp=".length);
+	return time && Number.isFinite(Date.parse(time)) ? { time } : null;
 }
 
 /** Re-compute the unread status of a buffer from its messages after a read marker. */
@@ -134,7 +135,7 @@ export const readMethods = {
 	handleMarkRead(this: AppController, serverID: number, client: Client, msg: Message): void {
 		const target = msg.params[0];
 		const readReceipt = parseMarkReadBound(msg.params[1]);
-		if (!readReceipt) {
+		if (!target || !readReceipt) {
 			return;
 		}
 		const stored = this.bufferStore.get({ name: target, server: storeServer(client) });

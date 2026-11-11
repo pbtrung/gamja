@@ -266,12 +266,13 @@ export const backlogMethods = {
 		target: string,
 		{ from, to }: DeferredBacklog,
 	): Promise<void> {
+		const buf = S.getBuffer(this.state, { server: serverID, name: target });
 		// The server may be closed while waiting for the history
-		const isClosed = () => this.clients.get(serverID) !== client;
+		const isClosed = () =>
+			this.clients.get(serverID) !== client || (!!buf && !S.getBuffer(this.state, buf.id));
 		// A disconnection fails the pending requests: not worth an error, the
 		// backlog is fetched again once reconnected
 		const isInterrupted = () => isClosed() || client.status !== ClientStatus.REGISTERED;
-		const buf = S.getBuffer(this.state, { server: serverID, name: target });
 		if (buf && this.loadingBacklogs.has(buf.id)) {
 			return;
 		}
@@ -305,6 +306,11 @@ export const backlogMethods = {
 				Math.min(S.backlogSize(this.state.settings), capacity),
 			);
 		} catch (err) {
+			if (buf && !isClosed()) {
+				// Retain the original lower bound until the request succeeds.
+				const pending = this.deferredBacklogs.get(buf.id);
+				this.deferredBacklogs.set(buf.id, { from, to: pending?.to ?? to });
+			}
 			if (isInterrupted()) {
 				return;
 			}

@@ -29,15 +29,17 @@ export class Item<T> {
 		}
 	}
 
-	put(v: T | null | undefined): void {
+	put(v: T | null | undefined): boolean {
 		try {
-			if (v) {
+			if (v !== null && v !== undefined) {
 				localStorage.setItem(this.k, JSON.stringify(v));
 			} else {
 				localStorage.removeItem(this.k);
 			}
+			return true;
 		} catch (err) {
 			console.error(`Failed to store ${this.k}:`, err);
+			return false;
 		}
 	}
 }
@@ -68,9 +70,16 @@ class SettingsItem extends Item<Record<string, unknown>> {
 	}
 }
 
+class StringListItem extends Item<string[]> {
+	override load(): string[] | null {
+		const value = super.load();
+		return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : null;
+	}
+}
+
 export const settings = new SettingsItem("settings");
 /** Keys of the networks collapsed in the buffer list, see getServerKey() */
-export const collapsedNetworks = new Item<string[]>("collapsedNetworks");
+export const collapsedNetworks = new StringListItem("collapsedNetworks");
 /** Whether the buffer list is hidden on large screens */
 export const bufferListHidden = new Item<boolean>("bufferListHidden");
 /** Whether the buffer list only shows the unread buffers */
@@ -79,7 +88,7 @@ export const bufferListUnreadOnly = new Item<boolean>("bufferListUnreadOnly");
 export const bufferListWidth = new Item<number>("bufferListWidth");
 export const memberListWidth = new Item<number>("memberListWidth");
 /** Reactions picked last, most recent first */
-export const recentReactions = new Item<string[]>("recentReactions");
+export const recentReactions = new StringListItem("recentReactions");
 
 export interface StoredServer {
 	/** WebSocket URL, null for buffers stored by older gamja versions */
@@ -119,10 +128,24 @@ function parseStoredBuffer(v: unknown): StoredBuffer | null {
 	if (typeof buf.name !== "string" || typeof buf.server !== "object" || buf.server === null) {
 		return null;
 	}
+	if (
+		[buf.server.url, buf.server.bouncerNetwork].some(
+			(v) => v !== null && v !== undefined && typeof v !== "string",
+		)
+	) {
+		return null;
+	}
+	const receipts: Receipts = {};
+	for (const type of Object.values(ReceiptType)) {
+		const receipt = buf.receipts?.[type];
+		if (typeof receipt?.time === "string" && receipt.time && Number.isFinite(Date.parse(receipt.time))) {
+			receipts[type] = { time: receipt.time };
+		}
+	}
 	return {
 		name: buf.name,
 		unread: Object.values(Unread).includes(buf.unread as Unread) ? buf.unread! : Unread.NONE,
-		receipts: typeof buf.receipts === "object" && buf.receipts !== null ? buf.receipts : {},
+		receipts,
 		closed: buf.closed === true,
 		server: storedServer(buf.server),
 	};
@@ -183,7 +206,10 @@ export class BufferStore {
 		}
 	};
 	onStorage = (event: StorageEvent) => {
-		if (event.key === this.raw.k) {
+		if (
+			(event.key === this.raw.k || event.key === null) &&
+			(!event.storageArea || event.storageArea === localStorage)
+		) {
 			this.m = this.merged();
 		}
 	};
@@ -251,8 +277,9 @@ export class BufferStore {
 			return;
 		}
 		this.m = this.merged();
-		this.dirty.clear();
-		this.raw.put(this.m.size > 0 ? Object.fromEntries(this.m) : null);
+		if (this.raw.put(this.m.size > 0 ? Object.fromEntries(this.m) : null)) {
+			this.dirty.clear();
+		}
 	}
 
 	set(key: string, buf: StoredBuffer | null): void {
