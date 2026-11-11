@@ -18,7 +18,8 @@ when building outside a git checkout.
 
 To make a release, run `tools/release.sh vX.Y.Z [notes.md]` from a clean
 tree. It tags HEAD before building, so that About shows the new
-tag, checks `version.json` and zips `dist/` as `gamja-vX.Y.Z.zip`. With a release
+tag, checks `version.json` and zips `dist/` as `gamja-vX.Y.Z.zip` using
+`zip` or Python 3's standard library. With a release
 notes file, it also pushes the tag to the `github` remote and publishes the
 release on GitHub with `gh`. If it fails before pushing, the tag it created
 is deleted again.

@@ -33,7 +33,12 @@ if [ -n "${GAMJA_VERSION:-}" ]; then
 	echo "GAMJA_VERSION is set, the version wouldn't come from the tag" >&2
 	exit 1
 fi
-for cmd in zip ${notes:+gh}; do
+# Python's standard library can also build the archive on minimal systems.
+archive_cmd="zip"
+if ! command -v zip >/dev/null; then
+	archive_cmd="python3"
+fi
+for cmd in "$archive_cmd" ${notes:+gh}; do
 	if ! command -v "$cmd" >/dev/null; then
 		echo "$cmd is required" >&2
 		exit 1
@@ -81,7 +86,14 @@ zip="gamja-$tag.zip"
 tmp="$(mktemp -d)"
 cp -R dist "$tmp/gamja"
 rm -f "$zip"
-(cd "$tmp" && zip -qr "$OLDPWD/$zip" gamja)
+(
+	cd "$tmp"
+	if [ "$archive_cmd" = "zip" ]; then
+		zip -qr "$OLDPWD/$zip" gamja
+	else
+		python3 -m zipfile -c "$OLDPWD/$zip" gamja
+	fi
+)
 echo "built $zip with version $built_version"
 
 if [ -z "$notes" ]; then
