@@ -1,7 +1,11 @@
 /** The steps of a connection's life: opening the socket, registering, reconnecting. */
 
+import * as irc from "../irc";
+import { startRegistrationTimeout } from "./keepalive";
 import type { ClientConnection, Socket } from "./connection";
 import { ClientStatus } from "./types";
+
+export const FALLBACK_SERVER_PREFIX: irc.Prefix = { name: "*" };
 
 export const RECONNECT_MIN_DELAY_MSEC = 10 * 1000; // 10s
 export const RECONNECT_MAX_DELAY_MSEC = 10 * 60 * 1000; // 10min
@@ -80,4 +84,72 @@ export function scheduleReconnect(client: ClientConnection): void {
 		client.reconnect();
 	}, delay);
 	client.setReconnectAt(Date.now() + delay);
+}
+
+export function reconnect(client: ClientConnection): void {
+	const autoReconnect = client.autoReconnect;
+	client.disconnect();
+	client.autoReconnect = autoReconnect;
+
+	client.setReconnectAt(null);
+	if (client.params.multiplexer) {
+		console.log("Attaching bouncer network " + client.params.bouncerNetwork);
+	} else {
+		console.log("Connecting to " + client.params.url);
+	}
+	client.setStatus(ClientStatus.CONNECTING);
+	client.lastReconnectDate = new Date();
+
+	const ws = openSocket(client);
+	if (ws) {
+		client.ws = ws;
+		listenSocket(client, ws);
+	}
+}
+
+export function resetConnection(client: ClientConnection): void {
+	client.ws = null;
+	client.setStatus(ClientStatus.DISCONNECTED);
+	client.nick = null;
+	client.serverPrefix = FALLBACK_SERVER_PREFIX;
+	client.supportsCap = false;
+	client.caps = new irc.CapRegistry();
+	client.batches = new Map();
+	client.multilineBatches = new Map();
+	Object.keys(client.pendingCmds).forEach((k) => {
+		client.pendingCmds[k] = Promise.resolve(null);
+	});
+	client.pendingSearch = null;
+	client.isupport = new irc.Isupport();
+	client.cm = irc.CaseMapping.RFC1459;
+	client.monitored = new irc.CaseMapMap(null, client.cm);
+	client.monitorLimit = Infinity;
+	client.pendingLists = new irc.CaseMapMap(null, client.cm);
+	client.whoxQueries = new Map();
+	client.sentAway = null;
+	clearTimeout(client.lagTimeoutID);
+	client.setLag(null);
+}
+
+export function handleOpen(client: ClientConnection): void {
+	console.log("Connection opened");
+	client.setStatus(ClientStatus.REGISTERING);
+
+	const mux = client.params.multiplexer;
+	// An attached network shares the bouncer connection's socket, which
+	// is kept alive by the bouncer connection
+	client.setPingInterval(mux ? 0 : client.params.ping || 0);
+	startRegistrationTimeout(client, client.ws!);
+
+	client.nick = client.params.nick;
+
+	if (mux) {
+		// Registered by the bouncer once attached, with the caps of the
+		// bouncer connection
+		client.supportsCap = true;
+		client.caps = mux.inheritedCaps();
+		return;
+	}
+
+	sendRegistration(client, client.nick);
 }

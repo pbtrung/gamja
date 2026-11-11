@@ -1,12 +1,7 @@
 import { memo, type ReactNode } from "react";
-import { CornerUpRight } from "lucide-react";
 import * as irc from "../../lib/irc";
 import type { Message } from "../../lib/irc";
 import { BufferType, getMessageURL } from "../../state";
-import { getNickColorIndex, nickInitial } from "../../format";
-import { strip as stripANSI } from "../../lib/ansi";
-import { flash } from "../../lib/flash";
-import { useAppState } from "../../app/context";
 import Membership from "../Membership";
 import MessageActions, { Reactions } from "../MessageActions";
 import type { Context, MessageActionHandlers } from "./context";
@@ -14,6 +9,8 @@ import { describeLine } from "./lineContent";
 import { makeNick } from "./nicks";
 import Timestamp from "./Timestamp";
 import ColumnPrefix from "./ColumnPrefix";
+import ReplyQuote from "./ReplyQuote";
+import { Avatar, BotBadge } from "./Sender";
 
 interface LogLineProps {
 	message: Message;
@@ -58,65 +55,6 @@ function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandl
 		a.canReact === b.canReact &&
 		a.canReply === b.canReply &&
 		a.canRedact === b.canRedact
-	);
-}
-
-/** Tagged as a bot by the message itself or by WHO replies */
-function BotBadge({ serverID, nick, tagged }: { serverID: number; nick: string; tagged: boolean }) {
-	const isBot = useAppState((s) => Boolean(s.servers.get(serverID)?.users.get(nick)?.bot));
-	return tagged || isBot ? <span className="tag-badge">bot</span> : null;
-}
-
-function Avatar({ nick }: { nick: string }) {
-	return (
-		<span className={`avatar nick-${getNickColorIndex(nick)}`} aria-hidden="true">
-			{nickInitial(nick)}
-		</span>
-	);
-}
-
-/** Scroll to a message and briefly highlight it. */
-function jumpToMessage(msgid: string): boolean {
-	const el = document.querySelector<HTMLElement>(`[data-msgid="${CSS.escape(msgid)}"]`);
-	if (!el) {
-		return false;
-	}
-	el.scrollIntoView?.({ block: "center", behavior: "smooth" });
-	flash(el);
-	return true;
-}
-
-function ReplyQuote({
-	parent,
-	msgid,
-	redacted,
-}: {
-	parent: Message | null;
-	msgid: string;
-	redacted: boolean;
-}) {
-	if (!parent) {
-		return (
-			<div className="reply-quote missing">
-				<CornerUpRight aria-hidden="true" /> Reply to an earlier message
-			</div>
-		);
-	}
-	const text = irc.parseCTCP(parent)?.param ?? parent.params[1] ?? "";
-	const nick = parent.prefix?.name ?? "*";
-	return (
-		<button
-			type="button"
-			className="reply-quote"
-			title="Jump to the original message"
-			onClick={() => jumpToMessage(msgid)}
-		>
-			<CornerUpRight aria-hidden="true" />
-			<span className={`reply-nick nick-${getNickColorIndex(nick)}`}>{nick}</span>
-			<span className="reply-text">
-				{redacted ? "This message has been deleted." : stripANSI(text)}
-			</span>
-		</button>
 	);
 }
 

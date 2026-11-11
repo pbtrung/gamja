@@ -6,22 +6,21 @@ import { Backoff } from "./backoff";
 import { WEBSOCKET_CLOSE_CODES, WebSocketError } from "./errors";
 import { handleMessage } from "./incoming";
 import {
-	listenSocket,
-	openSocket,
+	FALLBACK_SERVER_PREFIX,
+	reconnect,
+	resetConnection,
+	handleOpen,
 	RECONNECT_MAX_DELAY_MSEC,
 	RECONNECT_MIN_DELAY_MSEC,
 	scheduleReconnect,
-	sendRegistration,
 } from "./lifecycle";
-import { handlePongTimeout, scheduleLagCheck, setPingInterval, startRegistrationTimeout } from "./keepalive";
+import { handlePongTimeout, scheduleLagCheck, setPingInterval } from "./keepalive";
 import { sendPendingMonitor } from "./monitor";
 import { assembleMultiline, expandMultiline, type MultilineBatches } from "./multiline";
 import { Multiplexer } from "./multiplex";
 import { redactForLog } from "./redact";
 import { roundtrip } from "./roundtrip";
 import { ClientStatus, type ClientParams } from "./types";
-
-const FALLBACK_SERVER_PREFIX: Prefix = { name: "*" };
 
 /** The parts of a WebSocket a connection uses, which a VirtualSocket has too. */
 export interface Socket {
@@ -106,24 +105,7 @@ export abstract class ClientConnection extends EventTarget {
 	}
 
 	reconnect(): void {
-		const autoReconnect = this.autoReconnect;
-		this.disconnect();
-		this.autoReconnect = autoReconnect;
-
-		this.setReconnectAt(null);
-		if (this.params.multiplexer) {
-			console.log("Attaching bouncer network " + this.params.bouncerNetwork);
-		} else {
-			console.log("Connecting to " + this.params.url);
-		}
-		this.setStatus(ClientStatus.CONNECTING);
-		this.lastReconnectDate = new Date();
-
-		const ws = openSocket(this);
-		if (ws) {
-			this.ws = ws;
-			listenSocket(this, ws);
-		}
+		reconnect(this);
 	}
 
 	/**
@@ -156,27 +138,7 @@ export abstract class ClientConnection extends EventTarget {
 
 	/** Forget the state of the current connection, once its socket is gone. */
 	resetConnection(): void {
-		this.ws = null;
-		this.setStatus(ClientStatus.DISCONNECTED);
-		this.nick = null;
-		this.serverPrefix = FALLBACK_SERVER_PREFIX;
-		this.supportsCap = false;
-		this.caps = new irc.CapRegistry();
-		this.batches = new Map();
-		this.multilineBatches = new Map();
-		Object.keys(this.pendingCmds).forEach((k) => {
-			this.pendingCmds[k] = Promise.resolve(null);
-		});
-		this.pendingSearch = null;
-		this.isupport = new irc.Isupport();
-		this.cm = irc.CaseMapping.RFC1459;
-		this.monitored = new irc.CaseMapMap(null, this.cm);
-		this.monitorLimit = Infinity;
-		this.pendingLists = new irc.CaseMapMap(null, this.cm);
-		this.whoxQueries = new Map();
-		this.sentAway = null;
-		clearTimeout(this.lagTimeoutID);
-		this.setLag(null);
+		resetConnection(this);
 	}
 
 	setReconnectAt(t: number | null): void {
@@ -253,26 +215,7 @@ export abstract class ClientConnection extends EventTarget {
 	}
 
 	handleOpen(): void {
-		console.log("Connection opened");
-		this.setStatus(ClientStatus.REGISTERING);
-
-		const mux = this.params.multiplexer;
-		// An attached network shares the bouncer connection's socket, which
-		// is kept alive by the bouncer connection
-		this.setPingInterval(mux ? 0 : this.params.ping || 0);
-		startRegistrationTimeout(this, this.ws!);
-
-		this.nick = this.params.nick;
-
-		if (mux) {
-			// Registered by the bouncer once attached, with the caps of the
-			// bouncer connection
-			this.supportsCap = true;
-			this.caps = mux.inheritedCaps();
-			return;
-		}
-
-		sendRegistration(this, this.nick);
+		handleOpen(this);
 	}
 
 	pushPendingList(k: string, msg: Message): void {
