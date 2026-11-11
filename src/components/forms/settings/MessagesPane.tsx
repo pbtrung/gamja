@@ -74,7 +74,7 @@ export default function MessagesPane({
 				<ToggleRow
 					name="showTyping"
 					label="Show who is typing"
-					hint="In the status bar, when the server supports it"
+					hint="Below the composer, when the server supports it"
 					checked={settings.showTyping}
 					onChange={(showTyping) => onChange({ showTyping })}
 				/>

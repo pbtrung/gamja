@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getTypingNicks, type Buffer } from "../state";
 import { describeTyping } from "../format";
 
-/** Live typing activity in the composer's status bar. */
+/** "bob is typing…" line above the composer. */
 export default function TypingIndicator({ buffer }: { buffer: Buffer | null }) {
 	const [now, setNow] = useState(() => Date.now());
 	const active = buffer ? buffer.typing.size > 0 : false;
@@ -27,9 +27,7 @@ export default function TypingIndicator({ buffer }: { buffer: Buffer | null }) {
 						<span />
 						<span />
 					</span>
-					<span className="typing-text" title={text}>
-						{text}
-					</span>
+					{text}
 				</>
 			)}
 		</div>
