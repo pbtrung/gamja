@@ -118,7 +118,9 @@ Settings, opened from the header of any buffer, are stored per browser:
 
 `typecheck` uses TypeScript 7, while ESLint's type-aware rules (on `src/`:
 floating and misused promises, awaiting non-promises) still run on
-TypeScript 6 until typescript-eslint supports 7.
+TypeScript 6 until typescript-eslint supports 7. The `minimatch` override
+keeps lint tooling on the patched 11.x release until its dependencies
+update their supported range.
 
 The end-to-end tests use the system Chromium (`/usr/bin/chromium`,
 `chromium-browser` or `google-chrome`) when present, otherwise Playwright's
