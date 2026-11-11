@@ -907,3 +907,52 @@ describe("comfortable layout", () => {
 		expect(container.querySelector(".fold-group")).toHaveTextContent("x and y have joined");
 	});
 });
+
+describe("memoized message callbacks", () => {
+	it.each(["reply", "nick"] as const)(
+		"uses the latest %s callback after a parent rerender",
+		async (kind) => {
+			const message = msg("@msgid=m1 :bob!u@h PRIVMSG #c :hello");
+			const buf = buffer([message]);
+			const srv = server();
+			const settings = { ...defaultSettings, layout: "compact" as const };
+			const old = vi.fn();
+			const latest = vi.fn();
+			const handlers = {
+				onChannelClick: vi.fn(),
+				onAuthClick: vi.fn(),
+				onRegisterClick: vi.fn(),
+				onVerifyClick: vi.fn(),
+			};
+			const actions = {
+				myNick: "me",
+				canReact: true,
+				canReply: true,
+				canRedact: false,
+				onReact: vi.fn(),
+				onReply: old,
+				onRedact: vi.fn(),
+			};
+			const list = (callback: typeof old) => (
+				<MessageList
+					buffer={buf}
+					server={srv}
+					bouncerNetwork={null}
+					settings={settings}
+					{...handlers}
+					onNickClick={kind === "nick" ? callback : old}
+					actions={kind === "reply" ? { ...actions, onReply: callback } : actions}
+				/>
+			);
+			const { rerender } = render(list(old), { wrapper });
+			rerender(list(latest));
+			await userEvent.click(
+				kind === "reply"
+					? screen.getByRole("button", { name: "Reply" })
+					: screen.getByRole("link", { name: "bob" }),
+			);
+			expect(latest).toHaveBeenCalledOnce();
+			expect(old).not.toHaveBeenCalled();
+		},
+	);
+});

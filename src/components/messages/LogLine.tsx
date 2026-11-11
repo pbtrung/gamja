@@ -54,7 +54,10 @@ function sameActions(a: MessageActionHandlers | undefined, b: MessageActionHandl
 		a.myNick === b.myNick &&
 		a.canReact === b.canReact &&
 		a.canReply === b.canReply &&
-		a.canRedact === b.canRedact
+		a.canRedact === b.canRedact &&
+		a.onReact === b.onReact &&
+		a.onReply === b.onReply &&
+		a.onRedact === b.onRedact
 	);
 }
 
@@ -285,6 +288,13 @@ const LogLine = memo(
 		prev.parentRedacted === next.parentRedacted &&
 		prev.group === next.group &&
 		sameActions(prev.ctx.actions, next.ctx.actions) &&
+		prev.ctx.onNickClick === next.ctx.onNickClick &&
+		prev.ctx.onChannelClick === next.ctx.onChannelClick &&
+		prev.ctx.onAuthClick === next.ctx.onAuthClick &&
+		prev.ctx.onRegisterClick === next.ctx.onRegisterClick &&
+		prev.ctx.onVerifyClick === next.ctx.onVerifyClick &&
+		prev.ctx.buffer.server === next.ctx.buffer.server &&
+		prev.ctx.server.cm === next.ctx.server.cm &&
 		prev.ctx.settings === next.ctx.settings &&
 		prev.ctx.bouncerNetwork === next.ctx.bouncerNetwork &&
 		// Used for message URLs and STATUSMSG prefixes

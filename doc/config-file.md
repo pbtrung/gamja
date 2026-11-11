@@ -52,9 +52,12 @@ The `server` object configures the IRC server.
 
 The `oauth2` object configures OAuth 2.0 authentication.
 
-- `url` (string): OAuth 2.0 server URL. The server must support OAuth 2.0
-  Authorization Server Metadata (RFC 8414) or OpenID Connect Discovery. Must
-  not end with a slash; a path is kept as a prefix of `/.well-known/…`.
+- `url` (string): OAuth 2.0 issuer URL. It must exactly match the `issuer`
+  returned in the server's metadata, including any trailing slash. The server
+  must support OAuth 2.0 Authorization Server Metadata (RFC 8414) or OpenID
+  Connect Discovery. With a path, discovery first inserts
+  `/.well-known/oauth-authorization-server` before that path, then tries
+  appending that suffix and `/.well-known/openid-configuration` instead.
 - `client_id` (string): OAuth 2.0 client ID.
 - `client_secret` (string): OAuth 2.0 client secret. `config.json` is served
   to every visitor, so this is not a secret: prefer registering gamja as a

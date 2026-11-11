@@ -108,16 +108,20 @@ export async function fetchServerMetadata(url: string): Promise<ServerMetadata> 
 	}
 
 	const data = await resp!.json();
-	if (!data.issuer) {
+	if (typeof data?.issuer !== "string" || !data.issuer) {
 		throw new Error("Missing issuer in response");
 	}
-	if (!data.authorization_endpoint) {
+	// RFC 8414 section 3.3: never use another issuer's discovered endpoints.
+	if (data.issuer !== url) {
+		throw new Error("OAuth 2.0 metadata issuer does not match the configured issuer");
+	}
+	if (typeof data.authorization_endpoint !== "string" || !data.authorization_endpoint) {
 		throw new Error("Missing authorization_endpoint in response");
 	}
-	if (!data.token_endpoint) {
+	if (typeof data.token_endpoint !== "string" || !data.token_endpoint) {
 		throw new Error("Missing token_endpoint in response");
 	}
-	if (!data.response_types_supported?.includes("code")) {
+	if (!Array.isArray(data.response_types_supported) || !data.response_types_supported.includes("code")) {
 		throw new Error("Server doesn't support authorization code response type");
 	}
 	return data;
@@ -262,7 +266,7 @@ export async function introspectToken({
 		body: formatQueryString({ token }),
 	});
 	const data = await readEndpointResponse(resp);
-	if (!data.active) {
+	if (data?.active !== true) {
 		throw new Error("Expired token");
 	}
 	return data;

@@ -188,8 +188,10 @@ describe("oauth2", () => {
 		).rejects.toThrow("Missing access_token");
 	});
 
-	it("strips trailing slashes from the server URL", async () => {
-		const fetch = vi.fn().mockResolvedValue(jsonResponse(metadata));
+	it("strips trailing slashes from discovery locations while checking the exact issuer", async () => {
+		const fetch = vi
+			.fn()
+			.mockResolvedValue(jsonResponse({ ...metadata, issuer: "https://auth.example//" }));
 		vi.stubGlobal("fetch", fetch);
 		await oauth2.fetchServerMetadata("https://auth.example//");
 		expect(fetch.mock.calls[0][0]).toBe("https://auth.example/.well-known/oauth-authorization-server");
@@ -205,4 +207,32 @@ describe("oauth2", () => {
 			oauth2.introspectToken({ serverMetadata: metadata, token: "t", clientId: "id" }),
 		).rejects.toThrow("Expired token");
 	});
+});
+
+describe("OAuth response validation", () => {
+	it("rejects metadata advertising a different issuer", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(jsonResponse({ ...metadata, issuer: "https://other.example" })),
+		);
+		await expect(oauth2.fetchServerMetadata(metadata.issuer)).rejects.toThrow(/issuer/i);
+	});
+
+	it.each([null, 42, {}, "code"])("rejects malformed metadata response types %j", async (value) => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(jsonResponse({ ...metadata, response_types_supported: value })),
+		);
+		await expect(oauth2.fetchServerMetadata(metadata.issuer)).rejects.toThrow(/authorization code/);
+	});
+
+	it.each(["false", "true", 1, {}, null])(
+		"requires a boolean active token flag, got %j",
+		async (active) => {
+			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ active })));
+			await expect(
+				oauth2.introspectToken({ serverMetadata: metadata, token: "t", clientId: "id" }),
+			).rejects.toThrow("Expired token");
+		},
+	);
 });

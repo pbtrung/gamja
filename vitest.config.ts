@@ -15,10 +15,10 @@ export default defineConfig({
 			reporter: ["text-summary", "html"],
 			// Keep coverage from regressing
 			thresholds: {
-				statements: 80,
-				branches: 72,
-				functions: 78,
-				lines: 80,
+				statements: 89,
+				branches: 82,
+				functions: 89,
+				lines: 89,
 			},
 		},
 	},
